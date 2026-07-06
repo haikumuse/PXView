@@ -398,6 +398,14 @@ bool CaptureManager::exec_capture() {
     return false;
   }
 
+  // CRITICAL FIX: fork 迁移遗漏 — 设置 device_status = ST_RUNNING。
+  // 旧 fork libsigrok 在 ds_start_collect 内部会通过 sr_status 结构体设置
+  // device_status；上游 libsigrok 0.6 无此机制，导致 _device_status 永远停在
+  // ST_INIT（set_device 时设置），is_init_status() 恒为 true，
+  // viewport_painter.cpp 的 doPaint 永远走 paintCursors 分支，从不调用
+  // paintSignals，波形不渲染。
+  _state->set_device_status(ST_RUNNING);
+
   if (mode == LOGIC) {
     for (auto de : _state->decode_traces()) {
       if (bAddDecoder) {
@@ -459,6 +467,12 @@ bool CaptureManager::action_stop_capture() {
     _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
 
     exit_capture();
+
+    // CRITICAL FIX: fork 迁移遗漏 — 手动停止采集时设置 device_status =
+    // ST_STOPPED。SR_DF_END 路径只覆盖采集正常完成的情况；用户手动点击
+    // 停止按钮走 action_stop_capture → exit_capture 路径，不会触发
+    // SR_DF_END，因此需要在此显式设置。
+    _state->set_device_status(ST_STOPPED);
 
     data_unlock();
 

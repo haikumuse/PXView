@@ -43,6 +43,7 @@
 #include "logicsnapshot_diskcache_writer.h"
 #include "logicsnapshot_glitch_filter.h"
 #include <map>
+#include <string>
 
 using namespace std;
 
@@ -310,6 +311,19 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
            "ch_data.size()=%zu",
            _disk_cache_writer->disk_cache_config().enabled, _ch_data.size());
 
+  // 调试日志：打印 first_payload 关键参数
+  {
+      std::string ch_idx_str;
+      for (size_t k = 0; k < _ch_index.size(); k++) {
+          ch_idx_str += std::to_string(_ch_index[k]);
+          if (k + 1 < _ch_index.size()) ch_idx_str += ",";
+      }
+      pxv_info("LOGIC_FIRST_PAYLOAD total=%llu ch_num=%u ch_index=[%s] "
+               "is_loop=%d",
+               (unsigned long long)_total_sample_count,
+               _channel_num, ch_idx_str.c_str(), _is_loop ? 1 : 0);
+  }
+
   if (_channel_num > 0) {
     // Create and configure MmapAllocator
     _mmap_alloc = std::make_shared<MmapAllocator>();
@@ -450,9 +464,6 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
 
   _ring_sample_count += _loop_offset;
 
-  const uint8_t *src = (const uint8_t *)logic.data;
-  uint64_t samples_left = num_samples;
-
   // CRITICAL FIX: align_sample_count 必须对齐到 LeafBlockSamples 边界（block 起始），
   // offset 是 block 内偏移。旧代码 align_sample_count = _ring_sample_count（未对齐），
   // 导致末尾 absolute_position = align_sample_count + offset 重复累加初始偏移，
@@ -479,176 +490,191 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   void *ch_lbp[CHANNEL_MAX_COUNT];
   for (unsigned int ch = 0; ch < _channel_num; ch++) {
     ch_lbp[ch] = allocate_block(ch, index0, index1);
-    if (ch_lbp[ch] == NULL) {
+    if (ch_lbp[ch] == nullptr) {
       _ring_sample_count = align_sample_count + offset - _loop_offset;
       _ch_fraction = 0;
-      _dest_ptr = NULL;
+      _dest_ptr = nullptr;
       return;
     }
   }
 
-  // ---- Phase 1: complete the partial dest byte (if _byte_fraction != 0) ----
+  // Per-channel source extraction context: sample-interleaved input means
+  // sample s channel ch bit = src[s*unitsize + ch/8] bit (ch%8). Precompute
+  // byte_pos/bit_mask to avoid recomputing in every phase loop.
+  struct ChannelCtx { uint8_t byte_pos; uint8_t bit_mask; };
+  ChannelCtx ch_ctx[CHANNEL_MAX_COUNT];
+  for (unsigned int ch = 0; ch < _channel_num; ch++) {
+    ch_ctx[ch] = {static_cast<uint8_t>(ch / 8),
+                  static_cast<uint8_t>(1u << (ch % 8))};
+  }
+
+  const uint8_t *src = static_cast<const uint8_t *>(logic.data);
+  uint64_t samples_left = num_samples;
+
+  // Leaf-block advancement: calc mipmap for the completed block, advance
+  // align_sample_count/index0/index1/offset, allocate the next block.
+  // Returns false on out-of-range or allocation failure (caller finalizes
+  // and returns). Eliminates 4× duplication of this pattern across phases.
+  auto advance_leaf_block = [&]() -> bool {
+    if (offset != LeafBlockSamples) return true;
+    for (unsigned int ch = 0; ch < _channel_num; ch++)
+      calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
+    align_sample_count += LeafBlockSamples;
+    index0 = align_sample_count / LeafBlockSamples / RootScale;
+    index1 = (align_sample_count / LeafBlockSamples) % RootScale;
+    offset = 0;
+    if (index0 >= _ch_data[0].size()) {
+      pxv_err("append_payload_impl: index0 %llu out of range (advance)",
+              (unsigned long long)index0);
+      return false;
+    }
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      ch_lbp[ch] = allocate_block(ch, index0, index1);
+      if (ch_lbp[ch] == nullptr) return false;
+    }
+    return true;
+  };
+
+  auto finalize_error = [&]() {
+    _ring_sample_count = align_sample_count + offset - _loop_offset;
+    _ch_fraction = 0;
+    _dest_ptr = nullptr;
+  };
+
+  // ---- Phase 1: complete the partial dest byte (bit-level) ----
+  // Consumes 1-7 samples to reach a byte boundary (_byte_fraction → 0).
   if (_byte_fraction != 0 && samples_left > 0) {
-    uint64_t need = 8 - _byte_fraction;
-    uint64_t have = (samples_left < need) ? samples_left : need;
+    const uint8_t need = static_cast<uint8_t>(8 - _byte_fraction);
+    const uint64_t have = std::min(samples_left, static_cast<uint64_t>(need));
 
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
-      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
-      uint8_t byte_pos = ch / 8;
-      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
+      auto [byte_pos, bit_mask] = ch_ctx[ch];
+      uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
       for (uint64_t k = 0; k < have; k++) {
         if (src[k * unitsize + byte_pos] & bit_mask)
-          *dest_byte |= (uint8_t)(1u << (_byte_fraction + (uint8_t)k));
+          *dest_byte |= static_cast<uint8_t>(1u << (_byte_fraction + k));
       }
     }
 
     src += have * unitsize;
     samples_left -= have;
     offset += have;
-    _byte_fraction = (uint8_t)((_byte_fraction + (uint8_t)have) % 8);
+    _byte_fraction = static_cast<uint8_t>((_byte_fraction + have) % 8);
 
-    if (_byte_fraction == 0 && offset == LeafBlockSamples) {
-      for (unsigned int ch = 0; ch < _channel_num; ch++)
-        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
-      align_sample_count += LeafBlockSamples;
-      index0 = align_sample_count / LeafBlockSamples / RootScale;
-      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-      offset = 0;
-      if (index0 >= _ch_data[0].size()) {
-        pxv_err("append_payload_impl: index0 %llu out of range (post-phase1)",
-                (unsigned long long)index0);
-        _ring_sample_count = align_sample_count + offset - _loop_offset;
-        _ch_fraction = 0;
-        _dest_ptr = NULL;
-        return;
-      }
-      for (unsigned int ch = 0; ch < _channel_num; ch++) {
-        ch_lbp[ch] = allocate_block(ch, index0, index1);
-        if (ch_lbp[ch] == NULL) {
-          _ring_sample_count = align_sample_count + offset - _loop_offset;
-          _ch_fraction = 0;
-          _dest_ptr = NULL;
-          return;
-        }
-      }
-    }
+    if (!advance_leaf_block()) { finalize_error(); return; }
   }
 
-  // ---- Phase 2: process complete 64-sample batches (matches mipmap Scale) ----
-  while (samples_left >= Scale && _byte_fraction == 0) {
+  // ---- Phase 2: align offset to Scale boundary via 8-sample byte writes ----
+  // ROOT-CAUSE FIX for D7 data-loss bug. The original code placed Phase 3
+  // (64-sample batch) directly after Phase 1, but Phase 1 only guarantees
+  // offset % 8 == 0, not offset % Scale == 0. Phase 3 used `offset / Scale`
+  // (integer division) to compute the write pointer, causing bit-misalignment
+  // when offset % Scale != 0: write_ptr = u64[offset/Scale] maps bit 0 to
+  // sample (offset/Scale)*Scale, but the value's bit 0 corresponds to sample
+  // `offset`. The misaligned overwrite corrupted neighboring u64s, producing
+  // symptoms like u64[3494]=0xffffff0000000000 (40 zero bits = 200us @200kHz).
+  // This new phase strengthens the alignment invariant: it consumes 8-sample
+  // bytes until offset % Scale == 0, so Phase 3's alignment assumption becomes
+  // a guaranteed invariant rather than an unchecked hypothesis.
+  while (samples_left >= 8 && (offset % Scale) != 0) {
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
-      uint64_t *write_ptr = (uint64_t *)ch_lbp[ch] + offset / Scale;
-      uint64_t value = 0;
-      uint8_t byte_pos = ch / 8;
-      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
-      for (unsigned int m = 0; m < ScaleSize; m++) {
-        uint8_t byte = 0;
-        for (unsigned int k = 0; k < 8; k++) {
-          if (src[(m * 8 + k) * unitsize + byte_pos] & bit_mask)
-            byte |= (uint8_t)(1u << k);
-        }
-        value |= ((uint64_t)byte) << (m * 8);
-      }
-      *write_ptr = value;
-    }
-
-    src += Scale * unitsize;
-    samples_left -= Scale;
-    offset += Scale;
-
-    if (offset == LeafBlockSamples) {
-      for (unsigned int ch = 0; ch < _channel_num; ch++)
-        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
-      align_sample_count += LeafBlockSamples;
-      index0 = align_sample_count / LeafBlockSamples / RootScale;
-      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-      offset = 0;
-      if (index0 >= _ch_data[0].size()) {
-        pxv_err("append_payload_impl: index0 %llu out of range (post-phase2)",
-                (unsigned long long)index0);
-        samples_left = 0;
-        break;
-      }
-      for (unsigned int ch = 0; ch < _channel_num; ch++) {
-        ch_lbp[ch] = allocate_block(ch, index0, index1);
-        if (ch_lbp[ch] == NULL) {
-          samples_left = 0;
-          break;
-        }
-      }
-      if (ch_lbp[_channel_num - 1] == NULL) {
-        _ring_sample_count = align_sample_count + offset - _loop_offset;
-        _ch_fraction = 0;
-        _dest_ptr = NULL;
-        return;
-      }
-    }
-  }
-
-  // ---- Phase 3: process remaining complete 8-sample bytes ----
-  while (samples_left >= 8 && _byte_fraction == 0) {
-    for (unsigned int ch = 0; ch < _channel_num; ch++) {
-      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
+      auto [byte_pos, bit_mask] = ch_ctx[ch];
+      uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
       uint8_t byte = 0;
-      uint8_t byte_pos = ch / 8;
-      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
-      for (unsigned int k = 0; k < 8; k++) {
+      for (uint8_t k = 0; k < 8; k++) {
         if (src[k * unitsize + byte_pos] & bit_mask)
-          byte |= (uint8_t)(1u << k);
+          byte |= static_cast<uint8_t>(1u << k);
       }
       *dest_byte = byte;
     }
-
     src += 8 * unitsize;
     samples_left -= 8;
     offset += 8;
 
-    if (offset == LeafBlockSamples) {
-      for (unsigned int ch = 0; ch < _channel_num; ch++)
-        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
-      align_sample_count += LeafBlockSamples;
-      index0 = align_sample_count / LeafBlockSamples / RootScale;
-      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-      offset = 0;
-      if (index0 >= _ch_data[0].size()) {
-        pxv_err("append_payload_impl: index0 %llu out of range (post-phase3)",
-                (unsigned long long)index0);
-        samples_left = 0;
-        break;
-      }
-      for (unsigned int ch = 0; ch < _channel_num; ch++) {
-        ch_lbp[ch] = allocate_block(ch, index0, index1);
-        if (ch_lbp[ch] == NULL) {
-          samples_left = 0;
-          break;
-        }
-      }
-      if (ch_lbp[_channel_num - 1] == NULL) {
-        _ring_sample_count = align_sample_count + offset - _loop_offset;
-        _ch_fraction = 0;
-        _dest_ptr = NULL;
-        return;
-      }
-    }
+    if (!advance_leaf_block()) { finalize_error(); return; }
   }
 
-  // ---- Phase 4: residual 1-7 samples (tracked via _byte_fraction) ----
-  if (samples_left > 0 && _byte_fraction == 0) {
+  // ---- Phase 3: process 64-sample batches (Scale-aligned fast path) ----
+  // INVARIANT: offset % Scale == 0, guaranteed by Phase 2. write_ptr bit 0
+  // correctly maps to sample offset. No integer-division misalignment.
+  while (samples_left >= Scale && _byte_fraction == 0) {
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
-      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
-      uint8_t byte_pos = ch / 8;
-      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
-      for (uint64_t k = 0; k < samples_left; k++) {
-        if (src[k * unitsize + byte_pos] & bit_mask)
-          *dest_byte |= (uint8_t)(1u << (uint8_t)k);
+      auto [byte_pos, bit_mask] = ch_ctx[ch];
+      uint64_t *write_ptr =
+          reinterpret_cast<uint64_t *>(ch_lbp[ch]) + offset / Scale;
+      uint64_t value = 0;
+      for (unsigned int m = 0; m < ScaleSize; m++) {
+        uint8_t byte = 0;
+        for (unsigned int k = 0; k < 8; k++) {
+          if (src[(m * 8 + k) * unitsize + byte_pos] & bit_mask)
+            byte |= static_cast<uint8_t>(1u << k);
+        }
+        value |= static_cast<uint64_t>(byte) << (m * 8);
+      }
+      *write_ptr = value;
+
+      // 诊断：D7 (ch=7) 应全高。写入后立即读回验证内存一致性，
+      // 并检查 value 是否真的全 1。限制前 200 条避免日志爆炸。
+      if (ch == 7) {
+        static int s_d7_verify_cnt = 0;
+        if (s_d7_verify_cnt < 200) {
+          s_d7_verify_cnt++;
+          uint64_t readback = *write_ptr;
+          uint64_t abs_sample = align_sample_count + offset;
+          if (value != 0xFFFFFFFFFFFFFFFFULL || readback != value) {
+            pxv_warn("D7_VERIFY abs_sample=%llu u64_idx=%llu "
+                     "value=0x%llx readback=0x%llx %s",
+                     (unsigned long long)abs_sample,
+                     (unsigned long long)(offset / Scale),
+                     (unsigned long long)value,
+                     (unsigned long long)readback,
+                     readback != value ? "*** READBACK MISMATCH ***" : "");
+          }
+        }
       }
     }
-    _byte_fraction = (uint8_t)samples_left;
+    src += Scale * unitsize;
+    samples_left -= Scale;
+    offset += Scale;
+
+    if (!advance_leaf_block()) { finalize_error(); return; }
+  }
+
+  // ---- Phase 4: process remaining 8-sample bytes ----
+  while (samples_left >= 8 && _byte_fraction == 0) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      auto [byte_pos, bit_mask] = ch_ctx[ch];
+      uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
+      uint8_t byte = 0;
+      for (uint8_t k = 0; k < 8; k++) {
+        if (src[k * unitsize + byte_pos] & bit_mask)
+          byte |= static_cast<uint8_t>(1u << k);
+      }
+      *dest_byte = byte;
+    }
+    src += 8 * unitsize;
+    samples_left -= 8;
+    offset += 8;
+
+    if (!advance_leaf_block()) { finalize_error(); return; }
+  }
+
+  // ---- Phase 5: residual 1-7 samples (bit-level, persist _byte_fraction) ----
+  if (samples_left > 0 && _byte_fraction == 0) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      auto [byte_pos, bit_mask] = ch_ctx[ch];
+      uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
+      for (uint64_t k = 0; k < samples_left; k++) {
+        if (src[k * unitsize + byte_pos] & bit_mask)
+          *dest_byte |= static_cast<uint8_t>(1u << k);
+      }
+    }
+    _byte_fraction = static_cast<uint8_t>(samples_left);
     offset += samples_left;
     samples_left = 0;
   }
 
-  // ---- Phase 5: mipmap calc for partial leaf block (incremental rendering) ----
+  // ---- Mipmap calc for partial leaf block (incremental rendering) ----
   // calc_mipmap processes only complete 64-sample (Scale) chunks via integer
   // division (samples / Scale), so partial bytes at the tail are not touched.
   // _last_calc_count is saved (isEnd=false) for continuation on the next call.
@@ -657,23 +683,58 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
       calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, offset, false);
   }
 
+  // 诊断：append_payload_impl 末尾，对 D7 (ch=7) 扫描当前 leaf block
+  // 写入范围 [scan_start, offset)，检查是否有 0 位（D7 应全高）。
+  // 限制前 50 个 packet，每 packet 最多记录 5 个异常 u64。
+  if (_channel_num > 7 && ch_lbp[7] != nullptr) {
+    static int s_d7_scan_pkt = 0;
+    if (s_d7_scan_pkt < 50) {
+      s_d7_scan_pkt++;
+      // 扫描范围：本次 packet 写入的 u64 范围
+      // packet 起始 offset = align_sample_count 进入此 leaf block 的偏移
+      // 简化：扫描 [0, offset) 范围内的 D7 异常（offset 是当前 leaf block 内偏移）
+      uint64_t scan_end_u64 = offset / Scale;
+      if (scan_end_u64 > 0) {
+        uint64_t *d7_ptr = reinterpret_cast<uint64_t *>(ch_lbp[7]);
+        int anomaly_cnt = 0;
+        // 采样扫描：每 100 个 u64 检查 1 个，避免全扫描太慢
+        for (uint64_t u = 0; u < scan_end_u64 && anomaly_cnt < 5; u += 100) {
+          uint64_t v = d7_ptr[u];
+          if (v != 0xFFFFFFFFFFFFFFFFULL) {
+            uint64_t abs_sample = align_sample_count + u * Scale;
+            // 找到第一个 0 位
+            int first_zero_bit = -1;
+            for (int b = 0; b < 64; b++) {
+              if ((v & (1ULL << b)) == 0) { first_zero_bit = b; break; }
+            }
+            pxv_warn("D7_SCAN pkt=%d abs_sample=%llu u64[%llu]=0x%llx "
+                     "first_zero_bit=%d zero_at_sample=%llu",
+                     s_d7_scan_pkt - 1,
+                     (unsigned long long)abs_sample,
+                     (unsigned long long)u,
+                     (unsigned long long)v,
+                     first_zero_bit,
+                     (unsigned long long)(abs_sample + first_zero_bit));
+            anomaly_cnt++;
+          }
+        }
+      }
+    }
+  }
+
   // Finalize position
-  uint64_t absolute_position = align_sample_count + offset;
+  const uint64_t absolute_position = align_sample_count + offset;
   _ring_sample_count = absolute_position - _loop_offset;
 
-  // CRITICAL FIX: 仅在 loop 模式下才允许设置 _loop_offset。非 loop 模式下
-  // _loop_offset 应恒为 0；若 absolute_position > _total_sample_count（理论上
-  // 不应发生，因为上方已截断 num_samples），仍进入此分支会污染 _loop_offset，
-  // 下次 append_payload_impl 第 440 行 _ring_sample_count += _loop_offset 会从
-  // 错误基址开始，形成正反馈放大。Bug 1 的截断已使此分支在非 loop 模式下成为
-  // 死代码，但显式守卫防御未来回归。
+  // Loop-mode overflow handling. Non-loop: dead code due to num_samples cap
+  // above, but the explicit _is_loop guard defends against future regressions.
   if (_is_loop && absolute_position > _total_sample_count) {
     _loop_offset = absolute_position - _total_sample_count;
     _ring_sample_count = _total_sample_count;
   }
 
   _ch_fraction = 0;
-  _dest_ptr = NULL;
+  _dest_ptr = nullptr;
 }
 
 void LogicSnapshot::capture_ended() {
@@ -699,10 +760,13 @@ void LogicSnapshot::capture_ended() {
 
   _ring_sample_count -= _loop_offset;
 
-  pxv_info("capture_ended: _ring=%llu, _total=%llu, _ch_num=%u, _ch_data.size=%zu, "
+  pxv_info("capture_ended: _ring=%llu, _total=%llu, _sample_count=%llu, "
+           "_loop_offset=%llu, _ch_num=%u, _ch_data.size=%zu, "
            "idx0=%llu, idx1=%llu, offset=%llu",
            (unsigned long long)_ring_sample_count,
            (unsigned long long)_total_sample_count,
+           (unsigned long long)_sample_count,
+           (unsigned long long)_loop_offset,
            (unsigned)_channel_num, _ch_data.size(),
            (unsigned long long)index0, (unsigned long long)index1,
            (unsigned long long)offset);
@@ -930,8 +994,16 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
   _ring_sample_count += _loop_offset;
 
   int order = get_ch_order(sig_index);
-  if (order == -1 || (unsigned int)order >= _ch_data.size())
+  if (order == -1 || (unsigned int)order >= _ch_data.size()) {
+    static int s_warn_cnt = 0;
+    if (s_warn_cnt++ < 20) {
+      pxv_warn("LogicSnapshot::get_samples NULL: sig_index=%d order=%d "
+               "ch_data_size=%zu ch_index_size=%zu _loop_offset=%lld",
+               sig_index, order, _ch_data.size(), _ch_index.size(),
+               (long long)_loop_offset);
+    }
     return NULL;
+  }
 
   uint64_t index0 = start_sample >> (LeafBlockPower + RootScalePower);
   uint64_t index1 = (start_sample & RootMask) >> LeafBlockPower;
@@ -944,13 +1016,40 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
 
   _ring_sample_count -= _loop_offset;
 
-  if (index0 >= _ch_data[order].size())
+  if (index0 >= _ch_data[order].size()) {
+    static int s_warn_cnt2 = 0;
+    if (s_warn_cnt2++ < 20) {
+      pxv_warn("LogicSnapshot::get_samples NULL: sig_index=%d order=%d "
+               "index0=%llu >= ch_data[order].size()=%zu (start_sample=%llu)",
+               sig_index, order, (unsigned long long)index0,
+               _ch_data[order].size(), (unsigned long long)start_sample);
+    }
     return NULL;
+  }
 
   void *ptr = _ch_data[order][index0].lbp[index1];
 
-  if (ptr == NULL)
-    return NULL;
+  if (ptr == NULL) {
+    // Leaf block was freed by calc_mipmap because this region has no toggles
+    // (constant value). The value is encoded in _ch_data[order][index0].first
+    // bit `index1`. Return a synthetic buffer filled with the constant value
+    // so callers (export, etc.) get valid data instead of NULL.
+    // 8 samples per byte, LSB-first: all-0 -> 0x00, all-1 -> 0xFF.
+    bool const_val = (_ch_data[order][index0].first & (1ULL << index1)) != 0;
+    uint64_t bytes_from_offset = (end_sample - start_sample + 1 + 7) / 8;
+    // Clamp to remaining bytes in this leaf block from `offset`.
+    uint64_t leaf_remaining = (LeafBlockSamples / 8) - offset;
+    uint64_t need = std::min(bytes_from_offset, leaf_remaining);
+    static thread_local std::vector<uint8_t> s_const_buf;
+    if (s_const_buf.size() < need) s_const_buf.resize(need);
+    uint8_t fill = const_val ? 0xFF : 0x00;
+    memset(s_const_buf.data(), fill, need);
+    if (lbp != NULL)
+      *lbp = NULL;
+    _cur_ref_block_indexs[order].root_index = index0;
+    _cur_ref_block_indexs[order].lbp_index = index1;
+    return s_const_buf.data();
+  }
 
   if (lbp != NULL)
     *lbp = ptr;
@@ -981,26 +1080,64 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index) {
   if (order == -1 || (unsigned int)order >= _ch_data.size())
     return false;
 
+  bool result = false;
+  bool out_of_range = false;
+  bool tog_zero = false;
+  bool lbp_null = false;
+  uint64_t u64_idx = 0;
+  uint64_t bit_pos = 0;
+  uint64_t u64_value = 0;
+
   if (index < _ring_sample_count) {
     uint64_t index_mask = 1ULL << (index & LevelMask[0]);
     uint64_t index0 = index >> (LeafBlockPower + RootScalePower);
     uint64_t index1 = (index & RootMask) >> LeafBlockPower;
     uint64_t root_pos_mask = 1ULL << index1;
 
-    if (index0 >= _ch_data[order].size())
-      return false;
+    u64_idx = (index & LeafMask) >> ScalePower;
+    bit_pos = index & LevelMask[0];
 
-    if ((_ch_data[order][index0].tog & root_pos_mask) == 0) {
-      return (_ch_data[order][index0].first & root_pos_mask) != 0;
+    if (index0 >= _ch_data[order].size()) {
+      out_of_range = true;
+      result = false;
+    } else if ((_ch_data[order][index0].tog & root_pos_mask) == 0) {
+      tog_zero = true;
+      result = (_ch_data[order][index0].first & root_pos_mask) != 0;
     } else {
       void *ptr = _ch_data[order][index0].lbp[index1];
-      if (ptr == NULL)
-        return (_ch_data[order][index0].first & root_pos_mask) != 0;
-      return *((uint64_t *)ptr + ((index & LeafMask) >> ScalePower)) & index_mask;
+      if (ptr == nullptr) {
+        lbp_null = true;
+        result = (_ch_data[order][index0].first & root_pos_mask) != 0;
+      } else {
+        uint64_t *u64_ptr = (uint64_t *)ptr;
+        u64_value = u64_ptr[u64_idx];
+        result = u64_value & index_mask;
+      }
+    }
+  } else {
+    out_of_range = true;
+    result = false;
+  }
+
+  // 诊断：D7 (sig_index=7) 应全高，记录返回 false 的异常情况和 u64 值
+  if (sig_index == 7 && !result) {
+    static int s_d7_false_cnt = 0;
+    if (s_d7_false_cnt < 50) {
+      s_d7_false_cnt++;
+      pxv_warn("D7_READ_FALSE idx=%llu ring=%llu order=%d "
+               "out_of_range=%d tog_zero=%d lbp_null=%d "
+               "u64_idx=%llu bit=%llu u64_val=0x%llx",
+               (unsigned long long)index,
+               (unsigned long long)_ring_sample_count,
+               order, out_of_range ? 1 : 0,
+               tog_zero ? 1 : 0, lbp_null ? 1 : 0,
+               (unsigned long long)u64_idx,
+               (unsigned long long)bit_pos,
+               (unsigned long long)u64_value);
     }
   }
 
-  return false;
+  return result;
 }
 
 bool LogicSnapshot::get_display_edges(
@@ -1117,9 +1254,49 @@ bool LogicSnapshot::get_nxt_edge_self(uint64_t &index, bool last_sample,
 
     do {
       uint64_t inner_tog = _ch_data[order][i].tog & cur_mask;
-      uint64_t lbp_tog =
+      uint64_t lbp_tog_raw =
           (((_ch_data[order][i].last << 1) + root_last) & cur_mask) ^
           (_ch_data[order][i].first & cur_mask);
+      uint64_t lbp_tog = lbp_tog_raw;
+
+      // 修复：清除超出 _ring_sample_count 的虚假 lbp_tog bit。
+      // 未使用的 lbp 块 first/last=0，会与已使用块的 last 产生虚假边沿
+      // （例如 D7 全高时，lbp[0] last=1，lbp[1] first=0 → 误报下降沿，
+      //  导致 lbp_nxt_edge 把 index 推到 lbp[1] 起始位置 2^24，
+      //  渲染端画出垂直线毛刺）。
+      // 只有 lbp_tog_index < _ring_sample_count 的 bit 才是有效边沿。
+      {
+        uint64_t root_start = (i << (LeafBlockPower + RootScalePower));
+        if (root_start < _ring_sample_count) {
+          uint64_t valid_lbp_count = (_ring_sample_count - root_start +
+                                      LeafBlockSamples - 1) >> LeafBlockPower;
+          uint64_t valid_mask = (valid_lbp_count >= Scale)
+                                    ? ~0ULL
+                                    : ((1ULL << valid_lbp_count) - 1);
+          lbp_tog &= valid_mask;
+        } else {
+          lbp_tog = 0;
+        }
+      }
+
+      // 调试日志：D7 (sig_index=7) lbp_tog 修复前后
+      if (sig_index == 7) {
+        static int s_d7_lbp_cnt = 0;
+        if (s_d7_lbp_cnt++ < 30) {
+          pxv_info("D7_LBP_TOG i=%llu root_start=%llu ring=%llu "
+                   "lbp_tog_raw=0x%llx lbp_tog_fixed=0x%llx last=0x%llx "
+                   "first=0x%llx tog=0x%llx root_last=%d",
+                   (unsigned long long)i, (unsigned long long)(i << (LeafBlockPower + RootScalePower)),
+                   (unsigned long long)_ring_sample_count,
+                   (unsigned long long)lbp_tog_raw,
+                   (unsigned long long)lbp_tog,
+                   (unsigned long long)_ch_data[order][i].last,
+                   (unsigned long long)_ch_data[order][i].first,
+                   (unsigned long long)_ch_data[order][i].tog,
+                   root_last ? 1 : 0);
+        }
+      }
+
       uint8_t inner_tog_pos = bsf_folded(inner_tog);
       uint8_t lbp_tog_pos = bsf_folded(lbp_tog);
 

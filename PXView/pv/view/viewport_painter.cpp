@@ -202,18 +202,9 @@ ViewportPainter::ViewportPainter(Viewport *viewport) : _viewport(viewport) {}
 ViewportPainter::~ViewportPainter() {}
 
 void ViewportPainter::paintEvent(QPaintEvent *event) {
-#ifndef NDEBUG
-  QElapsedTimer timer;
-  timer.start();
-#endif
-
   if (_viewport->g_drag_active && !_viewport->g_drag_snapshot.isNull()) {
     QPainter p(_viewport);
     p.drawPixmap(0, 0, _viewport->g_drag_snapshot);
-#ifndef NDEBUG
-    qint64 t_snap = timer.elapsed();
-    pxv_warn("[DIAG] Viewport::paintEvent drew snapshot in %lld ms", t_snap);
-#endif
     return;
   }
 
@@ -232,13 +223,6 @@ void ViewportPainter::paintEvent(QPaintEvent *event) {
   }
 
   doPaint(event->rect());
-
-#ifndef NDEBUG
-  qint64 total = timer.elapsed();
-  pxv_warn(
-      "[DIAG] Viewport::paintEvent full repaint took %lld ms, size: %dx%d",
-      total, _viewport->size().width(), _viewport->size().height());
-#endif
 }
 
 void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
@@ -509,16 +493,6 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
     _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
 
   p.end();
-
-#ifndef NDEBUG
-  qint64 total = timer.elapsed();
-  pxv_warn(
-      "[DIAG] Viewport::doPaint took %lld ms: init: %lld ms, check_update: "
-      "%lld ms, get_traces: %lld ms, group_cards: %lld ms, dividers: %lld ms, "
-      "paint_back: %lld ms, paint_signals: %lld ms, paint_fore: %lld ms",
-      total, t_init, t_check_update, t_get_traces, t_group_cards, t_dividers,
-      t_paint_back, t_paint_signals, t_paint_fore);
-#endif
 }
 
 void ViewportPainter::paintCursors(QPainter &p) {
@@ -915,15 +889,6 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
       }
     }
   }
-
-#ifndef NDEBUG
-  qint64 total = timer.elapsed();
-  pxv_warn("[DIAG] Viewport::paintSignals took %lld ms, rebuilt: %d, "
-           "rebuild_time: %lld ms, blit: %lld ms, decode: %lld ms, cursor: "
-           "%lld ms, xcursor: %lld ms, marker: %lld ms, measure: %lld ms",
-           total, rebuilt ? 1 : 0, t_rebuild, t_blit, t_decode, t_cursor,
-           t_xcursor, t_marker, t_measure);
-#endif
 }
 
 void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {

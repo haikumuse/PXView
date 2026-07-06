@@ -182,6 +182,9 @@ private:
     QRectF *_rects;
 
 	float _scale;
+    // float 电压数据的缩放（参考 PulseView scale_ = div_height / resolution）。
+    // ADC 整数路径用 _scale + hw_offset；float 路径用 _float_scale 直接缩放电压值。
+    float _float_scale;
     double _zero_vrate;
     int _zero_offset;
     int _cached_hw_offset;

@@ -454,6 +454,9 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
       double traceHeight;
       if (t->get_own_height() > 0) {
         traceHeight = t->get_own_height();
+      } else if (t->signal_type() == SR_CHANNEL_ANALOG) {
+        // 模拟通道默认高度 48px
+        traceHeight = 48;
       } else {
         traceHeight = _view->_signalHeight * t->rows_size();
       }
@@ -506,16 +509,6 @@ void ViewSignalSync::rebuild_signals_from_config(
     RebuildGuard(bool &f) : flag(f) {}
     ~RebuildGuard() { flag = false; }
   } _rebuild_guard(_view->_rebuild_in_progress);
-
-  qDebug() << "View::rebuild_signals_from_config() work_mode="
-           << config.work_mode << "ch_count=" << config.channels.size()
-           << "is_valid=" << config.is_valid;
-
-  // DEBUG: 打印每个 ChannelConfig 的 type 字段，确认 ch.type 是否被正确加载
-  for (const auto &ch : config.channels) {
-    pxv_info("rebuild ch: index=%d name=%s type=%d enabled=%d",
-             ch.index, ch.name.c_str(), ch.type, (int)ch.enabled);
-  }
 
   std::vector<Signal *> old_signals = _view->_own_signals;
   _view->_own_signals.clear();
@@ -578,8 +571,11 @@ void ViewSignalSync::rebuild_signals_from_config(
     }
 
     Signal *signal = nullptr;
+    pxv_info("rebuild switch: index=%d ch_type=%d (LOGIC=%d DSO=%d ANALOG=%d)",
+             ch.index, ch_type, SR_CHANNEL_LOGIC, SR_CHANNEL_DSO, SR_CHANNEL_ANALOG);
     switch (ch_type) {
     case SR_CHANNEL_LOGIC:
+      pxv_info("rebuild: creating LogicSignal for index=%d", ch.index);
       if (old_signal) {
         signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
                                  nullptr, model, _view->_data_source);
@@ -588,6 +584,7 @@ void ViewSignalSync::rebuild_signals_from_config(
       }
       break;
     case SR_CHANNEL_DSO:
+      pxv_info("rebuild: creating DsoSignal for index=%d", ch.index);
       if (old_signal) {
         signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
                                model, _view->_data_source);
@@ -596,6 +593,7 @@ void ViewSignalSync::rebuild_signals_from_config(
       }
       break;
     case SR_CHANNEL_ANALOG:
+      pxv_info("rebuild: creating AnalogSignal for index=%d", ch.index);
       if (old_signal) {
         signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
                                   nullptr, model, _view->_data_source);
@@ -604,7 +602,13 @@ void ViewSignalSync::rebuild_signals_from_config(
       }
       break;
     default:
+      pxv_warn("rebuild: UNKNOWN ch_type=%d for index=%d, no signal created", ch_type, ch.index);
       break;
+    }
+
+    if (signal) {
+      pxv_info("rebuild: created signal index=%d signal_type=%d ptr=%p",
+               ch.index, signal->signal_type(), (void*)signal);
     }
 
     if (signal) {
@@ -669,6 +673,12 @@ void ViewSignalSync::rebuild_signals_from_config(
 void ViewSignalSync::rebuild_signals() {
   _view->mark_derived_traces_dirty();
 
+  pxv_info("rebuild_signals() ENTRY: data_source=%p document=%p same=%d has_config=%d own_signals=%d",
+           (void*)_view->_data_source, (void*)_view->_document,
+           (int)(_view->_data_source == _view->_document),
+           _view->_document ? (int)_view->_document->has_signal_config() : 0,
+           (int)_view->_own_signals.size());
+
   if (_view->_data_source == _view->_document && _view->_document &&
       _view->_document->has_signal_config()) {
     const auto &config = _view->_document->get_signal_config();
@@ -679,7 +689,10 @@ void ViewSignalSync::rebuild_signals() {
          l = l->next) {
       device_ch_count++;
     }
+    pxv_info("rebuild_signals() branch A: config.channels=%d device_ch=%d",
+             (int)config.channels.size(), device_ch_count);
     if (config.channels.size() == (size_t)device_ch_count) {
+      pxv_info("rebuild_signals() -> calling rebuild_signals_from_config (path A)");
       rebuild_signals_from_config(config);
       SignalFactory::update_signals(_view->_own_signals, _view->_data_source,
                                     _view->_data_source,
@@ -689,6 +702,8 @@ void ViewSignalSync::rebuild_signals() {
       return;
     }
   }
+
+  pxv_info("rebuild_signals() -> taking SignalFactory::create_signals path (path B)");
 
   if (!_view->_data_source)
     return;

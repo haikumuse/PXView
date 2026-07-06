@@ -809,8 +809,19 @@ void ViewportInteraction::wheelEvent(QWheelEvent *event) {
   }
 
   int x = event->position().toPoint().x();
-  int delta = event->angleDelta().y();
-  bool isVertical = event->angleDelta().y() != 0;
+  // Windows 把 Shift+滚轮 转成水平滚动事件 (angleDelta().y()==0,
+  // angleDelta().x()!=0)，所以这里取绝对值较大的那个方向作为 delta，
+  // 否则 Shift/Alt+滚轮 的平移会因 delta=0 而无效。
+  const QPoint ad = event->angleDelta();
+  const int anglex = ad.x();
+  const int angley = ad.y();
+  int delta;
+  if (anglex == 0 || ABS_VAL(angley) >= ABS_VAL(anglex)) {
+    delta = angley;
+  } else {
+    delta = anglex;
+  }
+  bool isVertical = (angley != 0);
 
   double zoom_scale = delta / 80;
 

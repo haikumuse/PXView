@@ -126,9 +126,6 @@ void SignalConfigStore::signal_config_from_json(const QJsonObject &obj) {
   }
 
   _signal_config.is_valid = true;
-  pxv_info(
-      "SignalConfigStore::signal_config_from_json() done, work_mode=%d ch_count=%d",
-      _signal_config.work_mode, (int)_signal_config.channels.size());
 }
 
 void SignalConfigStore::save_signal_config(
@@ -137,9 +134,6 @@ void SignalConfigStore::save_signal_config(
     const std::map<int, std::string> &channel_colours) {
   DeviceAgent *agent = _session ? _session->get_device() : nullptr;
   if (!agent || !agent->have_instance()) {
-    pxv_info(
-        "SignalConfigStore::save_signal_config() skip, agent=%p have_instance=%d",
-        agent, agent ? agent->have_instance() : 0);
     return;
   }
 
@@ -240,40 +234,19 @@ void SignalConfigStore::save_signal_config(
       cfg.view_index = layout_it->second.view_index;
       cfg.v_offset = layout_it->second.v_offset;
       cfg.own_height = layout_it->second.own_height;
-      pxv_info("SignalConfigStore::save_signal_config: channel %d layout saved: view_index=%d, v_offset=%d, own_height=%d",
-               cfg.index, cfg.view_index, cfg.v_offset, cfg.own_height);
-    } else {
-      pxv_info("SignalConfigStore::save_signal_config: channel %d NOT in channel_layout map, keeping defaults (view_index=-1, v_offset=0, own_height=-1)",
-               cfg.index);
     }
 
     _signal_config.channels.push_back(cfg);
   }
 
-  pxv_info("SignalConfigStore::save_signal_config() done, work_mode=%d ch_count=%d, channel_layout param size=%d, channel_colours param size=%d",
-           mode, (int)_signal_config.channels.size(), (int)channel_layout.size(),
-           (int)channel_colours.size());
   _signal_config.is_valid = true;
 }
 
 void SignalConfigStore::apply_signal_config() {
   DeviceAgent *agent = _session ? _session->get_device() : nullptr;
-  qDebug() << "SignalConfigStore::apply_signal_config() START is_valid="
-           << _signal_config.is_valid
-           << "have_instance=" << (agent ? agent->have_instance() : 0);
   if (!agent || !agent->have_instance() || !_signal_config.is_valid) {
-    pxv_info("SignalConfigStore::apply_signal_config() skip, agent=%p "
-             "have_instance=%d is_valid=%d",
-             agent, agent ? agent->have_instance() : 0,
-             _signal_config.is_valid);
     return;
   }
-
-  pxv_info("SignalConfigStore::apply_signal_config() work_mode=%d op_mode=%s "
-           "ch_mode=%s",
-           _signal_config.work_mode,
-           _signal_config.operation_mode.toUtf8().constData(),
-           _signal_config.channel_mode.toUtf8().constData());
 
   int cur_mode = agent->get_work_mode();
   if (_signal_config.work_mode != cur_mode) {
@@ -308,9 +281,6 @@ void SignalConfigStore::apply_signal_config() {
       }
     }
     if (!cfg_ptr) {
-      pxv_info("SignalConfigStore::apply_signal_config: no config for channel "
-               "index %d, skipping",
-               (int)probe->index);
       continue;
     }
     const ChannelConfig &cfg = *cfg_ptr;

@@ -1351,6 +1351,10 @@ void SigSession::on_event(const interface::TrigNextCollect &) {
 }
 
 void SigSession::on_event(const interface::RevEndPacket &) {
+  pxv_info("SigSession::on_event(RevEndPacket): mode=%d stream=%d single=%d",
+           _state->device_agent().get_work_mode(),
+           _capture_manager->is_stream_mode(),
+           _capture_manager->is_single_mode());
   if (_state->device_agent().get_work_mode() == LOGIC) {
     bool bAddDecoder = false;
     bool bSwapBuffer = false;
@@ -1432,18 +1436,32 @@ void SigSession::on_event(const interface::RevEndPacket &) {
         _event_bus->broadcast_async<interface::CopyToDocDone>({nullptr});
       });
     } else {
-      // No active document (typical in headless mode). Skip the deep copy
-      // to a SessionDocument and start the decoders directly. The decoders
-      // read their snapshots from _view_data via get_signal_models(), so
-      // they don't need a SessionDocument to be set up.
-      // C4 fix: lock the mutex to clear _capture_owner_document atomically
-      // with respect to CaptureOwnerGuard lifecycle.
-      {
+      // No active document (typical in headless mode) OR stream mode (no
+      // copy thread needed). Skip the deep copy to a SessionDocument and
+      // start the decoders directly. The decoders read their snapshots
+      // from _view_data via get_signal_models(), so they don't need a
+      // SessionDocument to be set up.
+      pxv_info("RevEndPacket ELSE branch: starting decoders + guard release (single=%d)",
+               _capture_manager->is_single_mode());
+      start_all_decode_tasks();
+
+      // CRITICAL FIX: single 模式下，LOGIC 采集正常完成（无 copy 线程）
+      // 时释放 CaptureOwnerGuard，使 _is_working=false，让 MCP
+      // wait_capture_complete 能正确返回。原代码只 set_capture_owner_index
+      // _locked(SIZE_MAX) 而不释放 guard，导致 _is_working 永远为 true。
+      // repeat/loop 模式持续采集，由 stop_capture 释放。
+      if (_capture_manager->is_single_mode()) {
+        _capture_manager->data_unlock();
+        _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
+        _document_registry->release_capture_owner();
+        pxv_info("RevEndPacket: CaptureOwnerGuard released (single mode). is_working=%d",
+                 _state->is_working());
+        _event_bus->broadcast_async<interface::EndCollectWork>({});
+      } else {
+        // repeat/loop 模式：保留原逻辑（仅清 index 不释放 guard）
         std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-        // phase 2: capture owner is now tracked by index (SIZE_MAX == none).
         _document_registry->set_capture_owner_index_locked(SIZE_MAX);
       }
-      start_all_decode_tasks();
     }
 
     // 采集完成后自动重新应用毛刺滤波(若用户启用了 auto-apply)
@@ -1461,12 +1479,24 @@ void SigSession::on_event(const interface::RevEndPacket &) {
 
 void SigSession::on_event(const interface::CopyToDocDone &) {
   // Background copy_data_to_document has completed. Start decoders.
-  // NOTE: _capture_owner_document is NOT cleared here — it is now managed
-  // by CaptureOwnerGuard for the whole capture session. In repeat mode the
-  // owner persists across frames; the guard is reset only on stop_capture
-  // or tab close (clear_capture_owner_document).
+  // NOTE: _capture_owner_document is NOT cleared here for repeat/loop mode —
+  // it is managed by CaptureOwnerGuard for the whole capture session.
+  // In repeat mode the owner persists across frames; the guard is reset
+  // only on stop_capture or tab close (clear_capture_owner_document).
   start_all_decode_tasks();
   pxv_info("Background copy_data_to_document completed. Decoders started.");
+
+  // CRITICAL FIX: single 模式下，LOGIC 采集经过 copy 线程完成后释放
+  // CaptureOwnerGuard，使 _is_working=false，让 MCP wait_capture_complete
+  // 能正确返回。repeat/loop 模式持续采集，由 stop_capture 释放。
+  if (_capture_manager && _capture_manager->is_single_mode()) {
+    _capture_manager->data_unlock();
+    _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
+    _document_registry->release_capture_owner();
+    pxv_info("CopyToDocDone: CaptureOwnerGuard released (single mode). is_working=%d",
+             _state->is_working());
+    _event_bus->broadcast_async<interface::EndCollectWork>({});
+  }
 }
 
 void SigSession::on_event(const interface::DeviceSpeedNotMatch &) {

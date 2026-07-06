@@ -77,8 +77,9 @@ static void apply_model_properties(Signal *signal,
 
 Signal *SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model,
                                      data::DataSource *data_source) {
-  if (!model || !data_source)
+  if (!model || !data_source) {
     return nullptr;
+  }
 
   Signal *signal = nullptr;
   switch (model->type()) {
@@ -92,6 +93,8 @@ Signal *SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model,
     signal = new DsoSignal(get_dso_snapshot(data_source), model, data_source);
     break;
   default:
+    pxv_warn("create_signal: UNKNOWN type=%d (index=%d), returning nullptr",
+             model->type(), model->index());
     return nullptr;
   }
 
@@ -263,9 +266,6 @@ void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
           sig->set_v_offset(it->v_offset);
           if (it->own_height >= 0)
             sig->set_own_height(it->own_height);
-          pxv_info("SignalFactory::update_signals(AllReplaced): restored from SessionDocument channel %d: view_index=%d, v_offset=%d, own_height=%d",
-                   sig->get_index(), sig->get_view_index(),
-                   sig->get_v_offset(), sig->get_own_height());
         }
       }
     }
