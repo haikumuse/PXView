@@ -247,7 +247,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
       QByteArray bytes = label.toLocal8Bit();
       const char *lang_str = LangResource::Instance()->get_lang_text(
           STR_PAGE_DSL, bytes.data(), bytes.data());
-      lable_text = QString(lang_str);
+      lable_text = QString::fromUtf8(lang_str);
     }
 
     QWidget *wid = p->get_widget(parent, true);

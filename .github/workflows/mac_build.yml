@@ -16,6 +16,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        # 递归拉取子模块。libsigrok / libsigrokdecode 是 haikumuse 名下的公开 fork；
+        # sigrok-firmware / sigrok-firmware-fx2lafw / sigrok-util 走 sigrok.org 公开 git:// 协议。
+        submodules: recursive
 
     - name: Install dependencies via Homebrew
       run: |
@@ -29,7 +33,10 @@ jobs:
 
     - name: Configure CMake
       run: |
-        mkdir build
+        # 仓库历史里误把 Windows 编译产物 build/CMakeCache.txt 等强加进了 git，
+        # checkout 后会残留 Windows 路径的 cache，必须先清空避免 macOS 配置失败
+        rm -rf build
+        mkdir -p build
         cd build
         # 确保 CMake 能够找到 Homebrew 安装的 Qt
         cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" -DCMAKE_INSTALL_PREFIX=../install.dir

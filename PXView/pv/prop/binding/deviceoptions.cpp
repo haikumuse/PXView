@@ -142,6 +142,8 @@ DeviceOptions::DeviceOptions(SigSession *session)
         case SR_CONF_CLOCK_EDGE:
 		case SR_CONF_TRIGGER_OUT:
 		case SR_CONF_INSTANT:
+            bind_bool(name, label, key);
+            break;
         case SR_CONF_PWM0_EN:
             bind_bool(name, "PWM0 EN", key);
             break;
@@ -204,7 +206,12 @@ void DeviceOptions::config_setter(int key, GVariant* value)
 
 void DeviceOptions::bind_bool(const QString &name, const QString label, int key)
 {
-	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
+	// Bool::labeled_widget() returns true, so get_property_form() skips its
+	// LangResource translation and the label is shown verbatim on the QCheckBox.
+	// Translate here so Bool labels get i18n too.
+	QString text = QString::fromUtf8(
+		LangResource::Instance()->get_lang_text(STR_PAGE_DSL,
+			label.toLocal8Bit().data(), label.toLocal8Bit().data()));
 	_properties.push_back(
         new Bool(name, text, bind(config_getter, key),
 			bind(config_setter, key, _1)));
@@ -212,9 +219,8 @@ void DeviceOptions::bind_bool(const QString &name, const QString label, int key)
 
 void DeviceOptions::bind_string(const QString &name, const QString label, int key)
 {
-	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
-        new String(name, text, bind(config_getter, key),
+        new String(name, label, bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
 
@@ -248,9 +254,8 @@ void DeviceOptions::bind_enum(const QString &name, const QString label, int key,
 void DeviceOptions::bind_int(const QString &name, const QString label, int key, QString suffix,
     boost::optional< std::pair<int64_t, int64_t> > range)
 {
-	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
-        new Int(name, text, suffix, range,
+        new Int(name, label, suffix, range,
 			bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
@@ -259,9 +264,8 @@ void DeviceOptions::bind_double(const QString &name, const QString label, int ke
     boost::optional< std::pair<double, double> > range,
     int decimals, boost::optional<double> step)
 {
-	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
     _properties.push_back(
-        new Double(name, text, decimals, suffix, range, step,
+        new Double(name, label, decimals, suffix, range, step,
             bind(config_getter, key),
             bind(config_setter, key, _1)));
 }

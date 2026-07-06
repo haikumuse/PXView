@@ -9,9 +9,9 @@
 	url = git://sigrok.org/sigrok-util
 [submodule "libsigrok"]
 	path = libsigrok
-	url = C:\\Users\\admin\\Downloads\\workplace\\logic\\libsigrok
+	url = https://github.com/haikumuse/libsigrok.git
 	branch = pxview-fork
 [submodule "libsigrokdecode"]
 	path = libsigrokdecode
-	url = C:\\Users\\admin\\Downloads\\workplace\\logic\\libsigrokdecode
+	url = https://github.com/haikumuse/libsigrokdecode.git
 	branch = pxview-fork
