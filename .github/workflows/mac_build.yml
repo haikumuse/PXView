@@ -24,7 +24,9 @@ jobs:
     - name: Install dependencies via Homebrew
       run: |
         brew update
-        brew install cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config
+        # libzip / nettle: libsigrok 必需（CMakeLists.txt:170 FATAL_ERROR + :190 无条件 -lnettle）
+        # libftdi1: libsigrok FTDI 驱动依赖（缺失仅 WARNING，4-5 个驱动禁用，可选）
+        brew install cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip nettle libftdi
 
     - name: Setup Node.js (for Web UI)
       uses: actions/setup-node@v4
