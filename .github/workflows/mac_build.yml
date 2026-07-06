@@ -2,7 +2,8 @@ name: macOS Build
 
 on:
   push:
-    branches: [ "main", "master" ]
+    # 监听所有分支的提交（包括 view_and_data、main、cppver 等）
+    branches: [ "**" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
