@@ -28,7 +28,7 @@ CMAKE_AR:FILEPATH=D:/msys64/mingw64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Debug
+CMAKE_BUILD_TYPE:STRING=RELEASE
 
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=D:/msys64/mingw64/bin/c++.exe
@@ -155,7 +155,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=
+CMAKE_INSTALL_PREFIX:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -2352,7 +2352,7 @@ ZLIB_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: ZLIB_LIBRARY_RELEASE
 ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
 //Compiler reason failure
 _Python3_Compiler_REASON_FAILURE:INTERNAL=
 _Python3_DEVELOPMENT_EMBED_SIGNATURE:INTERNAL=f1f1aa231f21fc568e0541a8067ff97c

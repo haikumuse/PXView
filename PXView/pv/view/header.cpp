@@ -387,6 +387,11 @@ void Header::mousePressEvent(QMouseEvent *event) {
       // 解码通道:单击 COLOR 区打开批量滤波浮窗(对其绑定的所有子逻辑通道统一滤波)
       if (auto *dt = dynamic_cast<DecodeTrace *>(mTrace)) {
         _context_trace = mTrace;
+        // 弹窗(Qt::Popup)会捕获鼠标,导致后续 mouseReleaseEvent 不会被调用,
+        // 必须在此重置按下态/拖拽缓存,否则 header_is_draging() 恒为 true,
+        // 进而阻断 viewport 的 wheelEvent 缩放。
+        _mouse_is_down = false;
+        _drag_traces.clear();
         emit show_batch_glitch_filter_popup(dt);
         return;
       }
@@ -397,6 +402,9 @@ void Header::mousePressEvent(QMouseEvent *event) {
         auto *sig = dynamic_cast<LogicSignal *>(mTrace);
         if (sig && sig->data()) {
           _context_trace = mTrace;
+          // 同上:弹窗捕获鼠标,需重置按下态,避免滚轮缩放被锁死。
+          _mouse_is_down = false;
+          _drag_traces.clear();
           emit show_glitch_filter_popup(sig);
           return;
         }

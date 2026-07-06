@@ -311,19 +311,6 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
            "ch_data.size()=%zu",
            _disk_cache_writer->disk_cache_config().enabled, _ch_data.size());
 
-  // 调试日志：打印 first_payload 关键参数
-  {
-      std::string ch_idx_str;
-      for (size_t k = 0; k < _ch_index.size(); k++) {
-          ch_idx_str += std::to_string(_ch_index[k]);
-          if (k + 1 < _ch_index.size()) ch_idx_str += ",";
-      }
-      pxv_info("LOGIC_FIRST_PAYLOAD total=%llu ch_num=%u ch_index=[%s] "
-               "is_loop=%d",
-               (unsigned long long)_total_sample_count,
-               _channel_num, ch_idx_str.c_str(), _is_loop ? 1 : 0);
-  }
-
   if (_channel_num > 0) {
     // Create and configure MmapAllocator
     _mmap_alloc = std::make_shared<MmapAllocator>();
@@ -612,26 +599,6 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
         value |= static_cast<uint64_t>(byte) << (m * 8);
       }
       *write_ptr = value;
-
-      // 诊断：D7 (ch=7) 应全高。写入后立即读回验证内存一致性，
-      // 并检查 value 是否真的全 1。限制前 200 条避免日志爆炸。
-      if (ch == 7) {
-        static int s_d7_verify_cnt = 0;
-        if (s_d7_verify_cnt < 200) {
-          s_d7_verify_cnt++;
-          uint64_t readback = *write_ptr;
-          uint64_t abs_sample = align_sample_count + offset;
-          if (value != 0xFFFFFFFFFFFFFFFFULL || readback != value) {
-            pxv_warn("D7_VERIFY abs_sample=%llu u64_idx=%llu "
-                     "value=0x%llx readback=0x%llx %s",
-                     (unsigned long long)abs_sample,
-                     (unsigned long long)(offset / Scale),
-                     (unsigned long long)value,
-                     (unsigned long long)readback,
-                     readback != value ? "*** READBACK MISMATCH ***" : "");
-          }
-        }
-      }
     }
     src += Scale * unitsize;
     samples_left -= Scale;
@@ -681,45 +648,6 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   if (offset > 0 && offset < LeafBlockSamples) {
     for (unsigned int ch = 0; ch < _channel_num; ch++)
       calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, offset, false);
-  }
-
-  // 诊断：append_payload_impl 末尾，对 D7 (ch=7) 扫描当前 leaf block
-  // 写入范围 [scan_start, offset)，检查是否有 0 位（D7 应全高）。
-  // 限制前 50 个 packet，每 packet 最多记录 5 个异常 u64。
-  if (_channel_num > 7 && ch_lbp[7] != nullptr) {
-    static int s_d7_scan_pkt = 0;
-    if (s_d7_scan_pkt < 50) {
-      s_d7_scan_pkt++;
-      // 扫描范围：本次 packet 写入的 u64 范围
-      // packet 起始 offset = align_sample_count 进入此 leaf block 的偏移
-      // 简化：扫描 [0, offset) 范围内的 D7 异常（offset 是当前 leaf block 内偏移）
-      uint64_t scan_end_u64 = offset / Scale;
-      if (scan_end_u64 > 0) {
-        uint64_t *d7_ptr = reinterpret_cast<uint64_t *>(ch_lbp[7]);
-        int anomaly_cnt = 0;
-        // 采样扫描：每 100 个 u64 检查 1 个，避免全扫描太慢
-        for (uint64_t u = 0; u < scan_end_u64 && anomaly_cnt < 5; u += 100) {
-          uint64_t v = d7_ptr[u];
-          if (v != 0xFFFFFFFFFFFFFFFFULL) {
-            uint64_t abs_sample = align_sample_count + u * Scale;
-            // 找到第一个 0 位
-            int first_zero_bit = -1;
-            for (int b = 0; b < 64; b++) {
-              if ((v & (1ULL << b)) == 0) { first_zero_bit = b; break; }
-            }
-            pxv_warn("D7_SCAN pkt=%d abs_sample=%llu u64[%llu]=0x%llx "
-                     "first_zero_bit=%d zero_at_sample=%llu",
-                     s_d7_scan_pkt - 1,
-                     (unsigned long long)abs_sample,
-                     (unsigned long long)u,
-                     (unsigned long long)v,
-                     first_zero_bit,
-                     (unsigned long long)(abs_sample + first_zero_bit));
-            anomaly_cnt++;
-          }
-        }
-      }
-    }
   }
 
   // Finalize position
@@ -887,6 +815,26 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   void *level3_ptr =
       (uint8_t *)level2_ptr + LeafBlockSamples / Scale / Scale / 8;
 
+  // ROOT-CAUSE FIX for D7 false-edge bug (160-210us spurious low pulses):
+  // The original level-1 loop processed every u64 with index < samples/Scale
+  // (integer division). When samples % Scale != 0, the last u64 was only
+  // partially written (Phase 4/5 wrote the low N bits, the high 64-N bits
+  // remained zero from memset). Comparing this partial u64 against
+  // _last_sample (which was ~0ULL for D7-all-high) triggered a false toggle,
+  // polluting level1/2/3 mipmap and causing get_nxt_edge_self to report
+  // phantom edges. The rendering drew 160-210us low pulses (N=32..42 samples
+  // at 200kHz) even though get_sample_self correctly returned true for every
+  // bit in the written range.
+  //
+  // Fix: split the loop into a full-u64 phase (i < full_u64_count) and a
+  // partial-u64 tail phase. The tail phase masks both the comparison and the
+  // _last_sample update to only the actually-written bits, so a partial u64
+  // whose written bits all match _last_sample does NOT trigger a toggle.
+  const uint64_t full_u64_count = samples / Scale;
+  const uint64_t partial_bits = samples % Scale;
+  const uint64_t partial_mask =
+      partial_bits ? ((1ULL << partial_bits) - 1) : 0ULL;
+
   // level 1
   uint64_t *src_ptr = (uint64_t *)lbp;
   uint64_t *dest_ptr = (uint64_t *)level1_ptr;
@@ -905,7 +853,8 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
     _last_sample[order] = (*src_ptr & LSB) ? ~0ULL : 0ULL;
   }
 
-  for (; i < samples / Scale; i++) {
+  // Full u64 phase: every u64 in [i, full_u64_count) is fully written.
+  for (; i < full_u64_count; i++) {
     if (_last_sample[order] ^ *src_ptr)
       *dest_ptr |= (1ULL << offset);
 
@@ -917,6 +866,23 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
       offset = 0;
       dest_ptr++;
     }
+  }
+
+  // Partial tail phase: the u64 at index full_u64_count has only its low
+  // partial_bits written; high bits are zero. Compare only the written bits
+  // and derive _last_sample from the last written bit, not from MSB.
+  if (partial_bits > 0) {
+    const uint64_t partial_value = *src_ptr & partial_mask;
+    const uint64_t last_written_bit =
+        (partial_bits > 0) ? (1ULL << (partial_bits - 1)) : 0ULL;
+    if ((_last_sample[order] & partial_mask) ^ partial_value)
+      *dest_ptr |= (1ULL << offset);
+
+    _last_sample[order] = (partial_value & last_written_bit) ? ~0ULL : 0ULL;
+    // NOTE: do NOT advance src_ptr/offset/dest_ptr here — the partial u64 is
+    // revisited on the next calc_mipmap call (last_count = samples, so
+    // i = samples/Scale = full_u64_count, reprocessing this u64 as a full
+    // u64 once its remaining bits are written). Advancing would skip it.
   }
 
   // level 2
@@ -958,8 +924,27 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   if ((*((uint64_t *)lbp) & LSB) != 0)
     _ch_data[order][index0].first |= 1ULL << index1;
 
-  if ((*((uint64_t *)lbp + LeafBlockSamples / Scale - 1) & MSB) != 0)
-    _ch_data[order][index0].last |= 1ULL << index1;
+  // ROOT-CAUSE FIX: the original code checked a fixed u64 position
+  // (LeafBlockSamples/Scale - 1 = last u64 of the leaf block). When the leaf
+  // block was not fully written (samples < LeafBlockSamples), that u64 was
+  // zero-filled memory, so `last` was wrongly cleared to 0. Now derive `last`
+  // from the actual last written sample: if partial_bits > 0, the last
+  // written bit is bit (partial_bits-1) of u64[full_u64_count]; otherwise
+  // it's MSB of u64[full_u64_count - 1].
+  if (samples > 0) {
+    bool last_sample_value;
+    if (partial_bits > 0) {
+      const uint64_t tail_u64 = *((uint64_t *)lbp + full_u64_count);
+      last_sample_value = (tail_u64 & (1ULL << (partial_bits - 1))) != 0;
+    } else {
+      const uint64_t last_full_u64 = *((uint64_t *)lbp + full_u64_count - 1);
+      last_sample_value = (last_full_u64 & MSB) != 0;
+    }
+    if (last_sample_value)
+      _ch_data[order][index0].last |= 1ULL << index1;
+    else
+      _ch_data[order][index0].last &= ~(1ULL << index1);
+  }
 
   if (*((uint64_t *)level3_ptr) != 0) {
     _ch_data[order][index0].tog |= 1ULL << index1;
@@ -1080,64 +1065,27 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index) {
   if (order == -1 || (unsigned int)order >= _ch_data.size())
     return false;
 
-  bool result = false;
-  bool out_of_range = false;
-  bool tog_zero = false;
-  bool lbp_null = false;
-  uint64_t u64_idx = 0;
-  uint64_t bit_pos = 0;
-  uint64_t u64_value = 0;
+  if (index >= _ring_sample_count)
+    return false;
 
-  if (index < _ring_sample_count) {
-    uint64_t index_mask = 1ULL << (index & LevelMask[0]);
-    uint64_t index0 = index >> (LeafBlockPower + RootScalePower);
-    uint64_t index1 = (index & RootMask) >> LeafBlockPower;
-    uint64_t root_pos_mask = 1ULL << index1;
+  uint64_t index_mask = 1ULL << (index & LevelMask[0]);
+  uint64_t index0 = index >> (LeafBlockPower + RootScalePower);
+  uint64_t index1 = (index & RootMask) >> LeafBlockPower;
+  uint64_t root_pos_mask = 1ULL << index1;
 
-    u64_idx = (index & LeafMask) >> ScalePower;
-    bit_pos = index & LevelMask[0];
+  if (index0 >= _ch_data[order].size())
+    return false;
 
-    if (index0 >= _ch_data[order].size()) {
-      out_of_range = true;
-      result = false;
-    } else if ((_ch_data[order][index0].tog & root_pos_mask) == 0) {
-      tog_zero = true;
-      result = (_ch_data[order][index0].first & root_pos_mask) != 0;
-    } else {
-      void *ptr = _ch_data[order][index0].lbp[index1];
-      if (ptr == nullptr) {
-        lbp_null = true;
-        result = (_ch_data[order][index0].first & root_pos_mask) != 0;
-      } else {
-        uint64_t *u64_ptr = (uint64_t *)ptr;
-        u64_value = u64_ptr[u64_idx];
-        result = u64_value & index_mask;
-      }
-    }
-  } else {
-    out_of_range = true;
-    result = false;
-  }
+  if ((_ch_data[order][index0].tog & root_pos_mask) == 0)
+    return (_ch_data[order][index0].first & root_pos_mask) != 0;
 
-  // 诊断：D7 (sig_index=7) 应全高，记录返回 false 的异常情况和 u64 值
-  if (sig_index == 7 && !result) {
-    static int s_d7_false_cnt = 0;
-    if (s_d7_false_cnt < 50) {
-      s_d7_false_cnt++;
-      pxv_warn("D7_READ_FALSE idx=%llu ring=%llu order=%d "
-               "out_of_range=%d tog_zero=%d lbp_null=%d "
-               "u64_idx=%llu bit=%llu u64_val=0x%llx",
-               (unsigned long long)index,
-               (unsigned long long)_ring_sample_count,
-               order, out_of_range ? 1 : 0,
-               tog_zero ? 1 : 0, lbp_null ? 1 : 0,
-               (unsigned long long)u64_idx,
-               (unsigned long long)bit_pos,
-               (unsigned long long)u64_value);
-    }
-  }
+  void *ptr = _ch_data[order][index0].lbp[index1];
+  if (ptr == nullptr)
+    return (_ch_data[order][index0].first & root_pos_mask) != 0;
 
-  return result;
+  uint64_t u64_idx = (index & LeafMask) >> ScalePower;
+  uint64_t *u64_ptr = (uint64_t *)ptr;
+  return u64_ptr[u64_idx] & index_mask;
 }
 
 bool LogicSnapshot::get_display_edges(
@@ -1276,24 +1224,6 @@ bool LogicSnapshot::get_nxt_edge_self(uint64_t &index, bool last_sample,
           lbp_tog &= valid_mask;
         } else {
           lbp_tog = 0;
-        }
-      }
-
-      // 调试日志：D7 (sig_index=7) lbp_tog 修复前后
-      if (sig_index == 7) {
-        static int s_d7_lbp_cnt = 0;
-        if (s_d7_lbp_cnt++ < 30) {
-          pxv_info("D7_LBP_TOG i=%llu root_start=%llu ring=%llu "
-                   "lbp_tog_raw=0x%llx lbp_tog_fixed=0x%llx last=0x%llx "
-                   "first=0x%llx tog=0x%llx root_last=%d",
-                   (unsigned long long)i, (unsigned long long)(i << (LeafBlockPower + RootScalePower)),
-                   (unsigned long long)_ring_sample_count,
-                   (unsigned long long)lbp_tog_raw,
-                   (unsigned long long)lbp_tog,
-                   (unsigned long long)_ch_data[order][i].last,
-                   (unsigned long long)_ch_data[order][i].first,
-                   (unsigned long long)_ch_data[order][i].tog,
-                   root_last ? 1 : 0);
         }
       }
 
