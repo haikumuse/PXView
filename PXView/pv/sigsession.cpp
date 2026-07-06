@@ -735,11 +735,11 @@ void SigSession::init_signals() {
     }
     assert(probe);
 
-    // Allow LOGIC + ANALOG coexistence (PulseView native behavior).
-    // DSL hardware requiring mutual exclusion is dropped in PXView.
-    // DSO mode still filters (deprecated, hardware-specific).
+    // Channel visibility by work mode:
+    //   DSO  — show only SR_CHANNEL_DSO (legacy behavior)
+    //   MSO  — show all enabled channels (logic + analog + DSO)
+    //   LOGIC/ANALOG — show all enabled channels (PulseView native behavior)
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
-      pxv_info("init_signals probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
 
@@ -865,11 +865,8 @@ void SigSession::reload() {
     }
     assert(probe);
 
-    // Allow LOGIC + ANALOG coexistence (PulseView native behavior).
-    // DSL hardware requiring mutual exclusion is dropped in PXView.
-    // DSO mode still filters (deprecated, hardware-specific).
+    // Channel visibility by work mode (mirrors init_signals()).
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
-      pxv_info("reload probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
 
@@ -961,7 +958,7 @@ void SigSession::reload() {
     std::vector<std::shared_ptr<data::SignalModel>>().swap(_state->signal_models());
     _state->signal_models() = models;
     make_channels_view_index();
-  } else if (mode == LOGIC || mode == ANALOG || mode == DSO) {
+  } else if (mode == LOGIC || mode == ANALOG || mode == DSO || mode == MSO) {
     pxv_info("ERROR: Unable to create any channel in reload(). channels is empty or all skipped.");
     clear_signals();
   }
@@ -1601,21 +1598,18 @@ bool SigSession::switch_work_mode(int mode) {
   if (cur_mode != mode) {
     set_collect_mode(COLLECT_SINGLE);
 
-    // Only DSL/PXLogic devices implement SR_CONF_DEVICE_MODE.
-    // demo/file/compat devices have no mode switch — get_work_mode()
-    // always returns LOGIC for them, so this branch is unreachable for
-    // those devices, but guard defensively to avoid "Option not
-    // available" noise.
-    if (_state->device_agent().is_dsl_device())
-      _state->device_agent().set_config_int16(SR_CONF_DEVICE_MODE, mode);
+    // Update the work mode via DeviceAgent (handles both DSL/PXLogic driver-
+    // side SR_CONF_DEVICE_MODE and app-layer cache for demo/file/compat).
+    _state->device_agent().set_work_mode(mode);
 
-    if (cur_mode == LOGIC) {
+    if (cur_mode == LOGIC || cur_mode == MSO) {
       clear_all_decode_task2();
       _capture_manager->clear_decode_result();
     }
 
     _capture_manager->set_is_stream_mode(false);
-    if (mode == LOGIC) {
+    // Stream mode is relevant for logic-capable modes (LOGIC / MSO).
+    if (mode == LOGIC || mode == MSO) {
       if (_state->device_agent().is_hardware()) {
         _capture_manager->set_is_stream_mode(_state->device_agent().is_stream_mode());
       } else if (_state->device_agent().is_demo()) {

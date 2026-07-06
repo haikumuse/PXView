@@ -427,6 +427,9 @@ Result<void> SessionService::switch_work_mode(WorkMode mode) {
     case WorkMode::Dso:
         sr_mode = DSO;
         break;
+    case WorkMode::Mso:
+        sr_mode = MSO;
+        break;
     default:
         return Result<void>::Fail(ErrorCode::InvalidRequest,
                                  "Unknown work mode");
@@ -618,9 +621,9 @@ Result<int> SessionService::configure_and_start(
                 // This can happen after set_device() when the device was
                 // previously in DSO mode. Force a mode cycle to reinitialize.
                 dbg_log("  forcing mode cycle: LOGIC -> DSO -> LOGIC");
-                _device->set_config_int16(SR_CONF_DEVICE_MODE, DSO);
+                _device->set_work_mode(DSO);
                 if (is_gui_mode()) QCoreApplication::processEvents();
-                _device->set_config_int16(SR_CONF_DEVICE_MODE, LOGIC);
+                _device->set_work_mode(LOGIC);
                 // Re-initialize signals after mode change
                 _session->init_signals();
             }
@@ -1103,6 +1106,8 @@ WorkMode SessionService::get_work_mode() const {
         return WorkMode::Analog;
     case DSO:
         return WorkMode::Dso;
+    case MSO:
+        return WorkMode::Mso;
     default:
         return WorkMode::Unknown;
     }
@@ -1116,9 +1121,9 @@ Result<std::vector<WorkMode>> SessionService::get_supported_work_modes() const {
     std::vector<WorkMode> modes;
     const GSList *mode_list = _device->get_device_mode_list();
     for (const GSList *l = mode_list; l; l = l->next) {
-        auto *mode = static_cast<uint64_t *>(l->data);
+        auto *mode = static_cast<const sr_dev_mode *>(l->data);
         if (mode) {
-            switch (*mode) {
+            switch (mode->mode) {
             case LOGIC:
                 modes.push_back(WorkMode::Logic);
                 break;
@@ -1127,6 +1132,9 @@ Result<std::vector<WorkMode>> SessionService::get_supported_work_modes() const {
                 break;
             case DSO:
                 modes.push_back(WorkMode::Dso);
+                break;
+            case MSO:
+                modes.push_back(WorkMode::Mso);
                 break;
             default:
                 break;

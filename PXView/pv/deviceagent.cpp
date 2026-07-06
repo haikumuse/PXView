@@ -29,6 +29,15 @@
 // Upstream libsigrok 0.6.0 is now the sole libsigrok (fork + bridge removed).
 // All ds_* fork APIs are replaced by sr_* upstream APIs.
 
+// Static device-mode entries for the four work modes shown in the DevMode
+// toolbar button. Defined here (not in a header) so their address is stable
+// across TUs. acronym is used by storesession.cpp to build default save
+// filenames (e.g. "demo-MSO-260707-120000.pxc").
+const sr_dev_mode kDevModeLogic  = { LOGIC,  "LA"   };
+const sr_dev_mode kDevModeAnalog = { ANALOG, "DAQ"  };
+const sr_dev_mode kDevModeDso    = { DSO,    "DSO"  };
+const sr_dev_mode kDevModeMso    = { MSO,    "MSO"  };
+
 DeviceAgent::DeviceAgent()
 {
     _dev_handle = NULL_HANDLE;
@@ -138,6 +147,11 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
         _driver_name = QString::fromLocal8Bit(drv->name);
         if (_driver_name == "demo") {
             _dev_type = DEV_TYPE_DEMO;
+            // Demo device declares both LOGIC_ANALYZER + OSCILLOSCOPE (implicit
+            // MSO per libsigrok demo driver drvopts). Default to MSO mode so
+            // the mode button shows "Mixed Signal Oscilloscope" and all
+            // channels (8 logic + 5 analog) are visible on first launch.
+            _app_work_mode = MSO;
         } else if (_driver_name == "virtual-session" || _driver_name.contains("file")) {
             _dev_type = DEV_TYPE_FILELOG;
         } else {
@@ -176,6 +190,14 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
     // SR_CONF_CONTINUOUS / OPERATION_MODE capability. Will be re-detected
     // on first is_stream_mode() call.
     _app_stream_mode_init = false;
+
+    // Reset cached mode list — new device may have different channel
+    // capabilities (logic/analog/DSO). Will be rebuilt on first
+    // get_device_mode_list() call.
+    if (_mode_list_cache) {
+        g_slist_free(_mode_list_cache);
+        _mode_list_cache = nullptr;
+    }
     return true;
 }
 
@@ -206,6 +228,14 @@ void DeviceAgent::release()
     _dev_type = 0;
     _is_new_device = false;
     _sr_ctx = nullptr;
+    _app_work_mode = LOGIC;
+
+    // Free cached mode list (GSList owned by DeviceAgent; sr_dev_mode entries
+    // are static globals and not freed).
+    if (_mode_list_cache) {
+        g_slist_free(_mode_list_cache);
+        _mode_list_cache = nullptr;
+    }
 }
 
 void DeviceAgent::stop_session_thread()
@@ -458,17 +488,29 @@ double DeviceAgent::get_sample_time()
 int DeviceAgent::get_work_mode()
 {
     if (!_dev_handle) {
-        // 启动/切换设备期间会被频繁调用，静默返回 LOGIC(0) 避免日志噪音
-        return 0;
+        // 启动/切换设备期间会被频繁调用，静默返回 _app_work_mode 避免日志噪音
+        return _app_work_mode;
     }
-    // Only DSL/PXLogic devices implement SR_CONF_DEVICE_MODE.
-    // demo/file/compat devices default to LOGIC mode (0) — querying
-    // DEVICE_MODE on them just produces "Option not available" noise.
-    if (!is_dsl_device())
-        return 0;  // LOGIC
-    int mode = 0;
-    get_config_int32(SR_CONF_DEVICE_MODE, mode);
-    return mode;
+    // DSL/PXLogic devices implement SR_CONF_DEVICE_MODE in the driver — query
+    // the driver directly and keep _app_work_mode in sync.
+    // demo/file/compat devices have no SR_CONF_DEVICE_MODE — use the cached
+    // _app_work_mode (set by set_work_mode() or defaulted in open_by_handle()).
+    if (is_dsl_device()) {
+        int mode = 0;
+        get_config_int32(SR_CONF_DEVICE_MODE, mode);
+        _app_work_mode = mode;
+        return mode;
+    }
+    return _app_work_mode;
+}
+
+void DeviceAgent::set_work_mode(int mode)
+{
+    _app_work_mode = mode;
+    // DSL/PXLogic devices also need the driver-side SR_CONF_DEVICE_MODE update
+    // so the hardware switches its channel configuration.
+    if (_dev_handle && is_dsl_device())
+        set_config_int16(SR_CONF_DEVICE_MODE, mode);
 }
 
 const GSList* DeviceAgent::get_device_mode_list()
@@ -477,13 +519,48 @@ const GSList* DeviceAgent::get_device_mode_list()
         pxv_warn("%s", "DeviceAgent::get_device_mode_list: _dev_handle is NULL");
         return nullptr;
     }
-    GVariant *gvar = get_config_list(NULL, SR_CONF_DEVICE_MODE);
-    // Note: caller does not own the GSList; this is a fork-compatible stub.
-    // Upstream returns GVariant*; the fork returned GSList*. For now return NULL
-    // until callers are migrated to GVariant-based mode list.
-    if (gvar)
-        g_variant_unref(gvar);
-    return nullptr;
+
+    // Return cached list if already built (rebuilt on each open_by_handle).
+    if (_mode_list_cache)
+        return _mode_list_cache;
+
+    // Detect channel capabilities by scanning the device's channel list.
+    bool has_logic = false;
+    bool has_analog = false;
+    bool has_dso = false;
+    for (const GSList *l = get_channels(); l; l = l->next) {
+        const sr_channel *ch = (const sr_channel *)l->data;
+        if (!ch)
+            continue;
+        switch (ch->type) {
+        case SR_CHANNEL_LOGIC:  has_logic = true;  break;
+        case SR_CHANNEL_ANALOG: has_analog = true; break;
+        case SR_CHANNEL_DSO:    has_dso = true;    break;
+        }
+    }
+
+    // Build the mode list based on capabilities.
+    // Order matches the original DevMode menu: LA / DAQ / DSO, with MSO
+    // prepended for mixed-signal devices (those exposing both logic and
+    // analog/DSO channels, e.g. the demo driver).
+    auto add_mode = [&](const sr_dev_mode *m) {
+        _mode_list_cache = g_slist_append(_mode_list_cache, (gpointer)m);
+    };
+
+    if ((has_logic && (has_analog || has_dso)) || is_demo()) {
+        // Mixed-signal capable device — offer MSO as the first option.
+        add_mode(&kDevModeMso);
+        add_mode(&kDevModeLogic);
+        add_mode(&kDevModeAnalog);
+        add_mode(&kDevModeDso);
+    } else {
+        // Single-type devices — offer the original three modes.
+        add_mode(&kDevModeLogic);
+        add_mode(&kDevModeAnalog);
+        add_mode(&kDevModeDso);
+    }
+
+    return _mode_list_cache;
 }
 
 int DeviceAgent::get_hardware_operation_mode()

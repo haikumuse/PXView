@@ -15,6 +15,7 @@ enum class WorkMode : int8_t {
     Logic   = 0,
     Analog  = 1,
     Dso     = 2,
+    Mso     = 3,   // Mixed Signal Oscilloscope
     Unknown = -1
 };
 

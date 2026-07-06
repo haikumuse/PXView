@@ -160,6 +160,7 @@ public:
 
     // --- Mode ---
     int get_work_mode();
+    void set_work_mode(int mode);
     const GSList* get_device_mode_list();
     int get_hardware_operation_mode();
     bool is_stream_mode();
@@ -304,6 +305,19 @@ private:
     // loop-mode button and sample-count list reflect the user's choice.
     bool    _app_stream_mode = false;
     bool    _app_stream_mode_init = false;
+
+    // App-layer work mode cache (for non-DSL devices that don't implement
+    // SR_CONF_DEVICE_MODE). Stores the current work mode so the DevMode
+    // toolbar button can switch modes (LOGIC/ANALOG/DSO/MSO) without driver
+    // support. DSL/PXLogic devices still use SR_CONF_DEVICE_MODE via the
+    // driver, but this cache is always updated so get_work_mode() is
+    // consistent.
+    int     _app_work_mode = LOGIC;
+
+    // Cached mode list built by get_device_mode_list() based on the device's
+    // channel capabilities (logic/analog/DSO). Owned by DeviceAgent — freed
+    // in release() and rebuilt on each open_by_handle().
+    GSList  *_mode_list_cache = nullptr;
 };
 
 #endif

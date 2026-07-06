@@ -1493,7 +1493,7 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 
             auto new_dsig = aft_dsigs.back();
             auto stack = new_dsig;
-            pxv_info("StoreSession::load_decoders: new_dsig=%p", new_dsig);
+            pxv_info("StoreSession::load_decoders: new_dsig=%p", new_dsig.get());
 
             auto &decoder_list = stack->stack();
 

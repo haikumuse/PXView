@@ -84,13 +84,17 @@ enum sr_device_type {
     DEV_TYPE_SERIAL,
 };
 
-// Work mode (logic analyzer / oscilloscope / analog).
+// Work mode (logic analyzer / oscilloscope / analog / mixed signal).
 // Note: DSO mode is deprecated (DSCope hardware dropped), but the enum
 // value is retained for TriggerConfig/UI compatibility.
+// MSO is an application-layer mode used by the mode button (DevMode widget)
+// for mixed-signal devices (e.g. demo) that declare both LOGIC_ANALYZER and
+// OSCILLOSCOPE capabilities — it shows both logic and analog channels.
 enum {
     LOGIC = 0,
     DSO = 1,
     ANALOG = 2,
+    MSO = 3,            // Mixed Signal Oscilloscope — show logic + analog channels
 };
 
 // Trigger mode (UI retained for Adv/Serial; only Simple is synced to driver).
@@ -391,13 +395,20 @@ enum DSO_MEASURE_TYPE {
 // Fork libsigrok device-mode list entry (fork sr_dev_mode). Upstream
 // libsigrok does not expose a device-mode list (SR_CONF_DEVICE_MODE returns
 // a GVariant, not a GSList of sr_dev_mode). DeviceAgent::get_device_mode_list()
-// already returns nullptr as a stub, so callers iterating the list are no-ops;
-// this struct exists only so the (const sr_dev_mode*) casts in
-// storesession.cpp / devmode.cpp compile.
+// returns a static list built from these entries, based on the connected
+// device's capabilities (logic channels / analog channels / DSO channels).
 struct sr_dev_mode {
     int mode;
     const char *acronym;
 };
+
+// Static device-mode entries for the four work modes shown in the DevMode
+// toolbar button. acronym is used by storesession.cpp to build default save
+// filenames (e.g. "demo-MSO-260707-120000.pxc").
+extern const sr_dev_mode kDevModeLogic;
+extern const sr_dev_mode kDevModeAnalog;
+extern const sr_dev_mode kDevModeDso;
+extern const sr_dev_mode kDevModeMso;
 
 // --- Fork Analog SR_CONF_* keys (temporary, removed by Task 4 migration) ---
 // These keys existed in PXView's fork libsigrok.h but are absent from upstream
