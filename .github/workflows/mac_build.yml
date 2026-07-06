@@ -65,9 +65,28 @@ jobs:
       run: |
         # 查找 homebrew 下的 macdeployqt 工具
         MACDEPLOYQT="$(brew --prefix qt)/bin/macdeployqt"
-        
-        # 将 Qt 相关的动态库(Frameworks)拷贝到 .app 包内，并打包成 dmg 文件
-        $MACDEPLOYQT install.dir/PXView.app -dmg
+
+        # 1) Python framework 路径修正：Homebrew python@3.x 把 framework 放在
+        #    <prefix>/Frameworks/Python.framework，但 macdeployqt 期望在
+        #    <prefix>/lib/Python.framework。先建好 lib/ 目录再 symlink。
+        PY_PREFIX="$(brew --prefix python@3.14)"
+        mkdir -p "$PY_PREFIX/lib"
+        if [ ! -e "$PY_PREFIX/lib/Python.framework" ] && [ -e "$PY_PREFIX/Frameworks/Python.framework" ]; then
+          ln -s "$PY_PREFIX/Frameworks/Python.framework" "$PY_PREFIX/lib/Python.framework"
+        fi
+
+        # 2) 缺失的 Qt 模块（QtPdf/QtVirtualKeyboard 等）和第三方库
+        #    (libwebp/libsharpyuv/libbrotlicommon) 是 Qt WebEngine/Pdf 的传递
+        #    依赖，PXView 没直接使用。补装对应的 Qt 子模块以让 macdeployqt
+        #    能找到并拷贝进 .app。
+        brew install qt-pdf qt-virtualkeyboard webp libsharpyuv brotli 2>/dev/null || true
+
+        # 3) 用 -codesign=-(ad-hoc) 跳过正式签名（GitHub runner 无开发者证书），
+        #    -always-overwrite 覆盖已有 dmg，-verbose=1 输出关键日志。
+        $MACDEPLOYQT install.dir/PXView.app -dmg \
+          -codesign=- \
+          -always-overwrite \
+          -verbose=1
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
