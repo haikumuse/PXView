@@ -158,8 +158,14 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
   assert(sdi);
   assert(packet);
 
+  static int _df_count = 0;
+  _df_count++;
+
   auto _df_t0 = std::chrono::steady_clock::now();
+  auto _lock_t0 = std::chrono::steady_clock::now();
   ds_lock_guard lock(_state->data_mutex());
+  auto _lock_t1 = std::chrono::steady_clock::now();
+  auto _lock_ms = std::chrono::duration_cast<std::chrono::milliseconds>(_lock_t1 - _lock_t0).count();
 
   if (_state->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
     return;
@@ -238,8 +244,9 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
   auto _df_t1 = std::chrono::steady_clock::now();
   auto _df_ms = std::chrono::duration_cast<std::chrono::milliseconds>(_df_t1 - _df_t0).count();
-  if (_df_ms > 5) {
-    pxv_warn("data_feed_in SLOW: type=%d, lock_held_time=%lldms", (int)packet->type, (long long)_df_ms);
+  if (_df_ms > 5 || _df_count <= 20) {
+    pxv_warn("data_feed_in[%d]: type=%d, lock_wait=%lldms, total=%lldms",
+             _df_count, (int)packet->type, (long long)_lock_ms, (long long)_df_ms);
   }
 }
 

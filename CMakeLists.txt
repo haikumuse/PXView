@@ -183,6 +183,10 @@ target_link_libraries(${PROJECT_NAME}
 if(WIN32)
 	target_link_libraries(${PROJECT_NAME}
 		"-Wl,--whole-archive" libsigrok "-Wl,--no-whole-archive")
+elseif(APPLE)
+	# macOS ld64 不支持 --whole-archive；用 -all_load 强制保留所有静态库 object，
+	# 防止驱动段 __DATA,__sr_driver_list 被链接器丢弃导致设备列表为空。
+	target_link_libraries(${PROJECT_NAME} "-Wl,-all_load" libsigrok)
 else()
 	target_link_libraries(${PROJECT_NAME} libsigrok)
 endif()

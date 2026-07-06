@@ -945,17 +945,30 @@ Result<int> SessionService::configure_and_start(
 
     dbg_log("configure_and_start: step 7 - set duration");
 
-    // 7. Set duration (sample limit) if specified
-    if (duration_seconds > 0.0) {
-        uint64_t rate = _device->get_sample_rate();
-        if (rate > 0) {
-            uint64_t sample_limit = static_cast<uint64_t>(
-                duration_seconds * static_cast<double>(rate));
-            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
+    // 7. Set duration (sample limit) if specified.
+    // In stream mode, limit_samples MUST remain 0 (unlimited) — the
+    // fx2lafw driver treats 0 as "continuous streaming" and only aborts
+    // when sent_samples >= limit_samples. Setting a non-zero value in
+    // stream mode would cause premature abort. The samplingbar UI path
+    // already skips this; the MCP path must do the same.
+    const bool stream_mode = _device->is_stream_mode();
+    if (!stream_mode) {
+        if (duration_seconds > 0.0) {
+            uint64_t rate = _device->get_sample_rate();
+            if (rate > 0) {
+                uint64_t sample_limit = static_cast<uint64_t>(
+                    duration_seconds * static_cast<double>(rate));
+                _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
+            }
+        } else if (sample_count > 0) {
+            // Use explicit sample count when duration is not specified
+            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
         }
-    } else if (sample_count > 0) {
-        // Use explicit sample count when duration is not specified
-        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+    } else {
+        // Stream mode: ensure limit_samples is 0 (continuous). Some
+        // drivers default to non-zero; force 0 here so the driver enters
+        // its streaming loop.
+        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, 0);
     }
 
     // Let the UI process any pending config change events before starting.

@@ -944,7 +944,16 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     if (key == SR_CONF_OPERATION_MODE && is_hardware() && !is_dsl_device()) {
         const gchar *mode_str = g_variant_get_string(data, NULL);
         if (mode_str) {
-            _app_stream_mode = (strcmp(mode_str, "Stream Mode") == 0);
+            // Accept both short ("Stream"/"Buffer") and full
+            // ("Stream Mode"/"Buffer Mode") names so the MCP API (which
+            // documents short names) and the GUI dropdown (which uses full
+            // names) both reach the same code path.
+            if (g_ascii_strcasecmp(mode_str, "Stream") == 0 ||
+                g_ascii_strcasecmp(mode_str, "Stream Mode") == 0) {
+                _app_stream_mode = true;
+            } else {
+                _app_stream_mode = false;
+            }
             _app_stream_mode_init = true;
             pxv_info("set_config: OPERATION_MODE='%s' -> _app_stream_mode=%d "
                      "(driver=%s)",
