@@ -60,8 +60,10 @@ CaptureManager::CaptureManager(EventBus *bus, SessionStateContext *state)
 CaptureManager::~CaptureManager() = default;
 
 void CaptureManager::capture_init() {
-  // update instant setting
-  _state->device_agent().set_config_bool(SR_CONF_INSTANT, _is_instant);
+  // SR_CONF_INSTANT fork key deleted from pxlogic.c — the driver no longer
+  // reads instant mode. The application-layer _is_instant flag (accessed via
+  // is_instant()/set_is_instant()) is the sole source of truth and is used
+  // directly by capture logic (e.g. is_repeat_action()).
   _state->update_capture();
 
   _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());

@@ -123,25 +123,17 @@ DeviceOptions::DeviceOptions(SigSession *session)
             break;
 
         case SR_CONF_PWM0_FREQ:
-		case SR_CONF_PWM1_FREQ:
-            bind_double(name, label, key, "Hz", pair<double, double>(0, 1000000), 1, 1);
+            bind_double(name, "PWM0 Freq", key, "Hz", pair<double, double>(0, 1000000), 1, 1);
+            break;
+        case SR_CONF_PWM1_FREQ:
+            bind_double(name, "PWM1 Freq", key, "Hz", pair<double, double>(0, 1000000), 1, 1);
             break;
 
         case SR_CONF_PWM0_DUTY:
-		case SR_CONF_PWM1_DUTY:
-            bind_double(name, label, key, "%", pair<double, double>(0, 100), 1, 1);
+            bind_double(name, "PWM0 Duty", key, "%", pair<double, double>(0, 100), 1, 1);
             break;
-		case SR_CONF_STREAM_BUFF:
-            bind_double(name, label, key, "GB", pair<double, double>(1, 1024), 0, 1);
-            break;
-		case SR_CONF_STREAM_MEM_BUFF:
-            bind_double(name, label, key, "GB", pair<double, double>(1, 64), 0, 1);
-            break;
-		case SR_CONF_DISK_CACHE_ENABLE:
-            bind_bool(name, label, key);
-            break;
-		case SR_CONF_DISK_CACHE_PATH:
-            bind_string(name, label, key);
+        case SR_CONF_PWM1_DUTY:
+            bind_double(name, "PWM1 Duty", key, "%", pair<double, double>(0, 100), 1, 1);
             break;
 
 		case SR_CONF_RLE:
@@ -149,10 +141,12 @@ DeviceOptions::DeviceOptions(SigSession *session)
         case SR_CONF_CLOCK_TYPE:
         case SR_CONF_CLOCK_EDGE:
 		case SR_CONF_TRIGGER_OUT:
-        case SR_CONF_INSTANT:
-		case SR_CONF_PWM0_EN:
-		case SR_CONF_PWM1_EN:
-            bind_bool(name, label, key);
+		case SR_CONF_INSTANT:
+        case SR_CONF_PWM0_EN:
+            bind_bool(name, "PWM0 EN", key);
+            break;
+        case SR_CONF_PWM1_EN:
+            bind_bool(name, "PWM1 EN", key);
             break;
 
 		case SR_CONF_TIMEBASE:
@@ -173,31 +167,28 @@ DeviceOptions::DeviceOptions(SigSession *session)
     if (gvar_opts)
         g_variant_unref(gvar_opts);
 
-    // Fallback for upstream streaming devices (fx2lafw, etc.): these drivers
-    // don't declare fork keys (SR_CONF_STREAM / SR_CONF_OPERATION_MODE /
-    // SR_CONF_DISK_CACHE_ENABLE) in their devopts, so the Mode area would be
-    // nearly empty. Add app-layer controls so users can see the streaming
-    // state and configure disk cache without driver support.
-    // The disk cache feature itself lives in LogicSnapshotDiskCacheWriter +
-    // MmapAllocator (app layer), so it doesn't need driver config_get/set.
-    if (_device_agent->is_hardware() && !_device_agent->is_dsl_device()
-        && _device_agent->is_stream_mode()) {
+    // App-layer C-class controls (DISK_CACHE_ENABLE/PATH, STREAM_BUFF,
+    // STREAM_MEM_BUFF): served by DeviceAgent's app-layer config state for
+    // ALL devices (including PXLogic — these are not driver-backed anymore).
+    // Show them for any hardware device so users can configure disk cache
+    // regardless of whether the driver is PXLogic or fx2lafw.
+    // Labels match dsl_label.json ids so LangResource translates them.
+    if (_device_agent->is_hardware()) {
         pxv_info("DeviceOptions binding: adding app-layer stream/disk-cache controls");
-        // Disk cache enable checkbox. For non-DSL devices, the state is held
-        // by the app layer (CaptureManager reads it via get_config_bool which
-        // returns false on SR_ERR_NA, so default is off). User can toggle it
-        // and CaptureManager will honor the setting.
         bind_bool("disk_cache_enable", "Disk Cache Enable",
                   SR_CONF_DISK_CACHE_ENABLE);
-        // Stream buffer size (disk cache total depth in GB).
-        bind_double("stream_buff", "Stream Buffer", SR_CONF_STREAM_BUFF,
+        bind_string("disk_cache_path", "Disk Cache Path",
+                    SR_CONF_DISK_CACHE_PATH);
+        bind_double("stream_buff", "Disk Buff Size (with cache)",
+                    SR_CONF_STREAM_BUFF,
                     "GB", pair<double, double>(1, 1024), 0, 1);
+        bind_double("stream_mem_buff", "Mem Buff Size (no cache)",
+                    SR_CONF_STREAM_MEM_BUFF,
+                    "GB", pair<double, double>(1, 64), 0, 1);
     } else {
         pxv_info("DeviceOptions binding: skipping app-layer controls "
-                 "(is_hardware=%d, is_dsl=%d, is_stream=%d)",
-                 _device_agent->is_hardware(),
-                 _device_agent->is_dsl_device(),
-                 _device_agent->is_stream_mode());
+                 "(is_hardware=%d)",
+                 _device_agent->is_hardware());
     }
 }
 
@@ -221,8 +212,9 @@ void DeviceOptions::bind_bool(const QString &name, const QString label, int key)
 
 void DeviceOptions::bind_string(const QString &name, const QString label, int key)
 {
+	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
-        new String(name, label, bind(config_getter, key),
+        new String(name, text, bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
 
@@ -256,8 +248,9 @@ void DeviceOptions::bind_enum(const QString &name, const QString label, int key,
 void DeviceOptions::bind_int(const QString &name, const QString label, int key, QString suffix,
     boost::optional< std::pair<int64_t, int64_t> > range)
 {
+	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
-        new Int(name, label, suffix, range,
+        new Int(name, text, suffix, range,
 			bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
@@ -266,8 +259,9 @@ void DeviceOptions::bind_double(const QString &name, const QString label, int ke
     boost::optional< std::pair<double, double> > range,
     int decimals, boost::optional<double> step)
 {
+	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
     _properties.push_back(
-        new Double(name, label, decimals, suffix, range, step,
+        new Double(name, text, decimals, suffix, range, step,
             bind(config_getter, key),
             bind(config_setter, key, _1)));
 }

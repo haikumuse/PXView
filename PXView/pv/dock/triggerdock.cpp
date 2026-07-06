@@ -245,8 +245,8 @@ void TriggerDock::simple_trigger() {
 
 void TriggerDock::adv_trigger() {
   if (_session->get_device()->is_hardware_logic()) {
-    bool stream = false;
-    _session->get_device()->get_config_bool(SR_CONF_STREAM, stream);
+    // SR_CONF_STREAM fork key deleted — use DeviceAgent typed wrapper.
+    bool stream = _session->get_device()->is_stream_mode();
 
     if (stream) {
       QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STREAM_NO_AD_TRIGGER),
@@ -298,43 +298,45 @@ void TriggerDock::value_changed() {
 }
 
 void TriggerDock::device_updated() {
-  uint64_t hw_depth;
+  // SR_CONF_HW_DEPTH and SR_CONF_STREAM fork keys were deleted from pxlogic.c.
+  // hw_depth used to come from the driver; now we derive the trigger position
+  // range from the sample limit (the user-configured capture depth). When the
+  // capture is smaller than the hardware buffer, the trigger can be positioned
+  // across the full capture; in stream mode the trigger is effectively
+  // position-fixed (maxRange = 1).
   bool stream = false;
   uint8_t maxRange;
   uint64_t sample_limits;
   int mode = _session->get_device()->get_work_mode();
-  bool ret;
   int ch_num;
 
-  ret = _session->get_device()->get_config_uint64(SR_CONF_HW_DEPTH, hw_depth);
+  if (mode == LOGIC) {
+    // SR_CONF_STREAM deleted — use DeviceAgent::is_stream_mode() instead.
+    stream = _session->get_device()->is_stream_mode();
+    sample_limits = _session->get_device()->get_sample_limit();
 
-  if (ret) {
-    if (mode == LOGIC) {
-      _session->get_device()->get_config_bool(SR_CONF_STREAM, stream);
-      sample_limits = _session->get_device()->get_sample_limit();
+    _adv_radioButton->setEnabled(!stream);
+    _position_spinBox->setEnabled(!stream);
+    _position_slider->setEnabled(!stream);
 
-      _adv_radioButton->setEnabled(!stream);
-      _position_spinBox->setEnabled(!stream);
-      _position_slider->setEnabled(!stream);
+    // Without SR_CONF_HW_DEPTH, we treat the configured sample limit as the
+    // effective hardware depth — the trigger can range across the full
+    // capture (maxRange = DS_MAX_TRIG_PERCENT). Stream mode pins it (maxRange = 1).
+    if (stream)
+      maxRange = 1;
+    else
+      maxRange = DS_MAX_TRIG_PERCENT;
 
-      if (stream)
-        maxRange = 1;
-      else if (hw_depth >= sample_limits)
-        maxRange = DS_MAX_TRIG_PERCENT;
-      else
-        maxRange = ceil(hw_depth * DS_MAX_TRIG_PERCENT / sample_limits);
+    _position_spinBox->setRange(MinTrigPosition, maxRange);
+    _position_slider->setRange(MinTrigPosition, maxRange);
 
-      _position_spinBox->setRange(MinTrigPosition, maxRange);
-      _position_slider->setRange(MinTrigPosition, maxRange);
-
-      if (_session->get_device()->is_virtual() || stream) {
-        _simple_radioButton->setChecked(true);
-        simple_trigger();
-      }
+    if (_session->get_device()->is_virtual() || stream) {
+      _simple_radioButton->setChecked(true);
+      simple_trigger();
     }
   }
 
-  ret = _session->get_device()->get_config_int16(SR_CONF_TOTAL_CH_NUM, ch_num);
+  bool ret = _session->get_device()->get_config_int16(SR_CONF_TOTAL_CH_NUM, ch_num);
   if (ret) {
     if (ch_num != _cur_ch_num) {
       _cur_ch_num = ch_num;

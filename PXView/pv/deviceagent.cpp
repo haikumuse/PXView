@@ -696,11 +696,41 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
     return data;
 }
 
+// App-layer config keys (C-class): not driver-backed. Stored in DeviceAgent
+// member state so non-DSL devices (fx2lafw, etc.) work without driver support.
+// DSL/PXLogic devices forward to the driver's config_get/set (which has the
+// real implementations for these keys).
+static inline bool is_app_layer_key(int key)
+{
+    return key == SR_CONF_DISK_CACHE_ENABLE ||
+           key == SR_CONF_DISK_CACHE_PATH ||
+           key == SR_CONF_STREAM_BUFF ||
+           key == SR_CONF_STREAM_MEM_BUFF;
+}
+
 GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle || !_di) {
         pxv_warn("%s", "DeviceAgent::get_config: no device instance");
         return nullptr;
+    }
+
+    // App-layer C-class keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF,
+    // STREAM_MEM_BUFF): served from DeviceAgent member state for ALL devices.
+    // These are application-layer concepts (disk cache is implemented by
+    // LogicSnapshotDiskCacheWriter + MmapAllocator, not by any driver), so
+    // they don't need driver config_get/set support — not even for PXLogic.
+    if (is_app_layer_key(key)) {
+        switch (key) {
+        case SR_CONF_DISK_CACHE_ENABLE:
+            return g_variant_new_boolean(_app_disk_cache_enable);
+        case SR_CONF_DISK_CACHE_PATH:
+            return g_variant_new_string(_app_disk_cache_path.toUtf8().constData());
+        case SR_CONF_STREAM_BUFF:
+            return g_variant_new_double(_app_stream_buff);
+        case SR_CONF_STREAM_MEM_BUFF:
+            return g_variant_new_double(_app_stream_mem_buff);
+        }
     }
 
     if (is_fork_only_key(key) && !is_dsl_device())
@@ -741,6 +771,26 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     if (!_dev_handle || !_di) {
         pxv_warn("%s", "DeviceAgent::set_config: no device instance");
         return false;
+    }
+
+    // App-layer C-class keys: store in member state for ALL devices.
+    if (is_app_layer_key(key)) {
+        switch (key) {
+        case SR_CONF_DISK_CACHE_ENABLE:
+            _app_disk_cache_enable = g_variant_get_boolean(data);
+            break;
+        case SR_CONF_DISK_CACHE_PATH:
+            _app_disk_cache_path = QString::fromUtf8(g_variant_get_string(data, NULL));
+            break;
+        case SR_CONF_STREAM_BUFF:
+            _app_stream_buff = g_variant_get_double(data);
+            break;
+        case SR_CONF_STREAM_MEM_BUFF:
+            _app_stream_mem_buff = g_variant_get_double(data);
+            break;
+        }
+        config_changed();
+        return true;
     }
 
     if (is_fork_only_key(key) && !is_dsl_device())
@@ -1073,6 +1123,19 @@ QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
     // SR_CONF_PROBE_VDIV was a fork DSO key (deleted). DSO mode is deprecated;
     // return empty list — DsoSignal::init_vDial handles this gracefully.
     return {};
+}
+
+// --- USB link info (replaces deleted SR_CONF_USB_SPEED/USB30_SUPPORT keys) ---
+
+int DeviceAgent::get_usb_speed() {
+    if (!_di)
+        return PXV_USB_SPEED_UNKNOWN;
+    return sr_dev_inst_usb_speed_get(_di);
+}
+
+bool DeviceAgent::is_usb30() {
+    int speed = get_usb_speed();
+    return speed == PXV_USB_SPEED_SUPER || speed == PXV_USB_SPEED_SUPER_PLUS;
 }
 
 // --- Config info ---

@@ -236,6 +236,18 @@ public:
     bool get_trigger_value(int &v, sr_channel *probe);
     QVector<uint64_t> get_probe_vdiv_list();
 
+    // --- USB link info (replaces deleted SR_CONF_USB_SPEED/USB30_SUPPORT keys) ---
+    // Returns PXV_USB_SPEED_* (LOW=1/FULL=2/HIGH=3/SUPER=4/SUPER_PLUS=5),
+    // defined in dsvdef.h. PXV_USB_SPEED_UNKNOWN (0) for non-USB devices or
+    // when speed cannot be determined. Values mirror libusb's enum so View
+    // code may compare against LIBUSB_SPEED_* interchangeably. Reads
+    // libusb_get_device_speed via libsigrok's sr_dev_inst_usb_speed_get() —
+    // no driver config_get needed.
+    int get_usb_speed();
+    // Convenience: true when get_usb_speed() == PXV_USB_SPEED_SUPER or
+    // PXV_USB_SPEED_SUPER_PLUS. Returns false for UNKNOWN (treats as USB 2.0).
+    bool is_usb30();
+
     // --- Config info ---
     const struct sr_key_info* get_config_info(int key);
 
@@ -269,6 +281,19 @@ private:
     // Tracked devices: scanned (from sr_driver_scan) + file-loaded.
     std::vector<struct sr_dev_inst*> _scanned_sdi;
     std::vector<struct sr_dev_inst*> _file_sdi;
+
+    // --- App-layer config state (C-class keys, not driver-backed) ---
+    // These keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF/STREAM_MEM_BUFF) are
+    // application-layer concepts — disk cache is implemented by
+    // LogicSnapshotDiskCacheWriter + MmapAllocator, not by any driver.
+    // They are stored here so non-DSL devices (fx2lafw, etc.) get sensible
+    // defaults without the driver needing to implement config_get/set for
+    // these keys. DSL/PXLogic devices still forward to the driver so the
+    // existing pxlogic config_get/set path works unchanged.
+    bool    _app_disk_cache_enable = false;
+    QString _app_disk_cache_path;
+    double  _app_stream_buff = 16.0;       // GB, disk cache total depth
+    double  _app_stream_mem_buff = 16.0;   // GB, in-memory ring buffer
 };
 
 #endif

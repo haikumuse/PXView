@@ -436,8 +436,8 @@ void SamplingBar::retranslateUi() {
       _device_type_label->setText(
           L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE_TYPE_FILE), "File"));
     } else {
-      int usb_speed = LIBUSB_SPEED_HIGH;
-      _device_agent->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
+      // SR_CONF_USB_SPEED fork key deleted — use DeviceAgent typed wrapper.
+      int usb_speed = _device_agent->get_usb_speed();
 
       if (usb_speed == LIBUSB_SPEED_HIGH) {
         _device_type_label->setText("USB 2.0");
@@ -494,8 +494,8 @@ void SamplingBar::reStyle() {
     else if (_device_agent->is_file())
       _device_type->setIcon(IconCache::Instance().icon(":/icons/data.svg"));
     else {
-      int usb_speed = LIBUSB_SPEED_HIGH;
-      _device_agent->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
+      // SR_CONF_USB_SPEED fork key deleted — use DeviceAgent typed wrapper.
+      int usb_speed = _device_agent->get_usb_speed();
 
       if (usb_speed == LIBUSB_SPEED_SUPER)
         _device_type->setIcon(IconCache::Instance().icon(":/icons/usb3.svg"));
@@ -674,8 +674,12 @@ void SamplingBar::update_sample_count_selector() {
   assert(!_updating_sample_count);
   _updating_sample_count = true;
 
-  _device_agent->get_config_bool(SR_CONF_STREAM, stream_mode);
-  _device_agent->get_config_uint64(SR_CONF_HW_DEPTH, hw_depth);
+  // SR_CONF_STREAM/SR_CONF_HW_DEPTH fork keys deleted — use DeviceAgent typed
+  // wrappers. hw_depth used to come from the driver (PXLogic hardware buffer
+  // depth); without it, derive an upper bound from the configured sample limit
+  // so the RLE depth cap is still meaningful.
+  stream_mode = _device_agent->is_stream_mode();
+  hw_depth = _device_agent->get_sample_limit();
   int mode = _device_agent->get_work_mode();
 
   if (mode == LOGIC) {
@@ -969,51 +973,44 @@ double SamplingBar::commit_hori_res() {
 }
 
 void SamplingBar::commit_settings() {
-  bool test = false;
-  if (_device_agent->have_instance() && _device_agent->is_dsl_device()) {
-    _device_agent->get_config_bool(SR_CONF_TEST, test);
-  }
+  // SR_CONF_TEST fork key deleted from pxlogic.c — test mode is no longer a
+  // driver-exposed concept. The old `if (test)` branch (which only refreshed
+  // selector values without committing) is removed; always commit settings.
+  const double sample_duration =
+      _sample_count->itemData(_sample_count->currentIndex()).value<double>();
+  const uint64_t sample_rate =
+      _sample_rate->itemData(_sample_rate->currentIndex()).value<uint64_t>();
 
-  if (test) {
-    update_sample_rate_selector_value();
-    update_sample_count_selector_value();
-  } else {
-    const double sample_duration =
-        _sample_count->itemData(_sample_count->currentIndex()).value<double>();
-    const uint64_t sample_rate =
-        _sample_rate->itemData(_sample_rate->currentIndex()).value<uint64_t>();
+  if (_device_agent->have_instance()) {
+    if (sample_rate != 0 && sample_rate != _device_agent->get_sample_rate())
+      _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
-    if (_device_agent->have_instance()) {
-      if (sample_rate != 0 && sample_rate != _device_agent->get_sample_rate())
-        _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
+    if (_device_agent->get_work_mode() != DSO) {
+      const uint64_t sample_count =
+          ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
+           SAMPLES_ALIGN) &
+          ~SAMPLES_ALIGN;
+      if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
+        _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
 
-      if (_device_agent->get_work_mode() != DSO) {
-        const uint64_t sample_count =
-            ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
-             SAMPLES_ALIGN) &
-            ~SAMPLES_ALIGN;
-        if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
-          _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
-
-        // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
-        // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
-        // "Option 'rle' not available" on every commit.
-        bool rle_support = false;
-        _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
-        if (rle_support) {
-          bool rle_mode = _sample_count->currentText().contains(RLEString);
-          _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
-        }
+      // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
+      // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
+      // "Option 'rle' not available" on every commit.
+      bool rle_support = false;
+      _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
+      if (rle_support) {
+        bool rle_mode = _sample_count->currentText().contains(RLEString);
+        _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
       }
-      // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
-      // (MainWindow::on_event(DeviceOptionsUpdated) -> rebuild_signals;
-      // SigSession::on_event(DeviceOptionsUpdated) -> reload) R7: 同时发布
-      // DEVICE_CONFIG_UPDATED（sample_rate/sample_limit 属于 设备配置变化），
-      // 触发 SessionService 中此前为死代码的对应 case。
-      if (_session) {
-        _session->broadcast_async<interface::DeviceConfigUpdated>({});
-        _session->broadcast_async<interface::DeviceOptionsUpdated>({});
-      }
+    }
+    // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
+    // (MainWindow::on_event(DeviceOptionsUpdated) -> rebuild_signals;
+    // SigSession::on_event(DeviceOptionsUpdated) -> reload) R7: 同时发布
+    // DEVICE_CONFIG_UPDATED（sample_rate/sample_limit 属于 设备配置变化），
+    // 触发 SessionService 中此前为死代码的对应 case。
+    if (_session) {
+      _session->broadcast_async<interface::DeviceConfigUpdated>({});
+      _session->broadcast_async<interface::DeviceOptionsUpdated>({});
     }
   }
 }
@@ -1133,22 +1130,14 @@ void SamplingBar::on_device_selected() {
 }
 
 void SamplingBar::enable_toggle(bool enable) {
-  bool test = false;
+  // SR_CONF_TEST fork key deleted from pxlogic.c — test mode no longer
+  // disables the sample count/rate selectors. Always apply normal toggle logic.
+  _sample_count->setDisabled(!enable);
 
-  if (_device_agent->have_instance() && _device_agent->is_dsl_device()) {
-    _device_agent->get_config_bool(SR_CONF_TEST, test);
-  }
-  if (!test) {
-    _sample_count->setDisabled(!enable);
-
-    if (_device_agent->get_work_mode() == DSO)
-      _sample_rate->setDisabled(true);
-    else
-      _sample_rate->setDisabled(!enable);
-  } else {
-    _sample_count->setDisabled(true);
+  if (_device_agent->get_work_mode() == DSO)
     _sample_rate->setDisabled(true);
-  }
+  else
+    _sample_rate->setDisabled(!enable);
 }
 
 void SamplingBar::reload() {

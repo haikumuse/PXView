@@ -433,5 +433,19 @@ namespace DecoderDataFormat
         ascii=4
     };
 
-    int Parse(const char *name);       
+    int Parse(const char *name);
 }
+
+// --- USB link speed constants ---
+// Mirror libusb's libusb_speed enum values so Core-layer code (deviceagent.cpp)
+// can interpret sr_dev_inst_usb_speed_get() return values without including
+// <libusb-1.0/libusb.h> directly (Core must not depend on libusb headers).
+// View-layer files that already include libusb.h may use LIBUSB_SPEED_*
+// interchangeably — the numeric values are identical.
+#define PXV_USB_SPEED_UNKNOWN    0
+#define PXV_USB_SPEED_LOW        1   // USB 1.1 (1.5 Mbps)
+#define PXV_USB_SPEED_FULL       2   // USB 1.1 (12 Mbps)
+#define PXV_USB_SPEED_HIGH       3   // USB 2.0 (480 Mbps)
+#define PXV_USB_SPEED_SUPER      4   // USB 3.0 (5 Gbps)
+#define PXV_USB_SPEED_SUPER_PLUS 5   // USB 3.1+ (10+ Gbps)
+

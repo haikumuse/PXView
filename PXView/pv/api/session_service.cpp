@@ -1079,9 +1079,9 @@ DeviceInfo SessionService::get_device_info() const {
     info.is_dsl_device = _device->is_dsl_device();
     info.is_compat_device = _device->is_compat_device();
 
-    int usb_speed = 3; // LIBUSB_SPEED_HIGH
-    _device->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
-    info.usb_speed = usb_speed;
+    // SR_CONF_USB_SPEED fork key deleted — use DeviceAgent typed wrapper
+    // (reads libusb_get_device_speed via sr_dev_inst_usb_speed_get).
+    info.usb_speed = _device->get_usb_speed();
 
     // Device ID from handle
     auto handle = _device->handle();

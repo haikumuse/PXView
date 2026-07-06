@@ -347,19 +347,17 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
 
   int row1 = 0;
   int row2 = 0;
-  // vld_ch_num: "当前 channel_mode 下可启用的最大通道数"。
-  //  - PXLogic: 由 SR_CONF_VLD_CH_NUM 返回（不同 channel_mode 对应不同硬件
-  //    资源上限，如 32ch@250MHz / 16ch@500MHz / 8ch@1GHz）。
-  //  - 上游驱动 (demo/fx2lafw/...): 不支持此键 — 回退到 sdi->channels 总数，
-  //    表示"可启用全部通道"，cur_ch_num 永远 ≤ vld_ch_num，禁用逻辑不触发。
-  //    比用 INT_MAX 魔法值更符合"驱动已知通道总数"的事实。
+  // vld_ch_num: "当前 channel_mode 下可启用的最大通道数".
+  //  - PXLogic used to expose this via the fork key SR_CONF_VLD_CH_NUM
+  //    (deleted). Different channel_modes mapped to different hardware
+  //    resource caps (32ch@250MHz / 16ch@500MHz / 8ch@1GHz).
+  //  - Now derived from sdi->channels directly — the driver's scan()
+  //    populates this with the maximum available channels for the device.
+  //    For PXLogic this equals the profile's max channel count; for upstream
+  //    drivers (fx2lafw/demo) it is the full channel list.
   int vld_ch_num = 0;
-  if (!_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) ||
-      vld_ch_num <= 0) {
-    vld_ch_num = 0;
-    for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
-      vld_ch_num++;
-  }
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
+    vld_ch_num++;
   int cur_ch_num = 0;
   int contentHeight = 0;
 
@@ -410,7 +408,9 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
     }
   }
 
-  _device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num);
+  // SR_CONF_VLD_CH_NUM fork key deleted — vld_ch_num already derived above
+  // from sdi->channels. No re-fetch needed.
+  (void)vld_ch_num;
 
   // channels
   int total_channels = 0;
@@ -527,10 +527,10 @@ void DeviceOptions::enable_max_probes() {
       cur_ch_num++;
   }
 
-  int vld_ch_num;
-
-  if (_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) == false)
-    return;
+  // SR_CONF_VLD_CH_NUM fork key deleted — derive from sdi->channels.
+  int vld_ch_num = 0;
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
+    vld_ch_num++;
 
   while (cur_ch_num < vld_ch_num &&
          cur_ch_num < (int)_probes_checkBox_list.size()) {
@@ -543,13 +543,10 @@ void DeviceOptions::enable_max_probes() {
 }
 
 void DeviceOptions::enable_all_probes() {
-  bool stream_mode;
-
-  if (_device_agent->get_config_bool(SR_CONF_STREAM, stream_mode)) {
-    if (stream_mode) {
-      enable_max_probes();
-      return;
-    }
+  // SR_CONF_STREAM fork key deleted — use DeviceAgent typed wrapper.
+  if (_device_agent->is_stream_mode()) {
+    enable_max_probes();
+    return;
   }
 
   set_all_probes(true);
@@ -577,7 +574,6 @@ void DeviceOptions::mode_check_timeout() {
     return;
 
   if (_device_agent->is_hardware()) {
-    bool test;
     QString mode;
 
     if (_device_agent->get_config_string(SR_CONF_OPERATION_MODE, mode)) {
@@ -588,16 +584,9 @@ void DeviceOptions::mode_check_timeout() {
       }
     }
 
-    if (_device_agent->get_config_bool(SR_CONF_TEST, test)) {
-      if (test) {
-        for (auto box : _probes_checkBox_list) {
-          box->setCheckState(Qt::Checked);
-          box->setDisabled(true);
-          if (box->parentWidget())
-            box->parentWidget()->update();
-        }
-      }
-    }
+    // SR_CONF_TEST fork key deleted from pxlogic.c — the test-mode auto-check
+    // block below would never execute. Test mode is now a hardware-specific
+    // concept handled in the driver's scan() if needed.
   } else if (_device_agent->is_demo()) {
     QString opt_mode = _device_agent->get_demo_operation_mode();
     if (opt_mode != _demo_operation_mode) {
@@ -664,11 +653,8 @@ void DeviceOptions::channel_checkbox_clicked(QCheckBox *sc) {
     if (sc == NULL || !sc->isChecked())
       return;
 
-    bool stream_mode;
-    if (_device_agent->get_config_bool(SR_CONF_STREAM, stream_mode) == false)
-      return;
-
-    if (!stream_mode)
+    // SR_CONF_STREAM fork key deleted — use DeviceAgent typed wrapper.
+    if (!_device_agent->is_stream_mode())
       return;
 
     int cur_ch_num = 0;
@@ -677,10 +663,10 @@ void DeviceOptions::channel_checkbox_clicked(QCheckBox *sc) {
         cur_ch_num++;
     }
 
-    int vld_ch_num;
-    if (_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) ==
-        false)
-      return;
+    // SR_CONF_VLD_CH_NUM fork key deleted — derive from sdi->channels.
+    int vld_ch_num = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
+      vld_ch_num++;
 
     if (cur_ch_num > vld_ch_num) {
       QString msg_str(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MAX_CHANNEL_COUNT_WARNING),

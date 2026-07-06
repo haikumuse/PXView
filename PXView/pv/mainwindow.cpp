@@ -2483,29 +2483,34 @@ void MainWindow::receive_header() {}
 void MainWindow::check_usb_device_speed() {
   // USB device speed check
   if (_device_agent->is_hardware()) {
-    int usb_speed = LIBUSB_SPEED_HIGH;
-    _device_agent->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
+    // SR_CONF_USB_SPEED/USB30_SUPPORT fork keys were deleted from pxlogic.c.
+    // The link speed is now read directly from libusb via the typed wrapper
+    // DeviceAgent::get_usb_speed() (calls sr_dev_inst_usb_speed_get).
+    int usb_speed = _device_agent->get_usb_speed();
+    if (usb_speed == LIBUSB_SPEED_UNKNOWN) {
+      // Non-USB or speed undeterminable — nothing to check.
+      return;
+    }
 
-    bool usb30_support = false;
+    // is_usb30() returns true only for SUPER/SUPER_PLUS. For UNKNOWN we
+    // conservatively treat as USB 2.0 (no warning shown).
+    bool usb30_support = _device_agent->is_usb30();
+    pxv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
 
-    if (_device_agent->get_config_bool(SR_CONF_USB30_SUPPORT, usb30_support)) {
-      pxv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
+    int cable_ver = 1;
+    if (usb_speed == LIBUSB_SPEED_HIGH)
+      cable_ver = 2;
+    else if (usb_speed == LIBUSB_SPEED_SUPER)
+      cable_ver = 3;
 
-      int cable_ver = 1;
-      if (usb_speed == LIBUSB_SPEED_HIGH)
-        cable_ver = 2;
-      else if (usb_speed == LIBUSB_SPEED_SUPER)
-        cable_ver = 3;
+    pxv_info("The cable's USB port version: %d.0", cable_ver);
 
-      pxv_info("The cable's USB port version: %d.0", cable_ver);
-
-      if (usb30_support && usb_speed == LIBUSB_SPEED_HIGH) {
-        QString str_err(
-            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHECK_USB_SPEED_ERROR),
-                "Plug the device into a USB 2.0 port will seriously affect its "
-                "performance.\nPlease replug it into a USB 3.0 port."));
-        delay_prop_msg(str_err);
-      }
+    if (usb30_support && usb_speed == LIBUSB_SPEED_HIGH) {
+      QString str_err(
+          L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHECK_USB_SPEED_ERROR),
+              "Plug the device into a USB 2.0 port will seriously affect its "
+              "performance.\nPlease replug it into a USB 3.0 port."));
+      delay_prop_msg(str_err);
     }
   }
 }
