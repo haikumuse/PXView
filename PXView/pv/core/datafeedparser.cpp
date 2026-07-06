@@ -14,6 +14,7 @@
 
 #include <QDateTime>
 #include <assert.h>
+#include <chrono>
 
 namespace pv {
 namespace core {
@@ -157,6 +158,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
   assert(sdi);
   assert(packet);
 
+  auto _df_t0 = std::chrono::steady_clock::now();
   ds_lock_guard lock(_state->data_mutex());
 
   if (_state->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
@@ -232,6 +234,12 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
     break;
   }
+  }
+
+  auto _df_t1 = std::chrono::steady_clock::now();
+  auto _df_ms = std::chrono::duration_cast<std::chrono::milliseconds>(_df_t1 - _df_t0).count();
+  if (_df_ms > 5) {
+    pxv_warn("data_feed_in SLOW: type=%d, lock_held_time=%lldms", (int)packet->type, (long long)_df_ms);
   }
 }
 

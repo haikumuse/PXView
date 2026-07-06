@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <chrono>
 #include <functional>
 #include <math.h>
 #include <stdlib.h>
@@ -207,6 +208,7 @@ void LogicSnapshot::ensure_all_blocks_hot() {
 void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
                                   uint64_t total_sample_count, GSList *channels,
                                   bool able_free) {
+  auto _fp_t0 = std::chrono::steady_clock::now();
   bool channel_changed = false;
   uint16_t channel_num = 0;
   _able_free = able_free;
@@ -237,9 +239,18 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     // still be calling allocate_block()/_mmap_alloc->get_block_data() against
     // an allocator we are about to destroy, causing a use-after-free / crash.
     // Mirrors the stop sequence in clear() — now encapsulated in drain_and_join().
+    auto _drain_t0 = std::chrono::steady_clock::now();
     _disk_cache_writer->drain_and_join();
+    auto _drain_t1 = std::chrono::steady_clock::now();
+    pxv_info("first_payload TIMING: drain_and_join=%lldms",
+      (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_drain_t1 - _drain_t0).count());
 
+    auto _free_t0 = std::chrono::steady_clock::now();
     free_data();
+    auto _free_t1 = std::chrono::steady_clock::now();
+    pxv_info("first_payload TIMING: free_data=%lldms",
+      (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_free_t1 - _free_t0).count());
+
     _ch_index.clear();
 
     _total_sample_count = total_sample_count;
@@ -322,7 +333,13 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 
     bool use_disk = _disk_cache_writer->disk_cache_config().enabled;
     QString disk_dir = QString::fromStdString(_disk_cache_writer->disk_cache_config().cache_path);
-    if (!_mmap_alloc->configure(use_disk, disk_dir, total_bytes)) {
+    auto _mmap_t0 = std::chrono::steady_clock::now();
+    bool mmap_ok = _mmap_alloc->configure(use_disk, disk_dir, total_bytes);
+    auto _mmap_t1 = std::chrono::steady_clock::now();
+    pxv_info("first_payload TIMING: MmapAllocator::configure=%lldms (total_bytes=%llu, ok=%d)",
+      (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_mmap_t1 - _mmap_t0).count(),
+      (unsigned long long)total_bytes, (int)mmap_ok);
+    if (!mmap_ok) {
         pxv_err("LogicSnapshot::first_payload: MmapAllocator configure failed! "
                "Falling back to LeafBlockPool in-memory allocation.");
         // Drop the failed allocator so allocate_block() takes the
@@ -342,6 +359,10 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
   lock.unlock();
   append_payload(logic);
   _last_ended = false;
+
+  auto _fp_t1 = std::chrono::steady_clock::now();
+  pxv_info("first_payload TIMING: total=%lldms (samplerate will be logged by caller)",
+    (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_fp_t1 - _fp_t0).count());
 }
 
 void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {

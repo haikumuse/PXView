@@ -41,6 +41,12 @@ jobs:
         rm -rf build
         mkdir -p build
         cd build
+        # gettext 是 keg-only：glib-2.0.pc 通过 pkg-config 传递 -lintl，
+        # 但 linker 默认搜索不到 libintl.dylib，需显式指向 gettext 的 lib。
+        # 同时设 PKG_CONFIG_PATH 让 pkg-config 找到 gettext 的 .pc 文件。
+        export LDFLAGS="-L$(brew --prefix gettext)/lib"
+        export CPPFLAGS="-I$(brew --prefix gettext)/include"
+        export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
         # 确保 CMake 能够找到 Homebrew 安装的 Qt
         cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" -DCMAKE_INSTALL_PREFIX=../install.dir
 

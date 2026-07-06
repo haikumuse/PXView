@@ -518,7 +518,15 @@ bool CaptureManager::get_capture_status(bool &triggered, int &progress) {
 }
 
 void CaptureManager::check_update() {
-  ds_lock_guard lock(_state->data_mutex());
+  // Use try_lock to avoid interlock with libsigrok's data_feed_in path.
+  // paintEvent calls this on the GUI thread; if data_feed_in holds the lock
+  // (processing a USB transfer), blocking here would stall GMainLoop's
+  // libusb_handle_events_timeout(), causing empty_transfer_count to spike
+  // and abort stream acquisition. Skipping a paint-time check is harmless —
+  // the next timer tick will try again.
+  std::unique_lock<std::mutex> lock(_state->data_mutex(), std::try_to_lock);
+  if (!lock.owns_lock())
+    return;
 
   if (_state->device_agent().is_collecting() == false)
     return;
