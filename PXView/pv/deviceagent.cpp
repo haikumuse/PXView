@@ -429,7 +429,7 @@ double DeviceAgent::get_sample_time()
 int DeviceAgent::get_work_mode()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_work_mode: _dev_handle is NULL");
+        // 启动/切换设备期间会被频繁调用，静默返回 LOGIC(0) 避免日志噪音
         return 0;
     }
     // Only DSL/PXLogic devices implement SR_CONF_DEVICE_MODE.
@@ -515,7 +515,7 @@ QString DeviceAgent::get_demo_operation_mode()
 
     QString pattern_mode;
     if (!get_config_string(SR_CONF_PATTERN_MODE, pattern_mode)) {
-        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: SR_CONF_PATTERN_MODE not supported");
+        // demo 设备在初始化阶段可能尚未支持 PATTERN_MODE，静默返回空字符串
         return QString();
     }
     return pattern_mode;
@@ -653,7 +653,9 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
     GVariant *data = NULL;
     int ret = sr_config_get(drv, _di, cg, (uint32_t)key, &data);
     if (ret != SR_OK) {
-        if (ret != SR_ERR_NA)
+        // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key（libsigrok 对"选项不可用"
+        // 返回 SR_ERR_ARG 而非 SR_ERR_NA），属于正常情况，静默处理避免日志噪音。
+        if (ret != SR_ERR_NA && ret != SR_ERR_ARG)
             pxv_err("%s%d", "ERROR:DeviceAgent::get_config, Failed to get value of config id:", key);
         if (data) {
             g_variant_unref(data);
@@ -687,7 +689,8 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     int ret = sr_config_set(_di, cg, (uint32_t)key, data);
     (void)ch;  // upstream sr_config_set does not take a channel parameter
     if (ret != SR_OK) {
-        if (ret != SR_ERR_NA)
+        // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理
+        if (ret != SR_ERR_NA && ret != SR_ERR_ARG)
             pxv_err("%s%d", "ERROR:DeviceAgent::set_config, Failed to set value of config id:", key);
         return false;
     }

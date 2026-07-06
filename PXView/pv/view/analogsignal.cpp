@@ -72,10 +72,10 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
   bool ret = _data_source->device()->get_config_byte(SR_CONF_UNIT_BITS, _bits);
   if (!ret) {
     _bits = DefaultBits;
-    pxv_warn(
-        "%s%d",
-        "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).",
-        DefaultBits);
+    // demo/file 设备不支持 SR_CONF_UNIT_BITS，静默使用默认值避免日志噪音
+    if (_data_source->device()->is_hardware())
+      pxv_warn("config_get SR_CONF_UNIT_BITS failed, set to %d (default)",
+               DefaultBits);
   }
 
   ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MIN, ui32);

@@ -210,10 +210,26 @@ static int sigrok_log_callback(void *cb_data, int loglevel,
   (void)cb_data;
   char buf[1024];
   vsnprintf(buf, sizeof(buf), format, args);
-  // Strip trailing newline added by sr_log_vprintf to keep xlog format clean.
+  // Strip trailing newline added by sr_log_v_printf to keep xlog format clean.
   size_t n = strlen(buf);
   while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r'))
     buf[--n] = 0;
+
+  // 过滤 libsigrok hwdriver.c 中 "Option 'xxx' not available" 的 sr_err 噪音。
+  // 上游 sr_config_get/sr_config_set 在 key 不被设备支持时返回 SR_ERR_ARG 并
+  // 打印此 sr_err，属于正常情况（PXView 的 get_config/set_config 已静默处理
+  // SR_ERR_ARG），但 libsigrok 内部的 sr_err 仍会输出到日志。降级为 debug。
+  if (loglevel == SR_LOG_ERR && strstr(buf, "not available for this device instance")) {
+    pxv_dbg("sr: %s", buf);
+    return 0;
+  }
+
+  // 过滤 asix-omega-rtm-cli 驱动扫描时的外部进程执行失败噪音
+  // （该驱动尝试执行 omegartmcli 外部进程，不存在时正常失败）
+  if (loglevel == SR_LOG_ERR && strstr(buf, "Cannot execute RTM CLI process")) {
+    pxv_dbg("sr: %s", buf);
+    return 0;
+  }
 
   switch (loglevel) {
     case SR_LOG_ERR:
@@ -246,13 +262,12 @@ bool SigSession::init() {
   }
 
   // Forward libsigrok internal logs (sr_err/sr_warn/sr_info/sr_dbg) into
-  // PXView's xlog so driver failures are observable in PXView.log. Without
-  // this, GUI mode swallows sr_err output and only "sr_dev_open failed"
-  // remains, hiding the root cause (libusb open/claim errors, fw version
-  // mismatch, etc.). Set to SR_LOG_DBG so device-open failures include the
-  // sr_dbg "Opening device instance" trace + driver sr_err details.
+  // PXView's xlog so driver failures are observable in PXView.log.
+  // 使用 SR_LOG_WARN 级别过滤 sr_dbg/sr_info 噪音（如 serial 扫描、
+  // usb_speed 检查等），仅保留 sr_warn/sr_err 用于诊断设备问题。
+  // 调试设备打开失败时可临时改为 SR_LOG_DBG。
   sr_log_callback_set(sigrok_log_callback, nullptr);
-  sr_log_loglevel_set(SR_LOG_DBG);
+  sr_log_loglevel_set(SR_LOG_WARN);
 
   // Diagnostic: log every firmware search path libsigrok will consult, so
   // "Failed to locate 'fx2lafw-cypress-fx2.fw'" can be cross-checked against

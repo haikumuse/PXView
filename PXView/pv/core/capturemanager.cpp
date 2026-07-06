@@ -531,8 +531,15 @@ void CaptureManager::check_update() {
 }
 
 void CaptureManager::nodata_timeout() {
-  int flag;
-  _state->device_agent().get_config_byte(SR_CONF_TRIGGER_SOURCE, flag);
+  auto &agent = _state->device_agent();
+  // SR_CONF_TRIGGER_SOURCE 仅 DSO 硬件设备支持；demo/file/compat 设备查询会
+  // 产生 "Option not available" + ERROR 日志噪音。非 DSO 硬件直接显示等待触发。
+  if (!agent.is_hardware_dso()) {
+    _state->show_wait_trigger();
+    return;
+  }
+  int flag = 0;
+  agent.get_config_byte(SR_CONF_TRIGGER_SOURCE, flag);
   if (flag != DSO_TRIGGER_AUTO) {
     _state->show_wait_trigger();
   }

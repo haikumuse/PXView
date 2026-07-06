@@ -295,10 +295,8 @@ bool DsoSignal::load_settings() {
     _bits = (uint8_t)v;
   } else {
     _bits = DsoSignal::DefaultBits;
-    pxv_warn(
-        "%s%d",
-        "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).",
-        DsoSignal::DefaultBits);
+    pxv_warn("config_get SR_CONF_UNIT_BITS failed, set to %d (default)",
+             DsoSignal::DefaultBits);
 
     if (_data_source->device()->is_hardware())
       return false;
