@@ -1,12 +1,12 @@
 [submodule "sigrok-firmware"]
 	path = sigrok-firmware
-	url = git://sigrok.org/sigrok-firmware
+	url = https://github.com/sigrokproject/sigrok-firmware.git
 [submodule "sigrok-firmware-fx2lafw"]
 	path = sigrok-firmware-fx2lafw
-	url = git://sigrok.org/sigrok-firmware-fx2lafw
+	url = https://github.com/sigrokproject/sigrok-firmware-fx2lafw.git
 [submodule "sigrok-util"]
 	path = sigrok-util
-	url = git://sigrok.org/sigrok-util
+	url = https://github.com/sigrokproject/sigrok-util.git
 [submodule "libsigrok"]
 	path = libsigrok
 	url = https://github.com/haikumuse/libsigrok.git
