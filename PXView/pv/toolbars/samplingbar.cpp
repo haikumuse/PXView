@@ -732,11 +732,16 @@ void SamplingBar::update_sample_count_selector() {
     duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
   } else if (rle_support)
     duration = rle_depth / (samplerate * (1.0 / SR_SEC(1)));
-  else
+  else if (hw_duration > 0)
     duration = hw_duration;
+  else
+    // Devices without hardware depth limits (fx2lafw, demo): use software
+    // depth (memory-mapped) as the upper bound. PulseView uses 1 trillion
+    // samples as default; we use sw_depth which is 16GB on 64-bit.
+    duration = sw_depth / (samplerate * (1.0 / SR_SEC(1)));
 
   if (duration <= 0) {
-    // Fallback for devices without hardware depth limits (like sr demo)
+    // Final fallback: 1 second (should rarely hit after sw_depth fallback)
     duration = SR_SEC(1);
   }
 
@@ -749,8 +754,8 @@ void SamplingBar::update_sample_count_selector() {
 
   do {
     QString suffix = (mode == DSO)                              ? DIVString
-                     : (!stream_mode && duration > hw_duration) ? RLEString
-                                                                : "";
+                     : (!stream_mode && rle_support && duration > hw_duration) ? RLEString
+                                                                                : "";
     char *const s = sr_time_string(duration);
     _sample_count->addItem(QString(s) + suffix, QVariant::fromValue(duration));
     g_free(s);
@@ -990,8 +995,15 @@ void SamplingBar::commit_settings() {
         if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
           _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
 
-        bool rle_mode = _sample_count->currentText().contains(RLEString);
-        _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
+        // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
+        // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
+        // "Option 'rle' not available" on every commit.
+        bool rle_support = false;
+        _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
+        if (rle_support) {
+          bool rle_mode = _sample_count->currentText().contains(RLEString);
+          _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
+        }
       }
       // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
       // (MainWindow::on_event(DeviceOptionsUpdated) -> rebuild_signals;

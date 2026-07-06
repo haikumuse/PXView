@@ -25,6 +25,7 @@
 #define PXVIEW_PV_SIGSESSION_H
 
 #include <QDateTime>
+#include <QTimer>
 #include <QString>
 #include <atomic>
 #include <list>
@@ -239,6 +240,9 @@ public:
   void auto_end() override { _capture_manager->auto_end(); }
   bool have_hardware_data();
   struct ds_device_base_info *get_device_list(int &out_count, int &actived_index);
+  // 强制重新扫描所有驱动（热插拔检测场景）。get_device_list 默认复用缓存，
+  // 避免在设备已 dev_open 后重复 sr_driver_scan 导致 LIBUSB_ERROR_ACCESS。
+  void refresh_device_list();
   void add_event_listener(interface::IEventListener *l) { _event_bus->add_event_listener(l); }
   void remove_event_listener(interface::IEventListener *l) { _event_bus->remove_event_listener(l); }
   template <typename EventType> void broadcast(const EventType &ev) { _event_bus->broadcast(ev); }
@@ -364,6 +368,21 @@ private:
   // open_by_handle, destroyed in release) since the session lifecycle is
   // tied to the active device.
   struct sr_context *_sr_ctx = nullptr;
+
+  // --- USB hotplug (libsigrok sr_listen_hotplug) ---
+  // Hotplug callback runs on a libsigrok internal GThread; the static
+  // trampoline forwards to the main thread via QMetaObject::invokeMethod
+  // (Qt::QueuedConnection) so on_hotplug_event_() can safely touch Qt
+  // objects and the EventBus. Reconnect watchdog gives a 500ms grace
+  // period for the device to re-enumerate during capture before tearing
+  // down the capture state.
+  static void hotplug_cb_(int event, void *user_data);
+  void on_hotplug_event_(int event);
+  QTimer *reconnect_timer_ = nullptr;
+  void start_reconnect_watchdog_();
+  void on_reconnect_timeout_();
+  bool is_current_device_gone_();
+  void update_device_handle_();
 };
 
 } // namespace pv

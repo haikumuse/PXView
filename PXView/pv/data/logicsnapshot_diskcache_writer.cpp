@@ -143,10 +143,11 @@ void LogicSnapshotDiskCacheWriter::ensure_all_blocks_hot()
 // Enqueue (called by LogicSnapshot::append_payload)
 // ----------------------------------------------------------------------------
 
-void LogicSnapshotDiskCacheWriter::enqueue(const uint8_t *data, uint64_t length)
+void LogicSnapshotDiskCacheWriter::enqueue(const uint8_t *data, uint64_t length, int format)
 {
     AsyncPayload payload;
     payload.data = std::vector<uint8_t>(data, data + length);
+    payload.format = format;
     size_t v_size = payload.data.size();
 
     {
@@ -315,16 +316,34 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
 
         sr_datafeed_logic logic;
         logic.length = payload.data.size();
-        // Sample-interleaved: unitsize = bytes per sample group, derived from
-        // the snapshot's channel count. _channel_num stays on Snapshot (base)
-        // — friend access through _owner.
-        logic.unitsize = (uint16_t)((_owner->_channel_num + 7) / 8);
         logic.data = payload.data.data();
+        logic.format = payload.format;
+
+        // LA_CROSS_DATA: raw channel-block — forward to append_cross_payload
+        //   (v1.49 bit-copy algorithm, no deinterleave).
+        // LA_SPLIT_DATA (default): sample-interleaved — forward to
+        //   append_payload_impl which deinterleaves into the chunk tree.
+        // unitsize is only used by the SPLIT path; CROSS ignores it.
+        if (logic.format == LA_CROSS_DATA) {
+            // Cross data length must be a multiple of (channel_num * 8) bytes
+            // (each channel gets 8 bytes = 64 samples per chunk). Truncate
+            // incomplete chunks to prevent channel desync.
+            uint64_t chunk_size = (uint64_t)_owner->_channel_num * 8;
+            if (chunk_size > 0)
+                logic.length -= logic.length % chunk_size;
+            // unitsize unused for CROSS path; set to 1 to avoid div-by-zero.
+            logic.unitsize = 1;
+        } else {
+            // Sample-interleaved: unitsize = bytes per sample group, derived
+            // from the snapshot's channel count. _channel_num stays on
+            // Snapshot (base) — friend access through _owner.
+            logic.unitsize = (uint16_t)((_owner->_channel_num + 7) / 8);
+        }
 
         static int packet_count = 0;
         if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
-            pxv_info("async_write_worker: pkt %d, len=%llu, first_bytes: %02x %02x %02x %02x",
-                     packet_count, (unsigned long long)logic.length,
+            pxv_info("async_write_worker: pkt %d, fmt=%d, len=%llu, first_bytes: %02x %02x %02x %02x",
+                     packet_count, logic.format, (unsigned long long)logic.length,
                      logic.length > 0 ? ((uint8_t *)logic.data)[0] : 0,
                      logic.length > 1 ? ((uint8_t *)logic.data)[1] : 0,
                      logic.length > 2 ? ((uint8_t *)logic.data)[2] : 0,
@@ -336,9 +355,13 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
 
         {
             // _mutex stays on Snapshot (base) — friend access through _owner.
-            // append_payload_impl is private on LogicSnapshot — friend access.
+            // append_payload_impl / append_cross_payload are private on
+            // LogicSnapshot — friend access.
             std::lock_guard<std::mutex> lock(_owner->_mutex);
-            _owner->append_payload_impl(logic);
+            if (logic.format == LA_CROSS_DATA)
+                _owner->append_cross_payload(logic);
+            else
+                _owner->append_payload_impl(logic);
         }
 
         auto end = std::chrono::steady_clock::now();

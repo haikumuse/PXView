@@ -67,9 +67,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/core_sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/gui_sources.cmake)
 
 #===============================================================================
-#= libsigrok — upstream libsigrok 0.6.0 as a SHARED library (100% unmodified
+#= libsigrok — upstream libsigrok 0.6.0 as a STATIC library (100% unmodified
 #= upstream source). Driver registration via upstream SR_REGISTER_DEV_DRIVER
-#= section mechanism. Linked by PXView to expose 81 additional drivers.
+#= section mechanism. PXView links with --whole-archive to retain all driver
+#= objects in the __sr_driver_list section.
 add_subdirectory(libsigrok)
 
 #===============================================================================
@@ -171,15 +172,20 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # Executable links pxview-core (which transitively provides Qt Core/Gui/Network
 # /WebSockets + external libs + nlohmann_json via PUBLIC linkage) and adds the
 # Qt Widgets + Svg modules that the View layer needs.
-# libsigrok is a SHARED library; linking it pulls in the import library for
-# libsigrok.dll. The bridge/ include path is added to pxview-core (PUBLIC)
-# so sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can find
-# "bridge/srstd_pxview_glue.h"; PUBLIC propagates to the executable too.
+# libsigrok is a STATIC library; using --whole-archive ensures all driver
+# objects (registered via __attribute__((section("__sr_driver_list"))) are
+# retained. Without --whole-archive the linker drops unreferenced objects and
+# the driver section becomes empty, resulting in "Device list is empty".
 target_link_libraries(${PROJECT_NAME}
 	pxview-core
-	libsigrok
 	${QT_GUI_LIBS}
 )
+if(WIN32)
+	target_link_libraries(${PROJECT_NAME}
+		"-Wl,--whole-archive" libsigrok "-Wl,--no-whole-archive")
+else()
+	target_link_libraries(${PROJECT_NAME} libsigrok)
+endif()
 
 if(NOT WIN32 AND NOT APPLE)
 	target_link_libraries(${PROJECT_NAME} "-Wl,--export-dynamic")

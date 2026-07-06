@@ -201,9 +201,13 @@ bool CaptureManager::action_start_capture(bool instant,
       {_state->is_working(), _state->device_status()});
 
   bool disk_cache_enabled = false;
-  if (_state->device_agent().is_dsl_device())
-    _state->device_agent().get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
-                                            disk_cache_enabled);
+  // Disk cache is an application-layer feature (LogicSnapshotDiskCacheWriter
+  // and MmapAllocator do not depend on any driver). Query SR_CONF_DISK_CACHE_ENABLE
+  // if the driver supports it (DSL/PXLogic), otherwise use default (disabled).
+  // This lets fx2lafw and other upstream streaming devices enable disk cache
+  // without driver-level support — the feature lives in the app layer.
+  _state->device_agent().get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
+                                         disk_cache_enabled);
   if (disk_cache_enabled) {
     QString cache_path;
     _state->device_agent().get_config_string(SR_CONF_DISK_CACHE_PATH,
