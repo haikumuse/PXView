@@ -460,7 +460,7 @@ const GSList* DeviceAgent::get_device_mode_list()
 int DeviceAgent::get_hardware_operation_mode()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_hardware_operation_mode: _dev_handle is NULL");
+        // 启动/切换设备期间会被频繁调用，静默返回 -1 避免日志噪音
         return -1;
     }
     if (is_compat_device())
@@ -626,7 +626,8 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
     GVariant *data = NULL;
     int ret = sr_config_list(drv, _di, group, (uint32_t)key, &data);
     if (ret != SR_OK) {
-        if (ret != SR_ERR_NA)
+        // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理避免日志噪音
+        if (ret != SR_ERR_NA && ret != SR_ERR_ARG)
             pxv_detail("%s%d", "WARNING: Failed to get config list, key:", key);
         if (data) {
             g_variant_unref(data);
