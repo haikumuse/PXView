@@ -534,7 +534,7 @@ bool SigSession::set_file(QString name) {
   return set_default_device();
 }
 
-void SigSession::close_file(ds_device_handle dev_handle) {
+void SigSession::close_file(unsigned long long dev_handle) {
   if (!dev_handle) {
     pxv_warn("%s", "SigSession::close_file: dev_handle is NULL");
     return;
