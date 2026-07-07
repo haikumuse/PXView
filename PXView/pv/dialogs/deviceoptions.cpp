@@ -59,10 +59,12 @@ const QColor ChannelLabel::PROBE_COLORS[8] = {
     QColor(0x8F, 0x52, 0x02), QColor(0x50, 0x50, 0x50),
 };
 
-ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
+ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex,
+                           ChannelType type)
     : QWidget(parent) {
   _checked = check;
   _index = chanIndex;
+  _type = type;
 
   _box = new QCheckBox(this);
   _box->hide();
@@ -79,7 +81,18 @@ void ChannelLabel::paintEvent(QPaintEvent *event) {
   QPainter p(this);
   p.setRenderHint(QPainter::Antialiasing);
 
-  QColor color = PROBE_COLORS[_index % 8];
+  QColor color;
+  if (_type == Analog) {
+    static const char *analog_tokens[4] = {
+        "@signal-orange", "@signal-green", "@signal-red", "@signal-blue"};
+    color = AppConfig::Instance().GetThemeColor(analog_tokens[_index % 4]);
+  } else {
+    color = AppConfig::Instance().GetThemeColor(
+        QString("@logic-channel-%1").arg(_index % 8));
+    if (!color.isValid())
+      color = PROBE_COLORS[_index % 8];
+  }
+
   bool checked = _box->isChecked();
   bool enabled = _box->isEnabled();
 

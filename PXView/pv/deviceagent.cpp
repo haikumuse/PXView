@@ -563,26 +563,27 @@ const GSList* DeviceAgent::get_device_mode_list()
         }
     }
 
-    // Build the mode list based on capabilities.
-    // Order matches the original DevMode menu: LA / DAQ / DSO, with MSO
-    // prepended for mixed-signal devices (those exposing both logic and
-    // analog/DSO channels, e.g. the demo driver).
+    // Build the mode list based on the channel types the device actually
+    // exposes. libsigrok's device-class capability flags (SR_CONF_LOGIC_ANALYZER
+    // / SR_CONF_OSCILLOSCOPE) live in the driver-private drvopts[] array and
+    // are not exposed via any public API, so the channel list is the sole
+    // reliable source of truth for which modes a device supports.
+    //
+    // MSO (Mixed Signal Oscilloscope) is offered first when a device exposes
+    // logic channels alongside analog/DSO channels — it shows all channel
+    // types simultaneously.
     auto add_mode = [&](const sr_dev_mode *m) {
         _mode_list_cache = g_slist_append(_mode_list_cache, (gpointer)m);
     };
 
-    if ((has_logic && (has_analog || has_dso)) || is_demo()) {
-        // Mixed-signal capable device — offer MSO as the first option.
+    if (has_logic && (has_analog || has_dso))
         add_mode(&kDevModeMso);
+    if (has_logic)
         add_mode(&kDevModeLogic);
+    if (has_analog)
         add_mode(&kDevModeAnalog);
+    if (has_dso)
         add_mode(&kDevModeDso);
-    } else {
-        // Single-type devices — offer the original three modes.
-        add_mode(&kDevModeLogic);
-        add_mode(&kDevModeAnalog);
-        add_mode(&kDevModeDso);
-    }
 
     return _mode_list_cache;
 }

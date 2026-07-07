@@ -186,7 +186,7 @@ void DeviceOptionsDock::commit_channels() {
   bool hasEnabled = false;
 
   int mode = _device_agent->get_work_mode();
-  if (mode == LOGIC || mode == ANALOG) {
+  if (mode == LOGIC || mode == ANALOG || mode == MSO) {
     int index = 0;
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
@@ -410,16 +410,53 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   // above is still valid.)
   // No-op: vld_ch_num retains the value computed at the top of logic_probes().
 
-  QWidget *channel_pannel = new QWidget();
-  QGridLayout *channel_grid = new QGridLayout();
-  channel_grid->setContentsMargins(0, 0, 0, 0);
-  channel_grid->setSpacing(3);
-  channel_pannel->setLayout(channel_grid);
-
-  int channel_row = 0;
-  int channel_column = 0;
-  int channel_line_height = 0;
   int channel_columns = 8;
+  int channel_line_height = 0;
+
+  // --- Digital (Logic) channel group ---
+  QWidget *digital_group = new QWidget();
+  QVBoxLayout *digital_lay = new QVBoxLayout(digital_group);
+  digital_lay->setContentsMargins(0, 0, 0, 0);
+  digital_lay->setSpacing(4);
+
+  QLabel *digital_title = new QLabel(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DIGITAL_CHANNEL), "Digital Channel"),
+      digital_group);
+  digital_title->setObjectName("dock_section_title");
+  digital_title->setFont(dock_font_section_title());
+  digital_lay->addWidget(digital_title);
+
+  QWidget *digital_grid_widget = new QWidget();
+  QGridLayout *digital_grid = new QGridLayout(digital_grid_widget);
+  digital_grid->setContentsMargins(0, 0, 0, 0);
+  digital_grid->setSpacing(3);
+  digital_lay->addWidget(digital_grid_widget);
+
+  // --- Analog channel group ---
+  QWidget *analog_group = new QWidget();
+  QVBoxLayout *analog_lay = new QVBoxLayout(analog_group);
+  analog_lay->setContentsMargins(0, 0, 0, 0);
+  analog_lay->setSpacing(4);
+
+  QLabel *analog_title = new QLabel(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ANALOG_CHANNEL), "Analog Channel"),
+      analog_group);
+  analog_title->setObjectName("dock_section_title");
+  analog_title->setFont(dock_font_section_title());
+  analog_lay->addWidget(analog_title);
+
+  QWidget *analog_grid_widget = new QWidget();
+  QGridLayout *analog_grid = new QGridLayout(analog_grid_widget);
+  analog_grid->setContentsMargins(0, 0, 0, 0);
+  analog_grid->setSpacing(3);
+  analog_lay->addWidget(analog_grid_widget);
+
+  int digital_row = 0;
+  int digital_column = 0;
+  int analog_row = 0;
+  int analog_column = 0;
+  bool has_digital = false;
+  bool has_analog = false;
   row2++;
 
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -431,29 +468,59 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
     if (cur_ch_num > vld_ch_num)
       probe->enabled = false;
 
-    ChannelLabel *ch_item = new ChannelLabel(this, NULL, probe->index);
-    channel_grid->addWidget(ch_item, channel_row, channel_column++,
-                            Qt::AlignLeft | Qt::AlignTop);
+    bool is_analog = (probe->type == SR_CHANNEL_ANALOG);
+    ChannelLabel *ch_item = new ChannelLabel(
+        this, NULL, probe->index,
+        is_analog ? ChannelLabel::Analog : ChannelLabel::Logic);
+
+    if (is_analog) {
+      analog_grid->addWidget(ch_item, analog_row, analog_column++,
+                             Qt::AlignLeft | Qt::AlignTop);
+      has_analog = true;
+      if (analog_column == channel_columns) {
+        analog_column = 0;
+        analog_row++;
+        if (l->next != NULL)
+          row2++;
+      }
+    } else {
+      digital_grid->addWidget(ch_item, digital_row, digital_column++,
+                              Qt::AlignLeft | Qt::AlignTop);
+      has_digital = true;
+      if (digital_column == channel_columns) {
+        digital_column = 0;
+        digital_row++;
+        if (l->next != NULL)
+          row2++;
+      }
+    }
+
     _probes_checkBox_list.push_back(ch_item->getCheckBox());
     ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked
                                                          : Qt::Unchecked);
     channel_line_height = ch_item->height();
-
-    if (channel_column == channel_columns) {
-      channel_column = 0;
-      channel_row++;
-
-      if (l->next != NULL) {
-        row2++;
-      }
-    }
   }
 
   for (int c = 0; c < channel_columns; c++) {
-    channel_grid->setColumnStretch(c, 0);
+    digital_grid->setColumnStretch(c, 0);
+    analog_grid->setColumnStretch(c, 0);
   }
 
-  layout.addWidget(channel_pannel);
+  if (has_digital)
+    layout.addWidget(digital_group);
+  else
+    digital_group->setVisible(false);
+
+  // In LOGIC mode, hide the analog channel selection group.
+  // The group widget (and its checkboxes) must remain alive so that
+  // _probes_checkBox_list indices stay aligned with get_channels().
+  if (has_analog) {
+    layout.addWidget(analog_group);
+    if (_device_agent->get_work_mode() == LOGIC)
+      analog_group->setVisible(false);
+  } else {
+    analog_group->setVisible(false);
+  }
 
   QWidget *space = new QWidget();
   space->setFixedHeight(10);
@@ -667,7 +734,8 @@ void DeviceOptionsDock::on_analog_channel_enable() {
 }
 
 void DeviceOptionsDock::channel_checkbox_clicked(QCheckBox *sc) {
-  if (_device_agent->get_work_mode() == LOGIC) {
+  if (_device_agent->get_work_mode() == LOGIC ||
+      _device_agent->get_work_mode() == MSO) {
     if (sc == NULL || !sc->isChecked())
       return;
 
@@ -877,10 +945,10 @@ void DeviceOptionsDock::on_anlog_tab_changed(int index) {
 QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
   int mode = _device_agent->get_work_mode();
 
-  if (mode == LOGIC) {
+  if (mode == LOGIC || mode == MSO) {
     QVBoxLayout *grid = dynamic_cast<QVBoxLayout *>(lay);
     if (!grid) {
-      pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (LOGIC)");
+      pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (LOGIC/MSO)");
       return QString();
     }
     assert(grid);
@@ -945,7 +1013,8 @@ void DeviceOptionsDock::build_dynamic_panel() {
     dyn_title->setFont(sectionTitleFont);
 
     QLayout *inner;
-    if (_device_agent->get_work_mode() == LOGIC)
+    if (_device_agent->get_work_mode() == LOGIC ||
+        _device_agent->get_work_mode() == MSO)
       inner = new QVBoxLayout();
     else
       inner = new QGridLayout();
@@ -1021,7 +1090,8 @@ void DeviceOptionsDock::try_resize_scroll() {
     }
   }
 
-  if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_demo()) {
+  int wm = _device_agent->get_work_mode();
+  if ((wm == LOGIC || wm == MSO) && _device_agent->is_demo()) {
     _dynamic_panel->setFixedWidth(max_label_width + 250);
   }
   _container_lay->setEnabled(true);

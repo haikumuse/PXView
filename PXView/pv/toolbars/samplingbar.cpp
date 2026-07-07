@@ -939,6 +939,9 @@ double SamplingBar::hori_knob(int dir) {
     assert(false);
   }
 
+  pxv_info("[DEBUG-DSO] hori_knob: dir=%d currentIndex=%d count=%d",
+           dir, _sample_count->currentIndex(), _sample_count->count());
+
   disconnect(_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
              this, &SamplingBar::on_samplecount_sel);
 
@@ -966,6 +969,7 @@ double SamplingBar::hori_knob(int dir) {
   connect(_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SamplingBar::on_samplecount_sel);
 
+  pxv_info("[DEBUG-DSO] hori_knob: returning hori_res=%.9g", hori_res);
   return hori_res;
 }
 

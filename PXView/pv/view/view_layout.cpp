@@ -154,12 +154,16 @@ bool ViewLayout::zoom(double steps, int offset) {
   _view->_preScale = _view->_scale;
   _view->_preOffset = _view->_offset;
 
+  pxv_info("[DEBUG-DSO] zoom: steps=%.3f offset=%d width=%d work_mode=%d scale=%.9g",
+           steps, offset, width, _view->get_work_mode(), _view->_scale);
+
   if (_view->get_work_mode() != DSO) {
     _view->_scale *= std::pow(3.0 / 2.0, -steps);
     _view->_scale = max(min(_view->_scale, _view->_maxscale), _view->_minscale);
   } else {
     if (_view->_data_source->is_running_status() &&
         _view->_data_source->is_instant()) {
+      pxv_info("[DEBUG-DSO] zoom: skipped (running+instant)");
       return ret;
     }
 
@@ -169,9 +173,13 @@ bool ViewLayout::zoom(double steps, int offset) {
     else if (steps < -0.5)
       hori_res = _view->_sampling_bar->hori_knob(1);
 
+    pxv_info("[DEBUG-DSO] zoom: hori_res=%.9g cur_view_time=%.9g",
+             hori_res, _view->_data_source->cur_view_time());
+
     if (hori_res > 0) {
       const double scale = _view->_data_source->cur_view_time() / width;
       _view->_scale = max(min(scale, _view->_maxscale), _view->_minscale);
+      pxv_info("[DEBUG-DSO] zoom: new scale=%.9g", _view->_scale);
     } else {
       ret = false;
     }

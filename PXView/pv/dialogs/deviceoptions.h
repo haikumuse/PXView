@@ -53,12 +53,15 @@ public:
     virtual void ChannelChecked(int index, QObject *object)=0;
 };
 
-class ChannelLabel : public QWidget 
+class ChannelLabel : public QWidget
 {
 Q_OBJECT
 
 public:
-    ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex);
+    enum ChannelType { Logic, Analog };
+
+    ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex,
+                 ChannelType type = Logic);
 
     inline QCheckBox* getCheckBox(){
         return _box;
@@ -75,6 +78,7 @@ private:
     QCheckBox *_box;
     IChannelCheck *_checked;
     int     _index;
+    ChannelType _type;
     static const QColor PROBE_COLORS[8];
 };
 
