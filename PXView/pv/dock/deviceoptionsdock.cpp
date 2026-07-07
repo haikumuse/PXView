@@ -767,6 +767,17 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     }
     assert(probe);
 
+    // ANALOG mode: only show ANALOG channels (skip LOGIC/DSO channels that
+    // the demo device still exposes in its channel list but are disabled
+    // in this mode). Without this filter, ProbeOptions was created for
+    // LOGIC channels (D0-D7) whose cg is the "Logic" group — VDIV/COUPLING
+    // are not in that group's devopts, so every _getter() returned NULL.
+    if (probe->type != SR_CHANNEL_ANALOG) {
+      pxv_info("DeviceOptionsDock::analog_probes: skipping non-analog channel "
+               "'%s' (type=%d)", probe->name ? probe->name : "(null)", probe->type);
+      continue;
+    }
+
     _dso_channel_list.push_back(probe);
 
     QWidget *probe_widget = new QWidget(tabWidget);

@@ -209,6 +209,16 @@ bool DsoSignal::go_vDialPre(bool manul) {
     const double pre_vdiv = _vDial->get_value();
     _vDial->set_sel(_vDial->get_sel() - 1);
 
+    // Sync new vdiv to driver so that rebuild_signals() -> load_settings()
+    // -> get_probe_vdiv() reads the updated value. Without this, the async
+    // DeviceOptionsUpdated broadcast (emitted by mouse_press after this call
+    // returns) triggers rebuild_signals() which recreates DsoSignal and calls
+    // init_vDial()/load_settings() — reading the STALE driver vdiv and
+    // resetting _sel back to the old index.
+    DeviceAgent *dev = _data_source ? _data_source->device() : nullptr;
+    if (dev && probe)
+      dev->set_config_uint64(SR_CONF_PROBE_VDIV, _vDial->get_value(), probe);
+
     if (_data_source->is_stopped_status()) {
       set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
       set_scale(get_view_rect().height());
@@ -247,6 +257,16 @@ bool DsoSignal::go_vDialNext(bool manul) {
 
     const double pre_vdiv = _vDial->get_value();
     _vDial->set_sel(_vDial->get_sel() + 1);
+
+    // Sync new vdiv to driver so that rebuild_signals() -> load_settings()
+    // -> get_probe_vdiv() reads the updated value. Without this, the async
+    // DeviceOptionsUpdated broadcast (emitted by mouse_press after this call
+    // returns) triggers rebuild_signals() which recreates DsoSignal and calls
+    // init_vDial()/load_settings() — reading the STALE driver vdiv and
+    // resetting _sel back to the old index.
+    DeviceAgent *dev = _data_source ? _data_source->device() : nullptr;
+    if (dev && probe)
+      dev->set_config_uint64(SR_CONF_PROBE_VDIV, _vDial->get_value(), probe);
 
     if (_data_source->is_stopped_status()) {
       set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));

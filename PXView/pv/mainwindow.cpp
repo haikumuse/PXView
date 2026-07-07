@@ -228,9 +228,6 @@ void MainWindow::setupSideBar() {
                      widgets::SideBar::DockItem);
   _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
-  _side_bar->addItem("audio-waveform.svg", S_ID(IDS_TOOLBAR_SIGNAL_PROCESSING),
-                     "Filter", widgets::SideBar::DockItem,
-                     _drawer_page_signal_processing);
   _side_bar->addItem("workflow.svg", S_ID(IDS_TOOLBAR_MCP), "MCP",
                      widgets::SideBar::DockItem, _drawer_page_mcp);
   _side_bar->addItem("scroll-text.svg", S_ID(IDS_TOOLBAR_LOG), "Log",
