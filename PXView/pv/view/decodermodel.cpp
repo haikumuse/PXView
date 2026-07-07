@@ -115,7 +115,7 @@ QVariant DecoderModel::headerData(int section,
 
     if (orientation == Qt::Vertical) {
         if (_visible_start_row >= 0)
-            return (int64_t)section + _visible_start_row;
+            return qlonglong((int64_t)section + _visible_start_row);
         return section;
     }
 

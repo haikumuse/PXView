@@ -1721,6 +1721,40 @@ bool SigSession::switch_work_mode(int mode) {
     // side SR_CONF_DEVICE_MODE and app-layer cache for demo/file/compat).
     _state->device_agent().set_work_mode(mode);
 
+    // Sync channel enabled flags to the new work mode. Upstream libsigrok
+    // demo driver's demo_prepare_data() inspects ch->enabled to decide
+    // whether to send SR_DF_DSO vs SR_DF_LOGIC/ANALOG. If LOGIC channels
+    // remain enabled after switching to DSO mode, the driver takes the
+    // logic/analog path and never emits SR_DF_DSO — leaving the DSO view
+    // empty. The old DSView fork handled this inside ds_set_actived_device_mode();
+    // under upstream libsigrok we must do it here.
+    //
+    // Rules:
+    //   LOGIC mode — enable LOGIC channels, disable ANALOG/DSO.
+    //   DSO mode   — enable DSO channels, disable LOGIC/ANALOG.
+    //   ANALOG mode— enable ANALOG channels, disable LOGIC/DSO.
+    //   MSO mode   — enable LOGIC + ANALOG, disable DSO.
+    for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+      sr_channel *probe = (sr_channel *)l->data;
+      if (!probe)
+        continue;
+      bool want_enabled = false;
+      switch (mode) {
+      case LOGIC:  want_enabled = (probe->type == SR_CHANNEL_LOGIC); break;
+      case DSO:    want_enabled = (probe->type == SR_CHANNEL_DSO);   break;
+      case ANALOG: want_enabled = (probe->type == SR_CHANNEL_ANALOG);break;
+      case MSO:    want_enabled = (probe->type == SR_CHANNEL_LOGIC ||
+                                   probe->type == SR_CHANNEL_ANALOG); break;
+      default: break;
+      }
+      if (probe->enabled != want_enabled) {
+        sr_dev_channel_enable(probe, want_enabled);
+        pxv_info("switch_work_mode: ch[%d] '%s' type=%d enabled %d->%d",
+                 probe->index, probe->name ? probe->name : "(null)",
+                 probe->type, probe->enabled, want_enabled);
+      }
+    }
+
     if (cur_mode == LOGIC || cur_mode == MSO) {
       clear_all_decode_task2();
       _capture_manager->clear_decode_result();
