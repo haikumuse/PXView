@@ -43,7 +43,7 @@
 #include "../prop/binding/probeoptions.h"
 #include "../toolbars/titlebar.h"
 #include "../dialogs/pxdialog.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 
 class QScrollArea;
 

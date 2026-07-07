@@ -70,7 +70,7 @@ void ViewStatus::paintEvent(QPaintEvent *)
 
     int mode = _data_source->device()->get_work_mode();
 
-    if (mode == LOGIC) {
+    if (_view.is_logic_rendering_mode()) {
         fore.setAlpha(View::ForeAlpha);
         p.setPen(fore);
         p.drawText(this->rect(), Qt::AlignLeft | Qt::AlignVCenter, _rle_depth);

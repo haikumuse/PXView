@@ -29,7 +29,7 @@
 #include "../data/signaldata.h"
 #include "../data/snapshot.h"
 #include "../dialogs/pxdialog.h"
-#include "../dialogs/pxmessagebox.h"
+#include "../dialogs/dsmessagebox.h"
 #include "../log.h"
 #include "../sigsession.h"
 #include "../tabcontext.h"
@@ -1008,7 +1008,7 @@ void MeasureDock::set_cursor_btn_color(QPushButton *btn, QColor cursorColor,
 }
 
 QComboBox *MeasureDock::create_probe_selector(QWidget *parent) {
-  PxComboBox *selector = new PxComboBox(parent);
+  DsComboBox *selector = new DsComboBox(parent);
   update_probe_selector(selector);
   return selector;
 }

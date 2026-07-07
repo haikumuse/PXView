@@ -26,7 +26,7 @@
 #include "../config/appconfig.h"
 #include "../log.h"
 #include "../ui/dockfonts.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -67,7 +67,7 @@ LogDock::LogDock(QWidget *parent)
   font.setFixedPitch(true);
   _log_view->setFont(font);
 
-  _level_combo = new PxComboBox(_widget);
+  _level_combo = new DsComboBox(_widget);
   _level_combo->setObjectName("dock_label");
   _level_combo->setMinimumWidth(60);
   for (int i = 0; i <= 5; i++) {

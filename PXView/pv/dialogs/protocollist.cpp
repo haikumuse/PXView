@@ -48,7 +48,7 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session, pv::view::Decod
     _button_box(QDialogButtonBox::Ok,
         Qt::Horizontal, this)
 {
-    _map_zoom_combobox = new PxComboBox(this);
+    _map_zoom_combobox = new DsComboBox(this);
     _map_zoom_combobox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FIT_TO_WINDOW), "Fit to Window"));
     _map_zoom_combobox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FIXED), "Fixed"));
     int cur_map_zoom = _session->get_map_zoom();
@@ -60,7 +60,7 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session, pv::view::Decod
 
     connect(_map_zoom_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ProtocolList::on_set_map_zoom);
 
-    _protocol_combobox = new PxComboBox(this);
+    _protocol_combobox = new DsComboBox(this);
     auto &decode_sigs = _session->get_decoder_stacks();
     int index = 0;
 

@@ -1,5 +1,5 @@
-#ifndef PXCOMBOBOX_H
-#define PXCOMBOBOX_H
+#ifndef DSCOMBOBOX_H
+#define DSCOMBOBOX_H
 
 #include <QComboBox>
 #include <QDialog>
@@ -9,12 +9,12 @@
 
 class QWheelEvent;
 
-class PxComboPopup : public QDialog
+class DsComboPopup : public QDialog
 {
     Q_OBJECT
 
 public:
-    PxComboPopup(QComboBox *combo, QWidget *parent = nullptr);
+    DsComboPopup(QComboBox *combo, QWidget *parent = nullptr);
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -28,12 +28,12 @@ private:
     QList<QPushButton*> _itemButtons;
 };
 
-class PxComboBox : public QComboBox
+class DsComboBox : public QComboBox
 {
 public:
-    explicit PxComboBox(QWidget *parent = nullptr);
+    explicit DsComboBox(QWidget *parent = nullptr);
 
-    ~PxComboBox();
+    ~DsComboBox();
 
 public:
     void showPopup() override;
@@ -52,4 +52,4 @@ private:
 };
 
 
-#endif // PXCOMBOBOX_H
+#endif // DSCOMBOBOX_H

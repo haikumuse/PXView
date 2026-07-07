@@ -59,7 +59,21 @@ include_directories(${FFTW_INCLUDE_DIRS})
 #===============================================================================
 #= libusb-1.0
 #-------------------------------------------------------------------------------
-find_package(libusb-1.0)
+# Priority 1: project-internal libusb submodule. The root CMakeLists.txt
+# calls add_subdirectory(libusb) BEFORE include(deps.cmake), so the usb-1.0
+# target already exists here. When detected, set the variables directly and
+# skip find_package to bypass the system-search fallback path in
+# Findlibusb-1.0.cmake (which would warn about 24MHz streaming on Windows).
+# Priority 2: fall back to find_package(libusb-1.0) (system libusb).
+#-------------------------------------------------------------------------------
+if(TARGET usb-1.0)
+	set(LIBUSB_1_INTERNAL TRUE)
+	set(LIBUSB_1_FOUND TRUE)
+	set(LIBUSB_1_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/libusb/libusb")
+	set(LIBUSB_1_LIBRARIES usb-1.0)
+else()
+	find_package(libusb-1.0)
+endif()
 
 if(NOT LIBUSB_1_FOUND)
 	message(FATAL_ERROR  "Please install libusb!")

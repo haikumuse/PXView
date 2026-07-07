@@ -35,7 +35,7 @@
 #include <QLineEdit>
 
 class QComboBox;
-class PxComboBox;
+class DsComboBox;
 class QLabel;
 class QPushButton;
 class QTableWidget;
@@ -141,7 +141,7 @@ namespace dialogs
         QMap<QString, QPushButton*> _style_button_widgets;
         QMap<QString, class QLineEdit*> _style_line_edit_widgets;
         QMap<QString, QCheckBox*> _style_checkbox_widgets;
-        PxComboBox *_preset_combo;
+        DsComboBox *_preset_combo;
         
         class QTimer *_live_preview_timer;
         ::QFileSystemWatcher *_file_watcher;

@@ -153,7 +153,14 @@ public:
     bool have_enabled_channel();
 
     // --- Sample config ---
+    // get_sample_limit() 返回用户选择的采样深度对应的样本数（停止条件）。
+    // 在 stream 模式下若驱动 limit_samples=0（持续流），返回应用层默认值，
+    // 不再返回 ring buffer 大小。
     uint64_t get_sample_limit();
+    // get_ring_sample_count() 返回 ring buffer 大小（用于 mmap 内存分配）。
+    // stream 模式下基于 _app_stream_mem_buff(GB) 计算；非 stream 模式与
+    // get_sample_limit() 等价。
+    uint64_t get_ring_sample_count();
     uint64_t get_sample_rate();
     uint64_t get_time_base();
     double get_sample_time();

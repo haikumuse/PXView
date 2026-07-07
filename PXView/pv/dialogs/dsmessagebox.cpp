@@ -19,9 +19,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
-
-
-#include "pxmessagebox.h"
+#include "dsmessagebox.h"
 #include "shadow.h"
 
 #include <QObject>
@@ -39,7 +37,7 @@
 namespace pv {
 namespace dialogs {
 
-PxMessageBox::PxMessageBox(QWidget *parent,const QString title) :
+DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
 #ifdef Q_OS_LINUX
     QDialog(NULL)  //enable the popup dialog draged.
 #else
@@ -51,7 +49,7 @@ PxMessageBox::PxMessageBox(QWidget *parent,const QString title) :
     _main_widget = NULL;
     _msg = NULL;
     _titlebar = NULL;
-    _shadow = NULL;  
+    _shadow = NULL;
     _main_layout = NULL;
 
     _bClickYes = false;
@@ -60,21 +58,21 @@ PxMessageBox::PxMessageBox(QWidget *parent,const QString title) :
 
     _main_widget = new QWidget(this);
     _main_layout = new QVBoxLayout(_main_widget);
-    _main_widget->setLayout(_main_layout);  
+    _main_widget->setLayout(_main_layout);
 
     _shadow = new Shadow(this);
     _msg = new QMessageBox(this);
     _titlebar = new toolbars::TitleBar(false, this, NULL, false, false);
     _layout = new QVBoxLayout(this);
- 
+
     _shadow->setBlurRadius(10.0);
     _shadow->setDistance(3.0);
     _shadow->setColor(QColor(0, 0, 0, 80));
 
     _main_widget->setAutoFillBackground(true);
-    this->setGraphicsEffect(_shadow);  
+    this->setGraphicsEffect(_shadow);
 
-    _msg->setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);   
+    _msg->setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
 
     if (!title.isEmpty()){
         _titlebar->setTitle(title);
@@ -82,18 +80,18 @@ PxMessageBox::PxMessageBox(QWidget *parent,const QString title) :
     else{
         _titlebar->setTitle(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MESSAGE), "Message"));
     }
-    
+
     _main_layout->addWidget(_titlebar);
-    _main_layout->addWidget(_msg);   
+    _main_layout->addWidget(_msg);
     _layout->addWidget(_main_widget);
 
-    setLayout(_layout); 
+    setLayout(_layout);
 
-    connect(_msg, &QMessageBox::buttonClicked, this, &PxMessageBox::on_button);
+    connect(_msg, &QMessageBox::buttonClicked, this, &DSMessageBox::on_button);
 }
 
 
-PxMessageBox::~PxMessageBox()
+DSMessageBox::~DSMessageBox()
 {
     DESTROY_QT_OBJECT(_layout);
     DESTROY_QT_OBJECT(_main_widget);
@@ -105,38 +103,38 @@ PxMessageBox::~PxMessageBox()
     PopupDlgList::RemoveDlgFromList(this);
 }
 
-void PxMessageBox::accept()
+void DSMessageBox::accept()
 {
     using namespace Qt;
 
     QDialog::accept();
 }
 
-void PxMessageBox::reject()
+void DSMessageBox::reject()
 {
     using namespace Qt;
 
     QDialog::reject();
 }
-  
-QMessageBox* PxMessageBox::mBox()
+
+QMessageBox* DSMessageBox::mBox()
 {
     return _msg;
 }
-  
-void PxMessageBox::on_button(QAbstractButton *btn)
+
+void DSMessageBox::on_button(QAbstractButton *btn)
 {
     QMessageBox::ButtonRole role = _msg->buttonRole(btn);
 
     if (role == QMessageBox::AcceptRole || role == QMessageBox::YesRole){
         _bClickYes = true;
          accept();
-    } 
+    }
     else
         reject();
 }
 
-int PxMessageBox::exec()
+int DSMessageBox::exec()
 {
     QFont font = theme_font_dialog();
     ui::set_form_font(this, font);

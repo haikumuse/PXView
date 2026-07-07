@@ -44,7 +44,7 @@
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../ui/toast.h"
-#include "pxmessagebox.h"
+#include "dsmessagebox.h"
 
 
 using namespace boost;

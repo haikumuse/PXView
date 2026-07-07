@@ -252,6 +252,14 @@ struct sr_datafeed_dso {
 // dsotriggerdock.cpp. DSO mode is deprecated.
 #define DSO_TRIGGER_AUTO  0
 
+// Fork libsigrok DSO trigger config keys (not in upstream 0.6.0).
+// Used by dsotriggerdock.cpp for DSO trigger channel/holdoff/margin setting.
+// DSO mode is deprecated (DSCope hardware dropped); these stubs exist for
+// UI/compile compat only — no fork backend processes them.
+#define SR_CONF_TRIGGER_CHANNEL  30012
+#define SR_CONF_TRIGGER_HOLDOFF  30015
+#define SR_CONF_TRIGGER_MARGIN   30016
+
 // Fork libsigrok time-unit conversion macro. SR_SEC(x) converts x seconds to
 // the internal time-base unit (nanoseconds). Used by sigsession.cpp /
 // samplingbar.cpp for time-base math: total_time = timebase * HDIVS / SR_SEC(1).

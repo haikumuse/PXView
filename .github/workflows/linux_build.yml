@@ -1,0 +1,129 @@
+name: Linux AppImage Build
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build PXView AppImage (x86_64)
+    runs-on: ubuntu-22.04
+
+    env:
+      # Qt 安装路径(aqtinstall 全局安装)
+      QT_PREFIX: ${{ github.workspace }}/Qt
+      QT_VERSION: "6.11.0"
+      # linuxdeploy 工具
+      LINUXDEPLOY_VERSION: "continuous"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # 递归拉取子模块:libsigrok / libsigrokdecode / libusb / sigrok-firmware / sigrok-firmware-fx2lafw / sigrok-util
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          # 基础构建工具 + 库(参考 INSTALL_zh.md 步骤 1)
+          sudo apt-get install -y \
+            git gcc g++ make cmake ninja-build pkg-config \
+            libglib2.0-dev zlib1g-dev libusb-1.0-0-dev libudev-dev \
+            libboost-dev libfftw3-dev libssl-dev \
+            python3-dev python3-pip \
+            libgl1-mesa-dev libxkbcommon-dev libvulkan-dev \
+            libzip-dev nettle-dev libftdi1-dev \
+            sdcc \
+            wget
+
+      - name: Setup Node.js (for Web UI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Qt via aqtinstall
+        run: |
+          # Ubuntu apt 仓库的 Qt6 版本较旧,使用 aqtinstall 安装 Qt 6.11
+          # 参考 INSTALL_zh.md: pip3 install aqtinstall
+          pip3 install aqtinstall
+          aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 --outputdir ${{ env.QT_PREFIX }}
+
+      - name: Build fx2lafw firmware
+        run: |
+          # 可选:构建 fx2lafw 固件(需要 sdcc,15 个 .fw 文件)
+          # 若失败不阻断构建(asix-sigma + sysclk-lwla 仍会安装)
+          bash build_fx2lafw.sh || echo "WARNING: fx2lafw firmware build failed, will skip fx2lafw firmware"
+
+      - name: Configure CMake
+        run: |
+          # 仓库历史里可能残留 Windows 编译产物 build/CMakeCache.txt,必须先清空
+          rm -rf build
+          mkdir -p build
+          cd build
+          # 使用本地前缀(../install.dir)而非 /usr,这样 udev rules 等系统文件
+          # 会安装到本地目录,AppImage 不应包含系统级文件
+          cmake .. -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=../install.dir \
+            -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64"
+
+      - name: Build and Install Web UI (optional)
+        run: |
+          cd build
+          ninja install-webui || echo "WARNING: Web UI build skipped (npm not available or build failed)"
+
+      - name: Build PXView
+        run: |
+          cd build
+          ninja -j $(nproc)
+
+      - name: Install
+        run: |
+          cd build
+          ninja install
+
+      - name: Create AppImage using linuxdeploy
+        run: |
+          # 下载 linuxdeploy 和 qt 插件(参考 INSTALL_zh.md 步骤 4.2)
+          wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/${{ env.LINUXDEPLOY_VERSION }}/linuxdeploy-x86_64.AppImage"
+          wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/${{ env.LINUXDEPLOY_VERSION }}/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy*.AppImage
+
+          # linuxdeploy-plugin-qt 需要找到 qmake
+          export QMAKE="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/bin/qmake"
+          # 让 linuxdeploy 能找到 Qt 库
+          export LD_LIBRARY_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/lib:$LD_LIBRARY_PATH"
+
+          # 输出文件名
+          export OUTPUT="PXView-x86_64.AppImage"
+
+          # linuxdeploy 扫描 install.dir 作为 AppDir
+          # -e: 指定主可执行文件
+          # -d: 指定 desktop 文件(用于菜单集成)
+          # --plugin qt: 让 linuxdeploy-plugin-qt 自动部署 Qt 依赖(Qt plugins、平台插件等)
+          # --output appimage: 生成 AppImage
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir install.dir \
+            -e install.dir/bin/PXView \
+            -d install.dir/share/applications/pxview.desktop \
+            --plugin qt \
+            --output appimage
+
+      - name: Verify AppImage
+        run: |
+          ls -la PXView-x86_64.AppImage
+          # 验证 AppImage 可执行权限
+          chmod +x PXView-x86_64.AppImage
+          # 列出 AppImage 内容(可选,用于调试)
+          # ./PXView-x86_64.AppImage --appimage-extract >/dev/null 2>&1 && ls squashfs-root/ || true
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PXView-Linux-x86_64-AppImage
+          path: PXView-x86_64.AppImage
+          if-no-files-found: error

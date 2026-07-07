@@ -22,6 +22,7 @@
  */
 
 #include <libsigrokdecode.h>
+#include <libusb.h>
 
 #include "mainwindow.h"
 #include "sigsession.h"
@@ -261,6 +262,76 @@ static int sigrok_log_callback(void *cb_data, int loglevel,
   return 0;
 }
 
+// libusb windows hotplug backend log callback — routes libusb hotplug debug
+// messages (WM_DEVICECHANGE, device matching, usbi_hotplug_notification, etc.)
+// into PXView's xlog so they're visible in PXView.log. Without this, the
+// messages go to OutputDebugStringW/stderr which are invisible in MSYS.
+// level: 0=info, 1=warn, 2=err. msg is fully formatted with trailing newline.
+extern "C" {
+typedef void (*windows_hotplug_log_cb_t)(int level, const char *msg);
+void windows_hotplug_set_log_cb(windows_hotplug_log_cb_t cb);
+}
+extern "C" void pxv_hotplug_log_cb(int level, const char *msg)
+{
+  if (!msg)
+    return;
+  // Strip trailing newline (xlog adds its own).
+  char buf[600];
+  size_t n = strlen(msg);
+  if (n >= sizeof(buf))
+    n = sizeof(buf) - 1;
+  memcpy(buf, msg, n);
+  buf[n] = 0;
+  while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r'))
+    buf[--n] = 0;
+  switch (level) {
+    case 2: pxv_err("libusb-hotplug: %s", buf); break;
+    case 1: pxv_warn("libusb-hotplug: %s", buf); break;
+    default: pxv_info("libusb-hotplug: %s", buf); break;
+  }
+}
+
+// libusb global log callback — routes ALL libusb log messages (usbi_dbg,
+// usbi_err, usbi_warn, usbi_info) into PXView's xlog. This covers the entire
+// libusb core (transfer handling, device enumeration, etc.), not just the
+// hotplug module. Without this, libusb debug output goes to
+// OutputDebugStringW/stderr which are invisible in MSYS.
+// Maps libusb_log_level to pxv_* severity.
+extern "C" void pxv_libusb_log_cb(libusb_context *ctx,
+                                   enum libusb_log_level level,
+                                   const char *str)
+{
+  (void)ctx;
+  if (!str)
+    return;
+  // Strip trailing newline (xlog adds its own).
+  char buf[700];
+  size_t n = strlen(str);
+  if (n >= sizeof(buf))
+    n = sizeof(buf) - 1;
+  memcpy(buf, str, n);
+  buf[n] = 0;
+  while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r'))
+    buf[--n] = 0;
+  switch (level) {
+    case LIBUSB_LOG_LEVEL_ERROR:
+      pxv_err("libusb: %s", buf);
+      break;
+    case LIBUSB_LOG_LEVEL_WARNING:
+      pxv_warn("libusb: %s", buf);
+      break;
+    case LIBUSB_LOG_LEVEL_INFO:
+      pxv_info("libusb: %s", buf);
+      break;
+    default:
+      // LIBUSB_LOG_LEVEL_DEBUG — route to pxv_info so it's visible when
+      // log level is raised. libusb filters by level internally; if we
+      // receive a DEBUG message, the user explicitly enabled it.
+      pxv_info("libusb: %s", buf);
+      break;
+  }
+}
+
 bool SigSession::init() {
   // Upstream libsigrok 0.6.0 initialization (sole libsigrok after fork removal).
   // sr_init creates the sr_context which holds the libusb_context, driver list,
@@ -292,9 +363,28 @@ bool SigSession::init() {
 
   pxv_info("libsigrok initialized (upstream 0.6.0, sole library)");
 
+  // Register the libusb global log callback so ALL libusb log messages
+  // (usbi_dbg/usbi_err/usbi_warn/usbi_info) are routed into PXView.log via
+  // pxv_info/pxv_warn/pxv_err. This covers the entire libusb core (transfer
+  // handling, device enumeration, hotplug dispatch), not just the hotplug
+  // module. Without this, libusb debug output goes to OutputDebugStringW
+  // which is invisible in MSYS. Must be set before sr_listen_hotplug so even
+  // initial-scan logs are captured.
+  // LIBUSB_LOG_LEVEL_NONE: disable libusb core logging (hotplug backend
+  // still logs via windows_hotplug_set_log_cb). Change to
+  // LIBUSB_LOG_LEVEL_INFO/WARNING for diagnostics.
+  libusb_set_log_cb(NULL, pxv_libusb_log_cb, LIBUSB_LOG_CB_GLOBAL);
+  libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_NONE);
+
   // 首次扫描所有驱动，缓存到 DeviceAgent。后续 get_device_list 复用缓存，
   // 避免在设备 dev_open 后重复 sr_driver_scan 导致 LIBUSB_ERROR_ACCESS。
   refresh_device_list();
+
+  // Install the libusb windows hotplug log callback so hotplug backend
+  // messages (WM_DEVICECHANGE, device matching, notification dispatch) are
+  // routed into PXView.log via pxv_info/pxv_warn/pxv_err. The callback is
+  // set before sr_listen_hotplug so even initial-scan logs are captured.
+  windows_hotplug_set_log_cb(pxv_hotplug_log_cb);
 
   // Register USB hotplug listener (libsigrok sr_listen_hotplug).
   // The callback runs on a libsigrok internal GThread; hotplug_cb_ forwards
@@ -1726,7 +1816,11 @@ void SigSession::update_dso_data_scale() {
 
 int64_t SigSession::get_ring_sample_count() {
   int mode = _state->device_agent().get_work_mode();
-  if (mode == LOGIC) {
+  // MSO (Mixed Signal Oscilloscope) = LOGIC + 模拟通道。Core 层其他位置
+  // (sigsession.cpp:1605/1612) 已通过 `mode == LOGIC || mode == MSO` 将二者
+  // 合并处理；此处 ring sample count 也应一致 —— MSO 模式下逻辑通道是主要
+  // 数据源，应当返回 logic ring 的样本数，而非误走 analog 分支。
+  if (mode == LOGIC || mode == MSO) {
     return _state->view_data()->get_logic()->get_ring_sample_count();
   } else if (mode == DSO) {
     return _state->view_data()->get_dso()->get_ring_sample_count();

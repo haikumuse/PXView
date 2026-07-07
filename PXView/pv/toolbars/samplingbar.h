@@ -32,7 +32,7 @@
 #include <QToolBar> 
 #include <QAction>
 #include <QMenu>
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
@@ -165,9 +165,9 @@ namespace pv
             SigSession          *_session;
             QLabel              *_device_type_label;
             XToolButton         *_device_type;
-            PxComboBox          *_device_selector;
-            PxComboBox          *_sample_count;
-            PxComboBox          *_sample_rate;
+            DsComboBox          *_device_selector;
+            DsComboBox          *_sample_count;
+            DsComboBox          *_sample_rate;
             XToolButton         *_mode_button;
 
             QAction             *_mode_action;

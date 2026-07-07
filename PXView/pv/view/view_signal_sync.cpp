@@ -81,7 +81,7 @@ namespace view {
 void ViewSignalSync::compute_signal_groups() {
   _view->_signal_groups.clear();
 
-  if (_view->get_work_mode() != LOGIC) {
+  if (!_view->is_logic_rendering_mode()) {
     return;
   }
 
@@ -242,7 +242,7 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
 
   compute_signal_groups();
 
-  if (_view->get_work_mode() == LOGIC && !_view->_signal_groups.empty()) {
+  if (_view->is_logic_rendering_mode() && !_view->_signal_groups.empty()) {
     std::vector<size_t> group_order(_view->_signal_groups.size());
     for (size_t i = 0; i < _view->_signal_groups.size(); i++)
       group_order[i] = i;
@@ -358,9 +358,7 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
       return;
     }
 
-    int mode = _view->get_work_mode();
-
-    if (mode == LOGIC) {
+    if (_view->is_logic_rendering_mode()) {
       _view->_signalHeight = _view->_signalHeightScale;
     } else if (_view->get_work_mode() == DSO) {
       // PXView's _viewbottom is hidden and overlaid on viewport,
@@ -378,7 +376,7 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
     _view->_spanY = _view->_signalHeight + 2 * actualMargin;
     double next_v_offset = actualMargin;
 
-    if (mode == LOGIC) {
+    if (_view->is_logic_rendering_mode()) {
       // 保留 time_traces 中所有非 LOGIC、非 DECODER 的 trace（典型如 ANALOG/
       // DSO/Lissajous/Math）。在 demo 这类 LOGIC+ANALOG 混合设备上，ANALOG
       // 通道也必须进入 time_traces 布局循环，否则 v_offset 保持构造默认
@@ -789,6 +787,15 @@ void ViewSignalSync::on_signals_changed() {
   // returning an empty list. AllReplaced then deletes all existing view
   // signals and creates 0 new ones, clearing the waveform tracks
   // (Header::paintEvent shows traces=1).
+
+  if (!_view->_data_source) {
+    pxv_warn("on_signals_changed: no data_source, skipping");
+    return;
+  }
+
+  auto &models = _view->_data_source->get_signal_models();
+  pxv_info("on_signals_changed: own_signals=%d models=%d",
+           (int)_view->_own_signals.size(), (int)models.size());
   //
   // This does NOT directly touch _own_decode_traces / _own_spectrum_traces
   // / _own_math_trace / _own_lissajous_trace. Those are derived traces
@@ -796,14 +803,15 @@ void ViewSignalSync::on_signals_changed() {
   // sync_derived_traces() based on the Stack pointer identity (not the
   // Signal list).
 
-  if (!_view->_data_source)
-    return;
-
-  auto &models = _view->_data_source->get_signal_models();
   auto event = SignalFactory::compute_change_event(_view->_own_signals, models);
+  pxv_info("on_signals_changed: event=%d (Added=0 Removed=1 Modified=2 AllReplaced=3)",
+           (int)event);
 
   SignalFactory::update_signals(_view->_own_signals, _view->_data_source,
                                 _view->_data_source, event);
+
+  pxv_info("on_signals_changed: after update_signals, own_signals=%d",
+           (int)_view->_own_signals.size());
 
   // Dispatch to appropriate layout method based on event type.
   switch (event) {

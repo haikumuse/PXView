@@ -57,7 +57,7 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
   _set_button = new QPushButton(parent);
   _vis_button = new QPushButton(parent);
   _del_button = new QPushButton(parent);
-  _format_combox = new PxComboBox(parent);
+  _format_combox = new DsComboBox(parent);
 
   QString iconPath = GetIconPath();
   _del_button->setFlat(true);

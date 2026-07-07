@@ -31,7 +31,7 @@
  
 #include "../toolbars/titlebar.h"
 #include "pxdialog.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 
 namespace pv {
 
@@ -60,8 +60,8 @@ private:
     SigSession *_session;
     view::View *_view;
 
-    PxComboBox *_start_comboBox;
-    PxComboBox *_end_comboBox;
+    DsComboBox *_start_comboBox;
+    DsComboBox *_end_comboBox;
 
     QDialogButtonBox _button_box;
 

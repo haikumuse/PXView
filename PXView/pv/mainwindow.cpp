@@ -86,6 +86,7 @@
 #include "dock/protocoldock.h"
 #include "dock/searchdock.h"
 #include "dock/signalprocessingdock.h"
+#include "dock/dsotriggerdock.h"
 #include "dock/triggerdock.h"
 
 
@@ -403,8 +404,15 @@ void MainWindow::setup_ui() {
   _trigger_widget = new dock::TriggerDock(_trigger_dock, _session);
   _trigger_dock->setWidget(_trigger_widget);
 
-  // DSO trigger dock removed: DsoTriggerDock class deleted (DSO mode
-  // deprecated, DSCope hardware dropped). DSO trigger UI is no longer shown.
+  _dso_trigger_dock = new QDockWidget(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."),
+      this);
+  _dso_trigger_dock->setObjectName("dso_trigger_dock");
+  _dso_trigger_dock->setFeatures(QDockWidget::DockWidgetMovable);
+  _dso_trigger_dock->setAllowedAreas(Qt::RightDockWidgetArea);
+  _dso_trigger_dock->setVisible(false);
+  _dso_trigger_widget = new dock::DsoTriggerDock(_dso_trigger_dock, _session);
+  _dso_trigger_dock->setWidget(_dso_trigger_widget);
 
   _tab_widget = new pv::ui::DraggableTabWidget(this);
   _vertical_layout->addWidget(_tab_widget);
@@ -574,6 +582,7 @@ void MainWindow::setup_ui() {
   // They are hidden containers; content is shown via SlidingDrawer instead.
   _protocol_dock->setVisible(false);
   _trigger_dock->setVisible(false);
+  _dso_trigger_dock->setVisible(false);
   _measure_dock->setVisible(false);
   _search_dock->setVisible(false);
   _device_options_dock->setVisible(false);
@@ -599,6 +608,12 @@ void MainWindow::setup_ui() {
   _drawer_page_trigger = _sliding_drawer->addPage(
       _trigger_widget, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE),
                            "Trigger Setting..."));
+
+  // DSO Trigger
+  _dso_trigger_dock->setWidget(nullptr);
+  _drawer_page_dso_trigger = _sliding_drawer->addPage(
+      _dso_trigger_widget, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE),
+                               "Trigger Setting..."));
 
   // Measure
   _measure_dock->setWidget(nullptr);
@@ -701,6 +716,7 @@ void MainWindow::setup_ui() {
   _trig_bar->installEventFilter(this);
   _file_bar->installEventFilter(this);
   _logo_bar->installEventFilter(this);
+  _dso_trigger_dock->installEventFilter(this);
   _trigger_dock->installEventFilter(this);
   _protocol_dock->installEventFilter(this);
   _measure_dock->installEventFilter(this);
@@ -755,6 +771,8 @@ void MainWindow::setup_ui() {
 
   // view
   connect(initial_view, &view::View::prgRate, this, &MainWindow::prgRate);
+  connect(initial_view, &view::View::auto_trig, _dso_trigger_widget,
+          &dock::DsoTriggerDock::auto_trig);
 
   // trig_bar
   connect(_trig_bar, &toolbars::TrigBar::sig_setTheme, this,
@@ -786,6 +804,10 @@ void MainWindow::setup_ui() {
   connect(_sampling_bar, &toolbars::SamplingBar::sig_store_session_data, this,
           &MainWindow::on_save);
 
+  //
+  connect(_dso_trigger_widget, &dock::DsoTriggerDock::set_trig_pos,
+          initial_view, &view::View::set_trig_pos);
+
   _delay_prop_msg_timer.SetCallback(
       std::bind(&MainWindow::on_delay_prop_msg, this));
 
@@ -800,6 +822,7 @@ void MainWindow::setup_ui() {
   _signal_processing_widget->bind_context(initial_ctx);
   _log_widget->bind_context(initial_ctx);
   _trigger_widget->bind_context(initial_ctx);
+  _dso_trigger_widget->bind_context(initial_ctx);
 
   connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this,
           &MainWindow::on_tab_changed);
@@ -919,6 +942,8 @@ void MainWindow::on_load_device_first() {
 void MainWindow::retranslateUi() {
   _trigger_dock->setWindowTitle(L_S(
       STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
+  _dso_trigger_dock->setWindowTitle(L_S(
+      STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
   _protocol_dock->setWindowTitle(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_DOCK_TITLE), "Decode Protocol"));
   _measure_dock->setWindowTitle(
@@ -937,6 +962,10 @@ void MainWindow::retranslateUi() {
                                       S_ID(IDS_DLG_PROTOCOL_DOCK_TITLE),
                                       "Decode Protocol"));
     _sliding_drawer->setPageTitle(_drawer_page_trigger,
+                                  L_S(STR_PAGE_DLG,
+                                      S_ID(IDS_DLG_TRIGGER_DOCK_TITLE),
+                                      "Trigger Setting..."));
+    _sliding_drawer->setPageTitle(_drawer_page_dso_trigger,
                                   L_S(STR_PAGE_DLG,
                                       S_ID(IDS_DLG_TRIGGER_DOCK_TITLE),
                                       "Trigger Setting..."));
@@ -1044,7 +1073,7 @@ void MainWindow::on_session_error() {
     break;
   }
 
-  pv::dialogs::PxMessageBox msg(this, title);
+  pv::dialogs::DSMessageBox msg(this, title);
   msg.mBox()->setText(details);
   msg.mBox()->setStandardButtons(QMessageBox::Ok);
   msg.mBox()->setIcon(QMessageBox::Warning);
@@ -1137,9 +1166,13 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
 
   switch (index) {
   case SIDEBAR_TRIGGER:
-    // DSO trigger dock removed — always use the regular TriggerDock.
-    _trigger_widget->update_view();
-    drawerPage = _drawer_page_trigger;
+    if (_device_agent->get_work_mode() != DSO) {
+      _trigger_widget->update_view();
+      drawerPage = _drawer_page_trigger;
+    } else {
+      _dso_trigger_widget->update_view();
+      drawerPage = _drawer_page_dso_trigger;
+    }
     break;
   case SIDEBAR_DECODE:
     drawerPage = _drawer_page_protocol;
@@ -1341,7 +1374,9 @@ bool MainWindow::load_config_from_file(QString file) {
   bool bDecoder = false;
   int ret = load_config_from_json(doc, bDecoder);
 
-  // DSO trigger dock removed; no view to update.
+  if (ret && _device_agent->get_work_mode() == DSO) {
+    _dso_trigger_widget->update_view();
+  }
 
   if (_device_agent->is_hardware()) {
     _title_ext_string = file;
@@ -1820,10 +1855,16 @@ void MainWindow::restore_dock() {
       _drawer_current_page = _drawer_page_protocol;
     } else if (opt->triggerDock) {
       _side_bar->setItemChecked(SIDEBAR_TRIGGER, true);
-      // DSO trigger dock removed — always use the regular TriggerDock.
-      _trigger_widget->update_view();
-      _sliding_drawer->open(_drawer_page_trigger);
-      _drawer_current_page = _drawer_page_trigger;
+      int mode = _device_agent->get_work_mode();
+      if (mode != DSO) {
+        _trigger_widget->update_view();
+        _sliding_drawer->open(_drawer_page_trigger);
+        _drawer_current_page = _drawer_page_trigger;
+      } else {
+        _dso_trigger_widget->update_view();
+        _sliding_drawer->open(_drawer_page_dso_trigger);
+        _drawer_current_page = _drawer_page_dso_trigger;
+      }
     } else if (opt->measureDock) {
       _side_bar->setItemChecked(SIDEBAR_MEASURE, true);
       _sliding_drawer->open(_drawer_page_measure);
@@ -1936,6 +1977,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
          (_search_widget && _search_widget->isAncestorOf(focused)) ||
          (_trigger_widget && _trigger_widget->isAncestorOf(focused)) ||
          (_protocol_widget && _protocol_widget->isAncestorOf(focused)) ||
+         (_dso_trigger_widget && _dso_trigger_widget->isAncestorOf(focused)) ||
          (_measure_widget && _measure_widget->isAncestorOf(focused)))) {
       QWidget *target = focused;
       if (focused->focusProxy()) {
@@ -2523,6 +2565,7 @@ void MainWindow::reset_all_view() {
   _trigger_widget->update_view();
   _trigger_widget->device_updated();
   _trig_bar->reload();
+  _dso_trigger_widget->update_view();
   _measure_widget->reload();
   _device_options_widget->update_view();
   _signal_processing_widget->update_view();
@@ -3347,7 +3390,8 @@ void MainWindow::on_event(const pv::interface::StartCollectWorkPrev &) {
   // BEFORE CaptureManager::exec_capture() starts the device.
   if (_device_agent->get_work_mode() == LOGIC)
     _trigger_widget->try_commit_trigger();
-  // DSO trigger setting check removed: DsoTriggerDock class deleted.
+  else if (_device_agent->get_work_mode() == DSO)
+    _dso_trigger_widget->check_setting();
 
   current_view()->capture_init();
   current_view()->on_state_changed(false);
@@ -3595,6 +3639,7 @@ void MainWindow::remove_tab(int index) {
   _signal_processing_widget->bind_context(new_ctx);
   _log_widget->bind_context(new_ctx);
   _trigger_widget->bind_context(new_ctx);
+  _dso_trigger_widget->bind_context(new_ctx);
 
   pv::view::View *view = current_view();
   if (view) {
@@ -3649,6 +3694,7 @@ void MainWindow::on_tab_changed(int index) {
       _signal_processing_widget->unbind_context();
       _log_widget->unbind_context();
       _trigger_widget->unbind_context();
+      _dso_trigger_widget->unbind_context();
     }
 
     pv::TabContext *new_ctx = _tab_contexts[index];
@@ -3660,6 +3706,7 @@ void MainWindow::on_tab_changed(int index) {
     _signal_processing_widget->bind_context(new_ctx);
     _log_widget->bind_context(new_ctx);
     _trigger_widget->bind_context(new_ctx);
+    _dso_trigger_widget->bind_context(new_ctx);
 
     view->installEventFilter(this);
   }

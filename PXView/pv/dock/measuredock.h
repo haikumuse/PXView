@@ -39,7 +39,7 @@
 #include <QScrollArea>
 #include <vector>
 
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 #include "../widgets/smoothscrollarea.h"
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"

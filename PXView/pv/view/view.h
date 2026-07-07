@@ -336,6 +336,9 @@ public:
   int get_view_width();
   int get_view_height();
   int get_work_mode() const;
+  // 统一 LOGIC 与 MSO 模式的渲染/交互路径：MSO 视为 "LOGIC + 模拟通道"，
+  // 所有 LOGIC 模式下的渲染、交互行为在 MSO 模式下应当照常生效。
+  bool is_logic_rendering_mode() const;
 
   double get_hori_res();
 

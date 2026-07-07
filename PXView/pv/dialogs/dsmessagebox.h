@@ -19,10 +19,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
-
-
-#ifndef PXVIEW_PV_PXMESSAGEBOX_H
-#define PXVIEW_PV_PXMESSAGEBOX_H
+#ifndef PXVIEW_PV_DSMESSAGEBOX_H
+#define PXVIEW_PV_DSMESSAGEBOX_H
 
 #include <QDialog>
 #include <QWidget>
@@ -35,24 +33,24 @@ namespace dialogs {
 
      class Shadow;
 
-class PxMessageBox : public QDialog
+class DSMessageBox : public QDialog
 {
 	Q_OBJECT
 
 public:
-    PxMessageBox(QWidget *parent, const QString title=0);
+    DSMessageBox(QWidget *parent, const QString title=0);
 
-    virtual ~PxMessageBox();
+    virtual ~DSMessageBox();
 
-    QMessageBox *mBox(); 
+    QMessageBox *mBox();
 
     int exec();
-    
+
     inline int IsYes(){return _bClickYes;}
 
 protected:
     void accept();
-    void reject();  
+    void reject();
 
 private slots:
     void on_button(QAbstractButton* btn);
@@ -64,7 +62,7 @@ private:
     QMessageBox         *_msg;
     toolbars::TitleBar  *_titlebar;
     Shadow              *_shadow;
- 
+
     QPoint              _startPos;
     bool                _bClickYes;
 };
@@ -72,4 +70,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // PXVIEW_PV_PXMESSAGEBOX_H
+#endif // PXVIEW_PV_DSMESSAGEBOX_H

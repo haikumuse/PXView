@@ -946,29 +946,23 @@ Result<int> SessionService::configure_and_start(
     dbg_log("configure_and_start: step 7 - set duration");
 
     // 7. Set duration (sample limit) if specified.
-    // In stream mode, limit_samples MUST remain 0 (unlimited) — the
-    // fx2lafw driver treats 0 as "continuous streaming" and only aborts
-    // when sent_samples >= limit_samples. Setting a non-zero value in
-    // stream mode would cause premature abort. The samplingbar UI path
-    // already skips this; the MCP path must do the same.
-    const bool stream_mode = _device->is_stream_mode();
-    if (!stream_mode) {
-        if (duration_seconds > 0.0) {
-            uint64_t rate = _device->get_sample_rate();
-            if (rate > 0) {
-                uint64_t sample_limit = static_cast<uint64_t>(
-                    duration_seconds * static_cast<double>(rate));
-                _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
-            }
-        } else if (sample_count > 0) {
-            // Use explicit sample count when duration is not specified
-            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+    // fx2lafw 等上游驱动在 protocol.c 中实现 sent_samples/limit_samples 停止
+    // 逻辑：到达 limit_samples 即调用 fx2lafw_abort_acquisition 停止采集。
+    // hwdriver.c 只拒绝 set 0（= 不限制/持续流），非零值会被驱动接受作为
+    // 停止条件。Stream 模式下若用户指定 duration_seconds 或 sample_count，
+    // 设置到驱动让采集在到达后自动停止；若两者都为 0 则保持驱动默认 0
+    // (持续流式)。Ring buffer 大小由 DeviceAgent::get_sample_limit() 基于
+    // _app_stream_mem_buff 独立计算，与停止条件解耦。
+    if (duration_seconds > 0.0) {
+        uint64_t rate = _device->get_sample_rate();
+        if (rate > 0) {
+            uint64_t sample_limit = static_cast<uint64_t>(
+                duration_seconds * static_cast<double>(rate));
+            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
         }
-    } else {
-        // Stream mode: ensure limit_samples is 0 (continuous). Some
-        // drivers default to non-zero; force 0 here so the driver enters
-        // its streaming loop.
-        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, 0);
+    } else if (sample_count > 0) {
+        // Use explicit sample count when duration is not specified
+        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
     }
 
     // Let the UI process any pending config change events before starting.
@@ -1279,6 +1273,10 @@ Result<void> SessionService::set_sample_limit(uint64_t limit) {
         return Result<void>::Fail(ErrorCode::MissingDevice,
                                   "No device connected");
 
+    // fx2lafw 等上游驱动支持 limit_samples 停止条件（protocol.c 中
+    // sent_samples >= limit_samples 时调用 fx2lafw_abort_acquisition）。
+    // Stream 模式下设置非零 limit 会让流式采集在到达后自动停止；
+    // 传 0 则保持持续流（hwdriver.c 拒绝 set 0，DeviceAgent 静默忽略）。
     bool ok = _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, limit);
     if (!ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,

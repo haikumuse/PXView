@@ -23,7 +23,7 @@
 #include "mainframe.h"
 
 #include "toolbars/titlebar.h"
-#include "dialogs/pxmessagebox.h"
+#include "dialogs/dsmessagebox.h"
 #include "dialogs/pxdialog.h"
 #include "mainwindow.h"
 

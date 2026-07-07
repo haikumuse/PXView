@@ -26,7 +26,7 @@
 #include <QAbstractItemView>
 
 #include "enum.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 
 using namespace boost;
 using namespace std;
@@ -69,7 +69,7 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
         return NULL;
     }
 
-	_selector = new PxComboBox(parent);
+	_selector = new DsComboBox(parent);
 	_selector->setObjectName("dock_content");
 
 	for (unsigned int i = 0; i < _values.size(); i++) {

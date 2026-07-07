@@ -58,6 +58,7 @@ set(PXVIEW_GUI_SOURCES
     # Docks
     PXView/pv/dock/protocoldock.cpp
     PXView/pv/dock/triggerdock.cpp
+    PXView/pv/dock/dsotriggerdock.cpp
     PXView/pv/dock/measuredock.cpp
     PXView/pv/dock/searchdock.cpp
     PXView/pv/dock/logdock.cpp
@@ -76,7 +77,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/dialogs/protocollist.cpp
     PXView/pv/dialogs/protocolexp.cpp
     PXView/pv/dialogs/fftoptions.cpp
-    PXView/pv/dialogs/pxmessagebox.cpp
+    PXView/pv/dialogs/dsmessagebox.cpp
     PXView/pv/dialogs/shadow.cpp
     PXView/pv/dialogs/pxdialog.cpp
     PXView/pv/dialogs/interval.cpp
@@ -100,7 +101,7 @@ set(PXVIEW_GUI_SOURCES
     # UI utilities
     PXView/pv/ui/msgbox.cpp
     PXView/pv/ui/toast.cpp
-    PXView/pv/ui/pxcombobox.cpp
+    PXView/pv/ui/dscombobox.cpp
     PXView/pv/ui/dsspinbox.cpp
     PXView/pv/ui/langresource.cpp
     PXView/pv/ui/fn.cpp
@@ -180,6 +181,7 @@ set(PXView_HEADERS
     PXView/pv/toolbars/filebar.h
     PXView/pv/dock/protocoldock.h
     PXView/pv/dock/triggerdock.h
+    PXView/pv/dock/dsotriggerdock.h
     PXView/pv/dock/measuredock.h
     PXView/pv/dock/searchdock.h
     PXView/pv/dock/logdock.h
@@ -219,7 +221,7 @@ set(PXView_HEADERS
     PXView/pv/widgets/smoothtablehelper.h
     PXView/pv/widgets/sidebar.h
     PXView/pv/widgets/sidebarbutton.h
-    PXView/pv/dialogs/pxmessagebox.h
+    PXView/pv/dialogs/dsmessagebox.h
     PXView/pv/dialogs/shadow.h
     PXView/pv/dialogs/pxdialog.h
     PXView/pv/dialogs/interval.h
@@ -257,7 +259,7 @@ set(PXView_HEADERS
     PXView/pv/dock/protocolitemlayer.h
     PXView/pv/ui/msgbox.h
     PXView/pv/ui/toast.h
-    PXView/pv/ui/pxcombobox.h
+    PXView/pv/ui/dscombobox.h
     PXView/pv/ui/dsspinbox.h
     PXView/pv/dsvdef.h
     PXView/pv/dialogs/applicationpardlg.h

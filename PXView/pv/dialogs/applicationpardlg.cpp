@@ -71,7 +71,7 @@
 #include "../config/shortcutdefs.h"
 #include "../log.h"
 #include "../sigsession.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 #include "../ui/langresource.h"
 #include "../ui/uimanager.h"
 
@@ -534,7 +534,7 @@ QWidget *ApplicationParamDlg::createStylePage() {
   QHBoxLayout *presetLay = new QHBoxLayout();
   QLabel *presetLbl = new QLabel(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PRESET), "Preset Theme:"));
-  _preset_combo = new PxComboBox();
+  _preset_combo = new DsComboBox();
   _preset_combo->addItem(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_CUSTOM), "Custom"), "");
   _preset_combo->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DARK), "Dark"),

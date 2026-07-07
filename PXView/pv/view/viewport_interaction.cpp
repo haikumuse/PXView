@@ -76,7 +76,7 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
   _viewport->_elapsed_time.restart();
 
   if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.get_work_mode() == LOGIC) {
+      _viewport->_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;
     _viewport->_view.get_traces(TIME_VIEW, traces);
     int mouseY = event->position().toPoint().y() +
@@ -126,7 +126,7 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
   if (_viewport->_action_type == NO_ACTION &&
       event->button() == Qt::RightButton &&
       _viewport->_view.session().is_stopped_status()) {
-    if (_viewport->_view.get_work_mode() == LOGIC) {
+    if (_viewport->_view.is_logic_rendering_mode()) {
       _viewport->set_action(LOGIC_ZOOM);
     } else if (_viewport->_view.get_work_mode() == DSO) {
       if (_viewport->_hover_hit) {
@@ -275,7 +275,7 @@ void ViewportInteraction::mouseMoveEvent(QMouseEvent *event) {
   _viewport->_hover_hit = false;
 
   if (_viewport->_action_type == NO_ACTION && _viewport->_type == TIME_VIEW &&
-      _viewport->_view.get_work_mode() == LOGIC) {
+      _viewport->_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;
     _viewport->_view.get_traces(TIME_VIEW, traces);
     int mouseY =
@@ -636,7 +636,7 @@ void ViewportInteraction::mouseReleaseEvent(QMouseEvent *event) {
     return;
   }
 
-  if (mode == LOGIC) {
+  if (_viewport->_view.is_logic_rendering_mode()) {
     onLogicMouseRelease(event);
   } else if (mode == DSO) {
     onDsoMouseRelease(event);
@@ -667,7 +667,7 @@ void ViewportInteraction::mouseReleaseEvent(QMouseEvent *event) {
 
   /*
   // This code block prevents the cursor from moving.
-  if (mode == LOGIC && event->button() == Qt::LeftButton){
+  if (_viewport->_view.is_logic_rendering_mode() && event->button() == Qt::LeftButton){
       int clickX = _mouse_down_point.x();
       const int64_t index = _view.pixel2index(clickX);
       const int64_t total = _view.session().get_ring_sample_count();
@@ -687,10 +687,8 @@ void ViewportInteraction::mouseDoubleClickEvent(QMouseEvent *event) {
   if (!_viewport->_view.get_view_rect().contains(event->position().toPoint()))
     return;
 
-  int mode = _viewport->_view.get_work_mode();
-
   if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.get_work_mode() == LOGIC) {
+      _viewport->_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;
     _viewport->_view.get_traces(TIME_VIEW, traces);
     int mouseY =
@@ -729,7 +727,7 @@ void ViewportInteraction::mouseDoubleClickEvent(QMouseEvent *event) {
     }
   }
 
-  if (mode == LOGIC) {
+  if (_viewport->_view.is_logic_rendering_mode()) {
     if (event->button() == Qt::RightButton) {
       if (_viewport->_view.scale() == _viewport->_view.get_maxscale())
         _viewport->_view.set_preScale_preOffset();
@@ -741,7 +739,7 @@ void ViewportInteraction::mouseDoubleClickEvent(QMouseEvent *event) {
       uint64_t index;
       uint64_t index0 = 0, index1 = 0, index2 = 0;
 
-      if (mode == LOGIC) {
+      if (_viewport->_view.is_logic_rendering_mode()) {
         for (auto s : _viewport->_view.get_own_signals()) {
           if (s->signal_type() == SR_CHANNEL_LOGIC) {
             view::LogicSignal *logicSig = (view::LogicSignal *)s;
@@ -965,7 +963,7 @@ void ViewportInteraction::keyPressEvent(QKeyEvent *event) {
   // Alt+Left / Alt+Right for edge navigation
   if (event->modifiers() & Qt::AltModifier) {
     if (_viewport->_hover_logic_signal &&
-        _viewport->_view.get_work_mode() == LOGIC &&
+        _viewport->_view.is_logic_rendering_mode() &&
         _viewport->_view.session().is_stopped_status()) {
       if (event->key() == Qt::Key_Left) {
         navigate_to_edge(EdgeNavButton::Previous);
@@ -982,7 +980,7 @@ void ViewportInteraction::keyPressEvent(QKeyEvent *event) {
 LogicSignal *ViewportInteraction::get_hovered_logic_signal(const QPoint &pos) {
   if (_viewport->_type != TIME_VIEW)
     return nullptr;
-  if (_viewport->_view.get_work_mode() != LOGIC)
+  if (!_viewport->_view.is_logic_rendering_mode())
     return nullptr;
   if (!_viewport->_view.session().is_stopped_status())
     return nullptr;
@@ -1002,7 +1000,7 @@ LogicSignal *ViewportInteraction::get_hovered_logic_signal(const QPoint &pos) {
 
 void ViewportInteraction::update_edge_nav_buttons() {
   if (_viewport->_type != TIME_VIEW ||
-      _viewport->_view.get_work_mode() != LOGIC ||
+      !_viewport->_view.is_logic_rendering_mode() ||
       !_viewport->_view.session().is_stopped_status()) {
     _viewport->_prev_edge_btn->hide();
     _viewport->_next_edge_btn->hide();

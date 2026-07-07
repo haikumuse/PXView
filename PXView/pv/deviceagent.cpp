@@ -410,33 +410,57 @@ uint64_t DeviceAgent::get_sample_limit()
         g_variant_unref(gvar);
     }
     // 上游约定 limit_samples=0 表示"不限制"。
-    // - Stream 模式下（fx2lafw 等）：驱动持续采集直到用户停止，但应用层
-    //   需要一个 ring buffer 大小来分配 mmap 内存。从 stream_mem_buff 配置
-    //   （GB）+ 当前采样率计算 1 秒的样本数，取较大者作为 ring buffer 大小。
-    //   驱动侧 limit_samples 保持 0（不限制），应用层 get_sample_limit()
-    //   返回 ring buffer 大小供 LogicSnapshot 分配内存。
-    // - 非 stream 模式（demo 设备 devc->limit_samples == 0）：应用层提供
-    //   默认值 fallback，确保采集中止条件有定义。
+    // get_sample_limit() 返回的是"停止条件"（用户选择的采样深度对应的样本数），
+    // 用于视图时间范围计算（cur_sampletime = samplelimits / samplerate）、
+    // 采样深度下拉框比较等。Ring buffer 大小（用于 mmap 内存分配）请用
+    // get_ring_sample_count()。
+    // - 驱动 limit_samples > 0：直接返回驱动值（用户已选择有限采样深度）。
+    // - 驱动 limit_samples == 0（stream 模式持续流 / demo 默认）：返回应用层
+    //   默认值，确保视图有合理的时间范围参考。
     if (v == 0) {
-        if (is_stream_mode()) {
-            // Ring buffer = max(1 second of samples, stream_mem_buff GB worth)
-            uint64_t samplerate = get_sample_rate();
-            double mem_buff_gb = _app_stream_mem_buff;
-            // 1 byte/sample for logic (8 channels packed)
-            uint64_t mem_buff_samples = (uint64_t)(mem_buff_gb * 1e9);
-            uint64_t one_sec_samples = samplerate;
-            v = (mem_buff_samples > one_sec_samples) ? mem_buff_samples
-                                                      : one_sec_samples;
-            if (v == 0)
-                v = AppConfig::Instance().default_sample_limit();
-            pxv_info("get_sample_limit: stream mode, ring_buffer=%llu "
-                     "(samplerate=%llu, mem_buff_gb=%.1f)",
-                     (unsigned long long)v,
-                     (unsigned long long)samplerate, mem_buff_gb);
-        } else {
-            v = AppConfig::Instance().default_sample_limit();
-        }
+        v = AppConfig::Instance().default_sample_limit();
     }
+    return v;
+}
+
+uint64_t DeviceAgent::get_ring_sample_count()
+{
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_ring_sample_count: _dev_handle is NULL");
+        return 0;
+    }
+    // Ring buffer 大小用于 LogicSnapshot/AnalogSnapshot 的 mmap 内存分配。
+    // - 非 stream 模式：与 get_sample_limit() 等价（缓冲区刚好容纳一次采集）。
+    // - Stream 模式：驱动 limit_samples=0（持续流），需要基于
+    //   _app_stream_mem_buff(GB) 计算 ring buffer 大小。取 max(mem_buff_samples,
+    //   one_sec_samples) 确保至少能容纳 1 秒数据。
+    uint64_t driver_limit = 0;
+    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, NULL, NULL);
+    if (gvar) {
+        driver_limit = g_variant_get_uint64(gvar);
+        g_variant_unref(gvar);
+    }
+
+    if (!is_stream_mode()) {
+        // 非 stream 模式：ring buffer = 停止条件（与 get_sample_limit 一致）
+        return driver_limit > 0 ? driver_limit
+                                : AppConfig::Instance().default_sample_limit();
+    }
+
+    // Stream 模式：基于 _app_stream_mem_buff(GB) 计算
+    uint64_t samplerate = get_sample_rate();
+    double mem_buff_gb = _app_stream_mem_buff;
+    // 1 byte/sample for logic (8 channels packed)
+    uint64_t mem_buff_samples = (uint64_t)(mem_buff_gb * 1e9);
+    uint64_t one_sec_samples = samplerate;
+    uint64_t v = (mem_buff_samples > one_sec_samples) ? mem_buff_samples
+                                                      : one_sec_samples;
+    if (v == 0)
+        v = AppConfig::Instance().default_sample_limit();
+    pxv_info("get_ring_sample_count: stream mode, ring_buffer=%llu "
+             "(samplerate=%llu, mem_buff_gb=%.1f)",
+             (unsigned long long)v,
+             (unsigned long long)samplerate, mem_buff_gb);
     return v;
 }
 
@@ -635,9 +659,11 @@ bool DeviceAgent::detect_stream_mode()
         }
     }
 
-    if (is_demo() || is_file())
-        return true;
-
+    // demo/file 设备不是流式设备：它们生成/加载有限数据，应由用户选定的
+    // LIMIT_SAMPLES 控制采集深度（buffer 模式）。若误归为 stream，会触发
+    // get_sample_limit() 用 _app_stream_mem_buff(默认 16GB) 计算 ring_buffer，
+    // 导致 AnalogSnapshot::first_payload 执行 malloc(16e9 * ch_num * unit_bytes)
+    // 失败 → Malloc_err "内存不足，无法容纳此采样量"。
     return false;
 }
 
@@ -970,9 +996,17 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     int ret = sr_config_set(_di, cg, (uint32_t)key, data);
     (void)ch;  // upstream sr_config_set does not take a channel parameter
     if (ret != SR_OK) {
-        // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理
-        if (ret != SR_ERR_NA && ret != SR_ERR_ARG)
+        // SR_ERR_NA: device doesn't support this config key — common and
+        // acceptable, stay silent.
+        // SR_ERR_ARG: hwdriver.c rejected the value (e.g. SR_CONF_LIMIT_SAMPLES=0
+        // is rejected with "Cannot set 'limit_samples' to 0."). This was
+        // previously silent, causing stale values to persist undiagnosed.
+        // Log at debug level so future similar issues are visible.
+        if (ret == SR_ERR_ARG) {
+            pxv_dbg("DeviceAgent::set_config: key %d rejected by hwdriver (SR_ERR_ARG, likely value=0 for LIMIT_SAMPLES)", key);
+        } else if (ret != SR_ERR_NA) {
             pxv_err("%s%d", "ERROR:DeviceAgent::set_config, Failed to set value of config id:", key);
+        }
         return false;
     }
     config_changed();

@@ -59,7 +59,7 @@ void ViewportDrag::applyDragFrame() {
         _viewport->_drag_last_pos.y() - _viewport->_resize_mouse_down_y;
     int newUpperHeight = _viewport->_resize_upper_height + deltaY;
     if (newUpperHeight >= View::MinSignalHeight &&
-        _viewport->_view.get_work_mode() == LOGIC) {
+        _viewport->_view.is_logic_rendering_mode()) {
       _viewport->_resize_trace_upper->set_own_height(newUpperHeight);
       _viewport->_view.signals_changed(NULL);
     }
@@ -110,7 +110,7 @@ void ViewportDrag::applyDragFrame() {
         bool logic = false;
 
         for (auto s : _viewport->_view.get_own_signals()) {
-          if (mode == LOGIC && s->signal_type() == SR_CHANNEL_LOGIC) {
+          if (_viewport->_view.is_logic_rendering_mode() && s->signal_type() == SR_CHANNEL_LOGIC) {
             view::LogicSignal *logicSig = (view::LogicSignal *)s;
             if (logicSig->measure(_viewport->_drag_last_pos, index0, index1,
                                   index2)) {

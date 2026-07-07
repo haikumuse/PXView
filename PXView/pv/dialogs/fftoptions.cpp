@@ -60,14 +60,14 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
     _layout = NULL;
 
     _en_checkbox = new QCheckBox(this);
-    _len_combobox = new PxComboBox(this);
-    _interval_combobox = new PxComboBox(this);
-    _ch_combobox = new PxComboBox(this);
-    _window_combobox = new PxComboBox(this);
+    _len_combobox = new DsComboBox(this);
+    _interval_combobox = new DsComboBox(this);
+    _ch_combobox = new DsComboBox(this);
+    _window_combobox = new DsComboBox(this);
     _dc_checkbox = new QCheckBox(this);
     _dc_checkbox->setChecked(true);
-    _view_combobox = new PxComboBox(this);
-    _dbv_combobox = new PxComboBox(this);
+    _view_combobox = new DsComboBox(this);
+    _dbv_combobox = new DsComboBox(this);
  
     // setup _ch_combobox
     for(auto m : _session->get_signal_models()) {

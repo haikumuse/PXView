@@ -15,3 +15,7 @@
 	path = libsigrokdecode
 	url = https://github.com/haikumuse/libsigrokdecode.git
 	branch = pxview-fork
+[submodule "libusb"]
+	path = libusb
+	url = https://github.com/haikumuse/libusb.git
+	branch = event-abstraction-v4

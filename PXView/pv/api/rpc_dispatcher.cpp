@@ -234,7 +234,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 2. start_capture
         {
             {"name", "start_capture"},
-            {"description", "Start a new capture. Typical workflow: 1) get_devices to find device ID, 2) add_analyzer to add decoders (recommended BEFORE capture so auto-decode works), 3) start_capture with device/channel config, 4) wait_capture to wait for completion, 5) get_analyzer_results to read decoded data."},
+            {"description", "Start a new capture. Typical workflow: 1) get_devices to find device ID, 2) add_analyzer to add decoders (recommended BEFORE capture so auto-decode works), 3) start_capture with device/channel config, 4) wait_capture to wait for completion, 5) get_analyzer_results to read decoded data. NOTE: In Stream mode (channelMode='Stream'), captureConfiguration.timedCaptureMode.durationSeconds and manualCaptureMode.sampleCount are IGNORED — stream mode uses continuous acquisition with no sample limit. Use stop_capture to end streaming."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -281,13 +281,13 @@ json RpcDispatcher::get_tool_schemas() {
                             {"timedCaptureMode", {
                                 {"type", "object"},
                                 {"properties", {
-                                    {"durationSeconds", {{"type", "number"}, {"description", "Capture duration in seconds"}}}
+                                    {"durationSeconds", {{"type", "number"}, {"description", "Capture duration in seconds (ignored in Stream mode)"}}}
                                 }}
                             }},
                             {"manualCaptureMode", {
                                 {"type", "object"},
                                 {"properties", {
-                                    {"sampleCount", {{"type", "integer"}, {"description", "Number of samples to capture"}}}
+                                    {"sampleCount", {{"type", "integer"}, {"description", "Number of samples to capture (ignored in Stream mode)"}}}
                                 }}
                             }},
                             {"digitalCaptureMode", {

@@ -32,7 +32,7 @@
  
 #include "../toolbars/titlebar.h"
 #include "pxdialog.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 
 namespace pv {
 
@@ -64,14 +64,14 @@ private:
     SigSession *_session;
     uint64_t _sample_limit;
  
-    PxComboBox *_len_combobox;
-    PxComboBox *_interval_combobox;
+    DsComboBox *_len_combobox;
+    DsComboBox *_interval_combobox;
     QCheckBox *_en_checkbox;
-    PxComboBox *_ch_combobox;
-    PxComboBox *_window_combobox;
+    DsComboBox *_ch_combobox;
+    DsComboBox *_window_combobox;
     QCheckBox *_dc_checkbox;
-    PxComboBox *_view_combobox;
-    PxComboBox *_dbv_combobox;
+    DsComboBox *_view_combobox;
+    DsComboBox *_dbv_combobox;
 
     QLabel *_hint_label;
     QGridLayout *_glayout;

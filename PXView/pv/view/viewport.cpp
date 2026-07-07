@@ -178,7 +178,7 @@ int Viewport::get_total_height() {
   std::vector<Trace *> traces;
   _view.get_traces(_type, traces);
 
-  if (_view.get_work_mode() == LOGIC && _type == TIME_VIEW) {
+  if (_view.is_logic_rendering_mode() && _type == TIME_VIEW) {
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
       for (const auto &group : groups) {
@@ -280,9 +280,7 @@ void Viewport::set_receive_len(quint64 length) {
       _sample_received += length;
   }
 
-  int mode = _view.get_work_mode();
-
-  if (mode == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     auto *dev = _view.data_source()->device();
     if (dev && !dev->is_file()) {
       if (!_is_checked_trig && _view.session().is_triged()) {
@@ -312,7 +310,7 @@ void Viewport::set_receive_len(quint64 length) {
     }
   }
 
-  if (mode == LOGIC && AppConfig::Instance().appOptions.autoScrollLatestData &&
+  if (_view.is_logic_rendering_mode() && AppConfig::Instance().appOptions.autoScrollLatestData &&
       _view.session().is_realtime_refresh()) {
     _view.scroll_to_logic_last_data_time();
   }
@@ -321,7 +319,7 @@ void Viewport::set_receive_len(quint64 length) {
   // For LOGIC mode in realtime refresh, we must set _need_update so that
   // paintSignals() rebuilds the pixmap even when scale/offset are unchanged
   // (e.g. full-scale view where auto-scroll doesn't change the offset).
-  if (mode == LOGIC && _view.session().is_realtime_refresh()) {
+  if (_view.is_logic_rendering_mode() && _view.session().is_realtime_refresh()) {
     _need_update = true;
   }
   update(UpdateEventType::UPDATE_EV_GENERIC);
@@ -507,7 +505,7 @@ void Viewport::on_trigger_timer() {
 
   if (!_is_checked_trig) {
     auto *dev = _view.data_source()->device();
-    if (_view.get_work_mode() == LOGIC &&
+    if (_view.is_logic_rendering_mode() &&
         dev && !dev->is_file()) {
       if (_view.session().is_triged()) {
         _is_checked_trig = true;

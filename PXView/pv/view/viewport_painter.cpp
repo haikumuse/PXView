@@ -271,7 +271,7 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   qint64 t_group_cards = 0;
 #endif
   if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.get_work_mode() == LOGIC) {
+      _viewport->_view.is_logic_rendering_mode()) {
 #ifndef NDEBUG
     QElapsedTimer groupTimer;
     groupTimer.start();
@@ -368,7 +368,7 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
 
   std::set<Trace *> lastInGroup;
   if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.get_work_mode() == LOGIC) {
+      _viewport->_view.is_logic_rendering_mode()) {
     const auto &groups = _viewport->_view.get_signal_groups();
     for (const auto &group : groups) {
       if (group.traces.empty())
@@ -432,9 +432,8 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   QElapsedTimer signalsTimer;
   signalsTimer.start();
 #endif
-  int mode = _viewport->_view.get_work_mode();
-
-  if (mode == LOGIC || _viewport->_view.session().is_instant()) {
+  if (_viewport->_view.is_logic_rendering_mode() ||
+      _viewport->_view.session().is_instant()) {
     if (_viewport->_view.session().is_init_status()) {
       paintCursors(p);
     } else if (_viewport->_view.session().is_stopped_status()) {
@@ -530,7 +529,7 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
 
   bool rebuilt = false;
 
-  if (_viewport->_view.get_work_mode() == LOGIC) {
+  if (_viewport->_view.is_logic_rendering_mode()) {
     // Determine if view parameters changed (requires full logic signal rebuild)
     bool view_params_changed =
         (_viewport->_view.scale() != _viewport->_curScale ||
@@ -894,7 +893,7 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
 void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
   (void)back;
 
-  if (_viewport->_view.get_work_mode() == LOGIC &&
+  if (_viewport->_view.is_logic_rendering_mode() &&
       _viewport->_view.session().is_repeat_mode()) {
     return;
   }

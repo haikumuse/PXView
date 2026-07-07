@@ -34,7 +34,7 @@
 #include "../sigsession.h"
 #include "../toolbars/titlebar.h"
 #include "../ui/dockfonts.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../view/cursor.h"

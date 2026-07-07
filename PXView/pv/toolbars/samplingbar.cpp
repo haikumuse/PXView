@@ -25,7 +25,7 @@
 #include "../data/sessiondocument.h"
 #include "../deviceagent.h"
 #include "../dialogs/deviceoptions.h"
-#include "../dialogs/pxmessagebox.h"
+#include "../dialogs/dsmessagebox.h"
 #include "../dialogs/interval.h"
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
@@ -107,9 +107,9 @@ const QString SamplingBar::DIVString = " / div";
 SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
     : QToolBar("Sampling Bar", parent) {
   _device_type = new XToolButton(this);
-  _device_selector = new PxComboBox(this);
-  _sample_count = new PxComboBox(this);
-  _sample_rate = new PxComboBox(this);
+  _device_selector = new DsComboBox(this);
+  _sample_count = new DsComboBox(this);
+  _sample_rate = new DsComboBox(this);
   _mode_button = new XToolButton(this);
   _updating_device_list = false;
   _updating_sample_rate = false;
@@ -137,11 +137,11 @@ SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
   _mode_button->setPopupMode(QToolButton::InstantPopup);
 
   _device_selector->setSizeAdjustPolicy(
-      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
+      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
   _sample_rate->setSizeAdjustPolicy(
-      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
+      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
   _sample_count->setSizeAdjustPolicy(
-      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
+      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
   _device_selector->setMinimumContentsLength(15);
   _sample_rate->setMinimumContentsLength(15);
   _sample_count->setMinimumContentsLength(15);
@@ -677,9 +677,10 @@ void SamplingBar::update_sample_count_selector() {
   // SR_CONF_STREAM/SR_CONF_HW_DEPTH fork keys deleted — use DeviceAgent typed
   // wrappers. hw_depth used to come from the driver (PXLogic hardware buffer
   // depth); without it, derive an upper bound from the configured sample limit
-  // so the RLE depth cap is still meaningful.
+  // so the RLE depth cap is still meaningful. Stream 模式下用 ring buffer 大小
+  // 作为硬件缓冲深度的参考（RLE 上限）。
   stream_mode = _device_agent->is_stream_mode();
-  hw_depth = _device_agent->get_sample_limit();
+  hw_depth = _device_agent->get_ring_sample_count();
   int mode = _device_agent->get_work_mode();
 
   if (mode == LOGIC) {
@@ -986,24 +987,24 @@ void SamplingBar::commit_settings() {
       _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
     if (_device_agent->get_work_mode() != DSO) {
-      // Stream mode (fx2lafw etc.): do NOT call set_config(LIMIT_SAMPLES).
-      // The driver defaults to limit_samples=0 (= unlimited streaming) in
-      // fx2lafw_dev_new(). hwdriver.c rejects setting it to 0, so the only
-      // way to keep streaming is to leave the driver default untouched.
-      // get_sample_limit() returns a ring-buffer size from app-layer state
-      // for LogicSnapshot mmap allocation; the driver keeps 0 (stream).
-      // Non-stream (buffer) mode: set the user-selected sample count so
-      // buffered capture terminates normally.
-      const bool stream_mode = _device_agent->is_stream_mode();
-      if (!stream_mode) {
-        const uint64_t sample_count =
-            ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
-             SAMPLES_ALIGN) &
-            ~SAMPLES_ALIGN;
-        if (sample_count != 0 &&
-            sample_count != _device_agent->get_sample_limit())
-          _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
-      }
+      // 将用户选择的采样深度（sample_duration 秒）换算为样本数并下发到驱动。
+      // fx2lafw 等上游驱动在 protocol.c 中实现 sent_samples/limit_samples 停止
+      // 逻辑：到达 limit_samples 即调用 fx2lafw_abort_acquisition 停止采集。
+      // hwdriver.c 只拒绝 set 0（= 不限制/持续流），非零值会被驱动接受。
+      //
+      // Stream 模式下若用户选择有限采样深度（如 1s），sample_count 非零，会
+      // 被设置到驱动作为停止条件；若 UI 提供 "持续/∞" 选项（sample_duration
+      // 为 0 或特殊值），sample_count 为 0，hwdriver.c 返回 SR_ERR_ARG，
+      // DeviceAgent 静默忽略（pxv_dbg 日志），驱动保持 limit_samples=0 持续流。
+      // Stream 模式的 ring buffer 大小仍由 DeviceAgent::get_sample_limit() 基于
+      // _app_stream_mem_buff 计算，与停止条件解耦。
+      const uint64_t sample_count =
+          ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
+           SAMPLES_ALIGN) &
+          ~SAMPLES_ALIGN;
+      if (sample_count != 0 &&
+          sample_count != _device_agent->get_sample_limit())
+        _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
 
       // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
       // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log

@@ -254,7 +254,7 @@ void ViewDataSync::frame_began() {
 }
 
 void ViewDataSync::receive_end() {
-  if (_view->get_work_mode() == LOGIC) {
+  if (_view->is_logic_rendering_mode()) {
     bool rle = false;
     uint64_t actual_samples;
     bool ret;
@@ -590,7 +590,7 @@ bool ViewDataSync::eventFilter(QObject *object, QEvent *event) {
           round(cur_periods) * _view->_ruler->get_min_period() / _view->_scale - _view->_offset;
       double cur_deviate_x =
           qAbs(mouse_event->position().toPoint().x() - integer_x);
-      if (_view->get_work_mode() == LOGIC && cur_deviate_x < 10)
+      if (_view->is_logic_rendering_mode() && cur_deviate_x < 10)
         _view->_hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
       else
         _view->_hover_point = mouse_event->position().toPoint();

@@ -43,7 +43,7 @@ class MainWindow;
 class WinNativeWidget;
 
 namespace dialogs {
-class PxMessageBox;
+class DSMessageBox;
 class PxDialog;
 }
  

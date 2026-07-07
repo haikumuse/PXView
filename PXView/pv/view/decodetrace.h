@@ -37,7 +37,7 @@
 struct srd_channel;
 struct srd_decoder;
 
-class PxComboBox;
+class DsComboBox;
 
 namespace pv {
 

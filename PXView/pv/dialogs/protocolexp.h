@@ -34,7 +34,7 @@
 #include "../prop/binding/deviceoptions.h"
 #include "../toolbars/titlebar.h"
 #include "pxdialog.h"
-#include "../ui/pxcombobox.h"
+#include "../ui/dscombobox.h"
 
 namespace pv {
 
@@ -90,7 +90,7 @@ private:
     pv::view::DecoderModel *_decoder_model;
 
     toolbars::TitleBar *_titlebar;
-    PxComboBox *_format_combobox;
+    DsComboBox *_format_combobox;
     std::list<QCheckBox *> _row_sel_list;
     std::list<QLabel *> _row_label_list;
     QFormLayout *_flayout;

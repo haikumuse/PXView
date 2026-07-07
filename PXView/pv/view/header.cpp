@@ -136,7 +136,7 @@ void Header::paintEvent(QPaintEvent *) {
     painter.translate(0, -_view.get_vOffset());
   }
 
-  if (_view.get_work_mode() == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
       std::vector<size_t> group_indices(groups.size());
@@ -211,7 +211,7 @@ void Header::paintEvent(QPaintEvent *) {
   }
 
   std::set<Trace *> lastInGroup;
-  if (_view.get_work_mode() == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     const auto &groups = _view.get_signal_groups();
     for (const auto &group : groups) {
       if (group.traces.empty())
@@ -263,7 +263,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
 
   _view.get_traces(ALL_VIEW, traces);
 
-  if (_view.get_work_mode() == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
@@ -329,7 +329,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
     return;
   }
 
-  if (_view.get_work_mode() == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -398,7 +398,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       // LOGIC 模式:单击 COLOR 区直接打开滤波浮窗(对齐 HTML 原型交互)
       // ANALOG/DSO 模式:保留原选色流程(主题菜单的 token 改色只覆盖
       // LOGIC 全局色板,模拟/DSO 单通道颜色仍需此入口)
-      if (_view.get_work_mode() == LOGIC) {
+      if (_view.is_logic_rendering_mode()) {
         auto *sig = dynamic_cast<LogicSignal *>(mTrace);
         if (sig && sig->data()) {
           _context_trace = mTrace;
@@ -503,8 +503,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
   }
 
   // Make view index by Y value;
-  int mode = _view.get_work_mode();
-  if (_moveFlag && mode == LOGIC) {
+  if (_moveFlag && _view.is_logic_rendering_mode()) {
     const auto &groups = _view.get_signal_groups();
 
     if (groups.size() <= 1) {
@@ -720,7 +719,7 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
   assert(event);
 
   if (_view.session().is_working() &&
-      _view.get_work_mode() == LOGIC) {
+      _view.is_logic_rendering_mode()) {
     // Disable the hover status of trig button on left pannel.
     return;
   }
@@ -732,14 +731,14 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
     int newUpperHeight = _resize_upper_height + deltaY;
 
     if (newUpperHeight >= View::MinSignalHeight &&
-        _view.get_work_mode() == LOGIC) {
+        _view.is_logic_rendering_mode()) {
       _resize_trace_upper->set_own_height(newUpperHeight);
       _view.signals_changed(NULL);
     }
     return;
   }
 
-  if (_view.get_work_mode() == LOGIC) {
+  if (_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -925,7 +924,7 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
 
   // 非 LOGIC 模式的波形通道(ANALOG/DSO):右键改色菜单
   // (LOGIC 模式波形通道走 Zone A 滤波菜单,内含改色项)
-  if (_view.get_work_mode() != LOGIC) {
+  if (!_view.is_logic_rendering_mode()) {
     if (!t)
       return;
     _context_trace = t;

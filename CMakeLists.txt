@@ -60,7 +60,41 @@ endif()
 # Variable visibility is preserved across include() (same scope), so the
 # split is purely mechanical: same options, sources, flags, install rules.
 #-------------------------------------------------------------------------------
+
+#===============================================================================
+#= libusb — project-internal submodule (v1.0.30 with Windows event abstraction)
+#= Built as a static library, linked into libsigrok. Replaces system libusb
+#= 1.0.27 which lacks events_windows.c (the merged form of dickens/libusb's
+#= event-abstraction-v4 branch). This eliminates the root cause of 24MHz
+#= streaming failures on Windows (libusb_get_pollfds() returns NULL on WinUSB).
+#= Conditionally built only when the submodule is initialized; otherwise the
+#= system package is used (with a warning).
+#= IMPORTANT: add_subdirectory(libusb) MUST run BEFORE include(deps.cmake) so
+#= that the `usb-1.0` target exists when deps.cmake performs its
+#= `if(TARGET usb-1.0)` check. Otherwise deps.cmake falls back to the system
+#= libusb DLL (1.0.27), defeating the purpose of the submodule.
+#-------------------------------------------------------------------------------
 include(${CMAKE_SOURCE_DIR}/cmake/options.cmake)
+
+#===============================================================================
+#= libusb — project-internal submodule (v1.0.30 with Windows event abstraction)
+#= Built as a static library, linked into libsigrok. Replaces system libusb
+#= 1.0.27 which lacks events_windows.c (the merged form of dickens/libusb's
+#= event-abstraction-v4 branch). This eliminates the root cause of 24MHz
+#= streaming failures on Windows (libusb_get_pollfds() returns NULL on WinUSB).
+#= Conditionally built only when the submodule is initialized; otherwise the
+#= system package is used (with a warning).
+#= IMPORTANT: add_subdirectory(libusb) MUST run BEFORE include(deps.cmake) so
+#= that the `usb-1.0` target exists when deps.cmake performs its
+#= `if(TARGET usb-1.0)` check. Otherwise deps.cmake falls back to the system
+#= libusb DLL (1.0.27), defeating the purpose of the submodule — and the
+#= system header lacks the libusb_endpoint_set_raw_io() declaration added
+#= in 1.0.30, causing implicit-declaration compile errors in fx2lafw.
+#-------------------------------------------------------------------------------
+if(EXISTS "${CMAKE_SOURCE_DIR}/libusb/CMakeLists.txt" AND EXISTS "${CMAKE_SOURCE_DIR}/libusb/libusb/libusb.h")
+	add_subdirectory(libusb)
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/flags.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/core_sources.cmake)

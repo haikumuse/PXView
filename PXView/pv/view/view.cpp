@@ -556,6 +556,15 @@ int View::get_work_mode() const {
   return _device_agent->get_work_mode();
 }
 
+bool View::is_logic_rendering_mode() const {
+  // MSO (Mixed Signal Oscilloscope) = LOGIC + analog channels.
+  // Core 层 SigSession 已将 LOGIC 与 MSO 合并处理（sigsession.cpp:1605/1612），
+  // View 层所有原 `get_work_mode() == LOGIC` 的渲染/交互分支应统一改用本谓词，
+  // 让 MSO 模式继承 LOGIC 的全部行为（主题色板注入、滤波浮窗、信号分组等）。
+  const int mode = get_work_mode();
+  return mode == LOGIC || mode == MSO;
+}
+
 int View::get_view_width() { return _data_sync->get_view_width(); }
 
 int View::get_view_height() { return _data_sync->get_view_height(); }

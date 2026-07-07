@@ -81,7 +81,7 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
                     _state->view_data() == _state->capture_data();
 
     _state->capture_data()->get_logic()->first_payload(
-        o, _state->device_agent().get_sample_limit(),
+        o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels(), !bNotFree);
 
     // @todo Putting this here means that only listeners querying
@@ -124,7 +124,7 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
 
     // first payload
     _state->capture_data()->get_analog()->first_payload(
-        o, _state->device_agent().get_sample_limit(),
+        o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels());
     _state->frame_began();
   } else {

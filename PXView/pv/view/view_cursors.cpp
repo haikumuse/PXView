@@ -131,7 +131,7 @@ void ViewCursors::set_search_pos(uint64_t search_pos, bool hit) {
 }
 
 std::list<Cursor *> &ViewCursors::get_cursorList() {
-  if (_view->_device_agent->get_work_mode() == LOGIC) {
+  if (_view->is_logic_rendering_mode()) {
     return _view->_logic_cursors;
   } else {
     return _view->_dso_cursors;
