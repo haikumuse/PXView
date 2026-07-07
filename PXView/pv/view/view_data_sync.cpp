@@ -321,18 +321,15 @@ void ViewDataSync::data_updated() {
         // Core/View split, DataFeedParser (Core) cannot touch View objects,
         // so we perform the equivalent work here when the DataUpdated event
         // reaches the View layer.
-        //
-        // set_scale() MUST be re-applied here because rebuild_signals()
-        // (view_signal_sync.cpp) also calls set_scale(), but at that moment
-        // the viewport may not be realized yet (height==0) — leaving
-        // _scale==0 and collapsing paint_trace() output to a flat line at
-        // zeroY. By the time data arrives the viewport is sized, so this
-        // call finally gives a non-zero _scale.
         const int scale_height =
             s->get_view_rect().height() - View::DsoStatusHeight;
         s->set_scale(scale_height > 0 ? scale_height
                                       : s->get_view_rect().height());
         s->paint_prepare();
+        pxv_info("[DEBUG-DSO] data_updated: name=%s scale_height=%d view_rect_h=%d _scale=%.4f ref_min=%.2f ref_max=%.2f stop_scale=%.4f bits=%d",
+                 s->get_name().toUtf8().data(), scale_height,
+                 s->get_view_rect().height(), s->get_scale(),
+                 s->get_ref_min(), s->get_ref_max(), 1.0f, s->get_bits());
         break;
       }
       }

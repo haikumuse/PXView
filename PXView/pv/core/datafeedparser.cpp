@@ -154,6 +154,8 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
 }
 
 void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
+  pxv_info("[DEBUG-DSO] feed_in_dso: num_samples=%llu en_ch_num=%d sample_bits=%d trig_flag=%d",
+           (unsigned long long)o.num_samples, o.en_ch_num, o.sample_bits, o.trig_flag);
   if (_state->capture_data()->get_dso()->memory_failed()) {
     pxv_err("Unexpected dso packet");
     return;

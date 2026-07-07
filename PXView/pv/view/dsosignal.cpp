@@ -714,6 +714,13 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
   // Refresh colour from theme on every paint
   _colour = getSignalColor(_model ? _model->index() : 0);
 
+  static int _paint_mid_cnt = 0;
+  _paint_mid_cnt++;
+  if (_paint_mid_cnt % 100 == 1) {
+    pxv_info("[DEBUG-DSO] paint_mid ENTRY: name=%s _show=%d left=%d right=%d _data=%p enabled=%d",
+             get_name().toUtf8().data(), _show ? 1 : 0, left, right, (void*)_data, enabled() ? 1 : 0);
+  }
+
   if (!_show || right <= left) {
     return;
   }
@@ -733,8 +740,14 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
       return;
     const int64_t offset = _view->offset();
 
-    if (!_data || _data->empty() || !_data->has_data(index))
+    if (!_data || _data->empty() || !_data->has_data(index)) {
+      if (_paint_mid_cnt % 100 == 1) {
+        pxv_info("[DEBUG-DSO] paint_mid SKIP: name=%s data_empty=%d has_data=%d",
+                 get_name().toUtf8().data(), _data ? _data->empty() : 1,
+                 _data ? _data->has_data(index) : 0);
+      }
       return;
+    }
 
     const uint16_t enabled_channels = _data->get_channel_num();
     const double pixels_offset = offset;
@@ -877,6 +890,14 @@ void DsoSignal::paint_trace(QPainter &p, const pv::data::DsoSnapshot *snapshot,
   (void)num_channels;
 
   const int64_t sample_count = end - start + 1;
+
+  static int _paint_trace_cnt = 0;
+  _paint_trace_cnt++;
+  if (_paint_trace_cnt % 50 == 1) {
+    pxv_info("[DEBUG-DSO] paint_trace: name=%s sample_count=%lld _scale=%.4f hw_offset=%d zeroY=%d ref_min=%.2f ref_max=%.2f",
+             get_name().toUtf8().data(), (long long)sample_count, _scale,
+             hw_offset, zeroY, _ref_min, _ref_max);
+  }
 
   if (sample_count > 0) {
     pv::data::DsoSnapshot *pshot =
