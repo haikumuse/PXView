@@ -50,10 +50,11 @@ jobs:
           # Ubuntu apt 仓库的 Qt6 版本较旧,使用 aqtinstall 安装 Qt 6.11
           # 参考 INSTALL_zh.md: pip3 install aqtinstall
           # 注意:默认 install-qt 只装 qtbase,WebSockets 是独立 addon 模块需用 -m 显式安装
+          # 模块名带 qt 前缀(用 `aqt list-qt linux desktop --modules <ver> <arch>` 查询)
           # (CMake/deps.cmake 的 find_package(Qt6 ... COMPONENTS ... WebSockets) 依赖此模块)
           pip3 install aqtinstall
           aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 \
-            -m websockets \
+            -m qtwebsockets \
             --outputdir ${{ env.QT_PREFIX }}
 
       - name: Build fx2lafw firmware
