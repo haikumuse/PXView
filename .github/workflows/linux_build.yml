@@ -36,6 +36,11 @@ jobs:
             libboost-dev libfftw3-dev libssl-dev \
             python3-dev python3-pip \
             libgl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libvulkan-dev \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render0 libxcb-render-util0 libxcb-randr0 libxcb-shape0 \
+            libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
+            libxcb-xinput0 libxcb-xkb1 libxcb-util1 \
+            libwayland-dev libwayland-egl1 libwayland-client0 libwayland-cursor0 \
             libzip-dev nettle-dev libftdi1-dev \
             sdcc \
             wget
@@ -52,9 +57,10 @@ jobs:
           # 注意:默认 install-qt 只装 qtbase,WebSockets 是独立 addon 模块需用 -m 显式安装
           # 模块名带 qt 前缀(用 `aqt list-qt linux desktop --modules <ver> <arch>` 查询)
           # (CMake/deps.cmake 的 find_package(Qt6 ... COMPONENTS ... WebSockets) 依赖此模块)
+          # qtwayland 必须显式安装,否则 AppImage 只打包 xcb 插件,在 Wayland 系统上无法启动
           pip3 install aqtinstall
           aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 \
-            -m qtwebsockets \
+            -m qtwebsockets qtwayland \
             --outputdir ${{ env.QT_PREFIX }}
 
       - name: Build fx2lafw firmware
@@ -69,11 +75,11 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          # 使用本地前缀(../install.dir)而非 /usr,这样 udev rules 等系统文件
-          # 会安装到本地目录,AppImage 不应包含系统级文件
+          # linuxdeploy expects AppDir to contain usr/{bin,share,lib}.
+          # Install to install.dir/usr so paths align with linuxdeploy's --appdir.
           cmake .. -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=../install.dir \
+            -DCMAKE_INSTALL_PREFIX=../install.dir/usr \
             -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64"
 
       - name: Build and Install Web UI (optional)
@@ -113,8 +119,8 @@ jobs:
           # --output appimage: 生成 AppImage
           ./linuxdeploy-x86_64.AppImage \
             --appdir install.dir \
-            -e install.dir/bin/PXView \
-            -d install.dir/share/applications/pxview.desktop \
+            -e install.dir/usr/bin/PXView \
+            -d install.dir/usr/share/applications/pxview.desktop \
             --plugin qt \
             --output appimage
 

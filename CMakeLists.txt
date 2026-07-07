@@ -233,7 +233,11 @@ elseif(APPLE)
 	# 防止驱动段 __DATA,__sr_driver_list 被链接器丢弃导致设备列表为空。
 	target_link_libraries(${PROJECT_NAME} "-Wl,-all_load" libsigrok)
 else()
-	target_link_libraries(${PROJECT_NAME} libsigrok)
+	# Linux: --whole-archive 强制保留所有 driver objects（通过
+	# __attribute__((section("__sr_driver_list"))) 注册），否则链接器
+	# 会丢弃未引用的驱动 object，导致 __sr_driver_list 段为空、设备列表为空。
+	target_link_libraries(${PROJECT_NAME}
+		"-Wl,--whole-archive" libsigrok "-Wl,--no-whole-archive")
 endif()
 
 if(NOT WIN32 AND NOT APPLE)
