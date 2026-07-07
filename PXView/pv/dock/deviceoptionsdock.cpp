@@ -744,6 +744,8 @@ void DeviceOptionsDock::channel_checkbox_clicked(QCheckBox *sc) {
 void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
   using namespace Qt;
 
+  pxv_info("DeviceOptionsDock::analog_probes: ENTER");
+
   _probes_checkBox_list.clear();
   _probe_options_binding_list.clear();
   _dso_channel_list.clear();
@@ -806,15 +808,22 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
       probe_layout->addWidget(lb, i, 0, 1, 1);
 
       QWidget *pow = p->get_widget(probe_widget);
+      if (!pow) {
+        pxv_warn("DeviceOptionsDock::analog_probes: get_widget returned NULL "
+                 "for property '%s' (name='%s'), skipping",
+                 label.toUtf8().data(), p->name().toUtf8().data());
+        delete lb;
+        continue;
+      }
       pow->setEnabled(probe_checkBox->isChecked());
       pow->setFont(contentFont);
 
-      if (p->name().contains("Map Default")) {
+      if (p->name().contains("map default", Qt::CaseInsensitive)) {
         pow->setProperty("index", probe->index);
         connect(qobject_cast<QPushButton *>(pow), &QPushButton::clicked, this,
                 &DeviceOptionsDock::analog_channel_check);
       } else {
-        if (probe_checkBox->isChecked() && p->name().contains("Map")) {
+        if (probe_checkBox->isChecked() && p->name().contains("map", Qt::CaseInsensitive)) {
           bool map_default = true;
 
           _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,

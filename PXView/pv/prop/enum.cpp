@@ -27,6 +27,7 @@
 
 #include "enum.h"
 #include "../ui/dscombobox.h"
+#include "../log.h"
 
 using namespace boost;
 using namespace std;
@@ -66,6 +67,9 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
 
 	GVariant *const value = _getter ? _getter() : NULL;
     if (!value) {
+        pxv_warn("Enum::get_widget: _getter() returned NULL for property '%s' "
+                 "(name='%s'), widget will not be created",
+                 label().toUtf8().data(), name().toUtf8().data());
         return NULL;
     }
 

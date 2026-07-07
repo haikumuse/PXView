@@ -875,14 +875,31 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
     // find the channel group that contains ch so the driver can identify
     // the channel. This is needed because upstream sr_config_get only takes
     // cg (not ch), but PXView's DeviceAgent passes ch for per-channel config.
+    //
+    // A channel may belong to multiple groups (e.g. demo driver's ANALOG
+    // channels are in both the "Analog" multi-channel group AND a per-channel
+    // group). For per-channel config keys (VDIV/COUPLING/etc.), the multi-
+    // channel group may not advertise the key in its devopts, causing
+    // sr_config_get's check_key() to reject it. Prefer a single-channel group
+    // (g_slist_length == 1) so per-channel keys reach the driver.
     if (!cg && ch) {
+        struct sr_channel_group *fallback_grp = nullptr;
         for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
             struct sr_channel_group *grp = (struct sr_channel_group *)l->data;
             if (grp && g_slist_find(grp->channels, (gpointer)ch)) {
-                cg = grp;
-                break;
+                if (g_slist_length(grp->channels) == 1) {
+                    cg = grp;
+                    break;
+                }
+                if (!fallback_grp)
+                    fallback_grp = grp;
             }
         }
+        if (!cg)
+            cg = fallback_grp;
+        pxv_info("DeviceAgent::get_config: cg lookup for key=%d ch=%p -> cg=%p (name=%s)",
+                 key, (void*)ch, (void*)cg,
+                 cg ? (cg->name ? cg->name : "(null)") : "(none)");
     }
 
     // App-layer C-class keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF,
@@ -955,14 +972,22 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     }
 
     // For per-channel config keys, auto-find cg from ch (same as get_config).
+    // Prefer single-channel group for per-channel keys (see get_config comment).
     if (!cg && ch) {
+        struct sr_channel_group *fallback_grp = nullptr;
         for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
             struct sr_channel_group *grp = (struct sr_channel_group *)l->data;
             if (grp && g_slist_find(grp->channels, (gpointer)ch)) {
-                cg = grp;
-                break;
+                if (g_slist_length(grp->channels) == 1) {
+                    cg = grp;
+                    break;
+                }
+                if (!fallback_grp)
+                    fallback_grp = grp;
             }
         }
+        if (!cg)
+            cg = fallback_grp;
     }
 
     // App-layer C-class keys: store in member state for ALL devices.
@@ -1372,10 +1397,27 @@ QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
     if (!gvar)
         return {};
     QVector<uint64_t> result;
-    gsize num;
-    uint64_t *arr = (uint64_t *)g_variant_get_fixed_array(gvar, &num, sizeof(uint64_t));
-    for (gsize i = 0; i < num; i++)
-        result.append(arr[i]);
+    /* Driver may return either:
+     *   - a dict {"vdivs": [uint64...]} (a{sv}) — DSL/demo driver format,
+     *     consumed by ProbeOptions::bind_vdiv via g_variant_lookup_value.
+     *   - a direct uint64 array ("at") — legacy format.
+     * Handle both so DsoSignal::init_vDial gets the correct vdiv count
+     * (a wrong count causes isMin()&&isMax() deadlock on the dial). */
+    GVariant *gvar_vdivs = g_variant_lookup_value(gvar, "vdivs", G_VARIANT_TYPE("at"));
+    if (gvar_vdivs) {
+        gsize num;
+        uint64_t *arr = (uint64_t *)g_variant_get_fixed_array(gvar_vdivs, &num, sizeof(uint64_t));
+        for (gsize i = 0; i < num; i++)
+            result.append(arr[i]);
+        g_variant_unref(gvar_vdivs);
+    } else if (g_variant_is_of_type(gvar, G_VARIANT_TYPE("at"))) {
+        gsize num;
+        uint64_t *arr = (uint64_t *)g_variant_get_fixed_array(gvar, &num, sizeof(uint64_t));
+        for (gsize i = 0; i < num; i++)
+            result.append(arr[i]);
+    } else {
+        pxv_warn("get_probe_vdiv_list: unexpected GVariant type for SR_CONF_PROBE_VDIV");
+    }
     g_variant_unref(gvar);
     return result;
 }

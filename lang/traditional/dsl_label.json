@@ -144,6 +144,34 @@
         "text": "對應最大值"
     },
     {
+        "id": "Probe coupling",
+        "text": "耦合"
+    },
+    {
+        "id": "Probe V/div",
+        "text": "電壓/格"
+    },
+    {
+        "id": "Probe factor",
+        "text": "探頭衰減"
+    },
+    {
+        "id": "Probe map default",
+        "text": "預設電壓"
+    },
+    {
+        "id": "Probe map unit",
+        "text": "對應單位"
+    },
+    {
+        "id": "Probe map min",
+        "text": "對應最小值"
+    },
+    {
+        "id": "Probe map max",
+        "text": "對應最大值"
+    },
+    {
         "id": "Ext Trigger Mode",
         "text": "外部觸發模式"
     },

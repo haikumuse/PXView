@@ -315,10 +315,11 @@ extern "C" void pxv_libusb_log_cb(libusb_context *ctx,
     buf[--n] = 0;
   switch (level) {
     case LIBUSB_LOG_LEVEL_ERROR:
-      pxv_err("libusb: %s", buf);
+      // 调试时改为 pxv_err("libusb: %s", buf) 查看 libusb 错误。
+      // 用户要求完全屏蔽 libusb 日志，默认丢弃所有级别。
       break;
     case LIBUSB_LOG_LEVEL_WARNING:
-      pxv_warn("libusb: %s", buf);
+      // 调试时改为 pxv_warn("libusb: %s", buf) 查看 libusb 警告。
       break;
     default:
       // LIBUSB_LOG_LEVEL_INFO / LIBUSB_LOG_LEVEL_DEBUG — dropped.

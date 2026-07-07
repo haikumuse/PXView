@@ -324,10 +324,22 @@ void Header::mousePressEvent(QMouseEvent *event) {
   _view.get_traces(ALL_VIEW, traces);
   int action;
 
+  // DSO 模式下 vDial/ACDC/EN 等控件在采集运行时也需要可调节
+  // (旧逻辑在 instant+running 时直接 return 阻止所有 Header 鼠标交互，
+  //  导致 DSO 模式下 vDial 不能转动)。仅对 LOGIC/MSO 模式保留此守卫。
   const bool instant = _view.session().is_instant();
-  if (instant && _view.session().is_running_status()) {
+  const bool is_dso_mode = (_view.get_work_mode() == DSO);
+  const bool is_running = _view.session().is_running_status();
+  if (instant && is_running && !is_dso_mode) {
+    pxv_info("Header::mousePressEvent: blocked by instant+running guard "
+             "(instant=%d, running=%d, dso=%d)", instant, is_running, is_dso_mode);
     return;
   }
+  pxv_info("Header::mousePressEvent: passed guard (instant=%d, running=%d, dso=%d, "
+           "traces=%d, button=%d, pos=(%d,%d))",
+           instant, is_running, is_dso_mode, (int)traces.size(),
+           (int)event->button(), event->position().toPoint().x(),
+           event->position().toPoint().y());
 
   if (_view.is_logic_rendering_mode()) {
     std::vector<Trace *> traces;

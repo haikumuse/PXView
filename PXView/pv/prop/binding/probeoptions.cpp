@@ -52,16 +52,26 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
     _device_agent = session->get_device();
     _static_device_agent = _device_agent;
 
+    pxv_info("ProbeOptions::ProbeOptions: constructing for probe=%p (name=%s), "
+             "is_demo=%d, is_dsl=%d",
+             (void*)probe, probe && probe->name ? probe->name : "(null)",
+             _device_agent ? _device_agent->is_demo() : -1,
+             _device_agent ? _device_agent->is_dsl_device() : -1);
+
     gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_PROBE_CONFIGS);
     if (gvar_opts == NULL){
 		/* Driver supports no device instance options. */
-		return;
+        pxv_warn("ProbeOptions::ProbeOptions: get_config_list(SR_CONF_PROBE_CONFIGS) "
+                 "returned NULL for probe=%p", (void*)probe);
+        return;
     }
+    pxv_info("ProbeOptions::ProbeOptions: get_config_list(SR_CONF_PROBE_CONFIGS) "
+             "returned gvar_opts=%p", (void*)gvar_opts);
 
 	const int *const options = (const int32_t *)g_variant_get_fixed_array(
 		gvar_opts, &num_opts, sizeof(int32_t));
 
-	for (unsigned int i = 0; i < num_opts; i++) 
+	for (unsigned int i = 0; i < num_opts; i++)
     {
 		const struct sr_config_info *const info =
 			_device_agent->get_config_info(options[i]);
@@ -73,12 +83,23 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
 
         GVariant *gvar_list = _device_agent->get_config_list(NULL, key);
 
+        pxv_info("ProbeOptions: iter %d key=%d name='%s' gvar_list=%p",
+                 i, key, info->name ? info->name : "(null)", (void*)gvar_list);
+
         const QString name(info->name);
-        const char *label_char =  LangResource::Instance()->get_lang_text(STR_PAGE_DSL, info->name, info->name);       
+        const char *label_char =  LangResource::Instance()->get_lang_text(STR_PAGE_DSL, info->name, info->name);
         const QString label(label_char);
 
 		switch(key)
 		{
+        case SR_CONF_PROBE_VDIV:
+            bind_vdiv(name, label, gvar_list);
+            break;
+
+        case SR_CONF_PROBE_COUPLING:
+            bind_coupling(name, label, gvar_list);
+            break;
+
         case SR_CONF_PROBE_MAP_MIN:
         case SR_CONF_PROBE_MAP_MAX:
             bind_double(name, label, key, "",
@@ -101,8 +122,18 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
 }
 
 GVariant* ProbeOptions::config_getter(const struct sr_channel *probe, int key)
-{ 
-    return _static_device_agent->get_config(key, probe, NULL);
+{
+    if (!_static_device_agent) {
+        pxv_warn("ProbeOptions::config_getter: _static_device_agent is NULL "
+                 "(key=%d)", key);
+        return nullptr;
+    }
+    GVariant *result = _static_device_agent->get_config(key, probe, NULL);
+    if (!result) {
+        pxv_warn("ProbeOptions::config_getter: get_config returned NULL "
+                 "(key=%d, probe=%p)", key, (void*)probe);
+    }
+    return result;
 }
 
 void ProbeOptions::config_setter(struct sr_channel *probe, int key, GVariant* value)
@@ -162,17 +193,41 @@ void ProbeOptions::bind_double(const QString &name, const QString label, int key
 void ProbeOptions::bind_vdiv(const QString &name, const QString label,
     GVariant *const gvar_list)
 {
-    // SR_CONF_PROBE_VDIV fork DSO key deleted; vdiv binding no longer created.
-    // Stub kept for ABI compat with header declaration.
-    (void)name; (void)label; (void)gvar_list;
+    GVariant *gvar_list_vdivs;
+
+    if (!gvar_list) {
+        pxv_warn("%s", "ProbeOptions::bind_vdiv: gvar_list is NULL");
+        return;
+    }
+
+    /* Driver returns a dict {"vdivs": [uint64...]} (a{sv}). */
+    if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list,
+            "vdivs", G_VARIANT_TYPE("at"))))
+    {
+        bind_enum(name, label, SR_CONF_PROBE_VDIV,
+            gvar_list_vdivs, print_vdiv);
+        g_variant_unref(gvar_list_vdivs);
+    }
 }
 
 void ProbeOptions::bind_coupling(const QString &name, const QString label,
     GVariant *const gvar_list)
 {
-    // SR_CONF_PROBE_COUPLING fork DSO key deleted; coupling binding no longer
-    // created. Stub kept for ABI compat with header declaration.
-    (void)name; (void)label; (void)gvar_list;
+    GVariant *gvar_list_coupling;
+
+    if (!gvar_list) {
+        pxv_warn("%s", "ProbeOptions::bind_coupling: gvar_list is NULL");
+        return;
+    }
+
+    /* Driver returns a dict {"coupling": [uint8...]} (a{sv}). */
+    if ((gvar_list_coupling = g_variant_lookup_value(gvar_list,
+            "coupling", G_VARIANT_TYPE("ay"))))
+    {
+        bind_enum(name, label, SR_CONF_PROBE_COUPLING,
+            gvar_list_coupling, print_coupling);
+        g_variant_unref(gvar_list_coupling);
+    }
 }
 
 QString ProbeOptions::print_gvariant(GVariant *const gvar)

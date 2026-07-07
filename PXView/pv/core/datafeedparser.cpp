@@ -101,8 +101,15 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
     return;
   }
 
-  _state->set_receive_data_len(o.length * 8 /
-                                _state->get_ch_num(SR_CHANNEL_LOGIC));
+  // DSO/ANALOG 模式下可能收到 logic packet（demo 驱动始终发送 logic 数据），
+  // 但 get_ch_num(SR_CHANNEL_LOGIC) 返回 0 会导致除零异常。
+  const int logic_ch_num = _state->get_ch_num(SR_CHANNEL_LOGIC);
+  if (logic_ch_num > 0) {
+    _state->set_receive_data_len(o.length * 8 / logic_ch_num);
+  } else {
+    // 无 logic 通道时，按字节长度记录接收数据量
+    _state->set_receive_data_len(o.length);
+  }
 
   _state->capture_manager()->set_data_updated(true);
 

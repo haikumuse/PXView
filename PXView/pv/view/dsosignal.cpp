@@ -197,6 +197,11 @@ bool DsoSignal::go_vDialPre(bool manul) {
   if (_autoV && manul)
     autoV_end();
 
+  pxv_info("[DEBUG-VDIAL] go_vDialPre: enabled=%d isMin=%d count=%d sel=%d",
+           enabled(), _vDial ? _vDial->isMin() : -1,
+           _vDial ? (int)_vDial->get_count() : -1,
+           _vDial ? (int)_vDial->get_sel() : -1);
+
   if (enabled() && !_vDial->isMin()) {
     if (_data_source->is_running_status())
       _data_source->refresh(DsoSignal::RefreshShort);
@@ -230,6 +235,11 @@ bool DsoSignal::go_vDialNext(bool manul) {
 
   if (_autoV && manul)
     autoV_end();
+
+  pxv_info("[DEBUG-VDIAL] go_vDialNext: enabled=%d isMax=%d count=%d sel=%d",
+           enabled(), _vDial ? _vDial->isMax() : -1,
+           _vDial ? (int)_vDial->get_count() : -1,
+           _vDial ? (int)_vDial->get_sel() : -1);
 
   if (enabled() && !_vDial->isMax()) {
     if (_data_source->is_running_status())
@@ -1045,6 +1055,15 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
   const QRectF x10_rect = get_rect(DSO_X10, y, right);
   const QRectF x100_rect = get_rect(DSO_X100, y, right);
 
+  pxv_info("[DEBUG-VDIAL] DsoSignal::mouse_press: name=%s enabled=%d "
+           "vDial_count=%d pt=(%d,%d) vDial_rect=(%.0f,%.0f,%.0f,%.0f) "
+           "chEn=%d vDial_contains=%d",
+           _name.toUtf8().data(), enabled(),
+           _vDial ? (int)_vDial->get_count() : -1,
+           pt.x(), pt.y(),
+           vDial_rect.x(), vDial_rect.y(), vDial_rect.width(), vDial_rect.height(),
+           (int)chEn_rect.contains(pt), (int)vDial_rect.contains(pt));
+
   if (chEn_rect.contains(pt)) {
     if (_data_source->device()->is_file() == false && !_en_lock) {
       set_enable(!enabled());
@@ -1052,6 +1071,10 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     return true;
   } else if (enabled()) {
     if (vDial_rect.contains(pt) && pt.x() > vDial_rect.center().x()) {
+      pxv_info("[DEBUG-VDIAL] vDial right-half clicked: pt.x=%d center.x=%.0f "
+               "pt.y=%d center.y=%.0f -> %s",
+               pt.x(), vDial_rect.center().x(), pt.y(), vDial_rect.center().y(),
+               (pt.y() > vDial_rect.center().y()) ? "go_vDialNext" : "go_vDialPre");
       if (pt.y() > vDial_rect.center().y())
         go_vDialNext(true);
       else
