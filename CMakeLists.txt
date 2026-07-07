@@ -82,8 +82,19 @@ include(${CMAKE_SOURCE_DIR}/CMake/options.cmake)
 #= 1.0.27 which lacks events_windows.c (the merged form of dickens/libusb's
 #= event-abstraction-v4 branch). This eliminates the root cause of 24MHz
 #= streaming failures on Windows (libusb_get_pollfds() returns NULL on WinUSB).
-#= Conditionally built only when the submodule is initialized; otherwise the
-#= system package is used (with a warning).
+#=
+#= Windows-only: event-abstraction-v4 的核心改动仅在 Windows 后端
+#= (events_windows.c / threads_windows.c / windows_hotplug.c)。Linux/macOS
+#= 走 events_posix.c / threads_posix.c,与上游 libusb 1.0.x 无差异,直接用
+#= 系统 libusb-1.0 包即可(参考 sigrok-build 工作流:Linux 用 apt
+#= libusb-1.0-0-dev,macOS 用 brew libusb)。Linux/macOS 自建 submodule 反而
+#= 需要 config.h 生成逻辑(libusb 源码无条件 #include <config.h>),而当前
+#= libusb/CMakeLists.txt 只在 WIN32 下 configure_file 生成 config.h。
+#=
+#= Conditionally built only on Windows when the submodule is initialized;
+#= otherwise (Linux/macOS) deps.cmake 的 find_package(libusb-1.0) 会
+#= fallback 到系统包 (with a warning).
+#=
 #= IMPORTANT: add_subdirectory(libusb) MUST run BEFORE include(deps.cmake) so
 #= that the `usb-1.0` target exists when deps.cmake performs its
 #= `if(TARGET usb-1.0)` check. Otherwise deps.cmake falls back to the system
@@ -91,7 +102,7 @@ include(${CMAKE_SOURCE_DIR}/CMake/options.cmake)
 #= system header lacks the libusb_endpoint_set_raw_io() declaration added
 #= in 1.0.30, causing implicit-declaration compile errors in fx2lafw.
 #-------------------------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/libusb/CMakeLists.txt" AND EXISTS "${CMAKE_SOURCE_DIR}/libusb/libusb/libusb.h")
+if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/libusb/CMakeLists.txt" AND EXISTS "${CMAKE_SOURCE_DIR}/libusb/libusb/libusb.h")
 	add_subdirectory(libusb)
 endif()
 
