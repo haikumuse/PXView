@@ -548,29 +548,10 @@ void MainWindow::setup_ui() {
   _log_widget = new dock::LogDock(_log_dock);
   _log_dock->setWidget(_log_widget);
 
-  // signal processing dock
-  _signal_processing_widget = new dock::SignalProcessingDock(this, _session);
-  _signal_processing_dock = new QDockWidget(this);
-  _signal_processing_dock->setWidget(_signal_processing_widget);
-
-  // Wrap SignalProcessingDock in a SmoothScrollArea (same pattern as
-  // DeviceOptionsDock)
-  QWidget *sp_container = new QWidget();
-  QVBoxLayout *sp_lay = new QVBoxLayout(sp_container);
-  sp_lay->setContentsMargins(0, 0, 0, 0);
-  sp_lay->setSpacing(0);
-  sp_lay->setSizeConstraint(QLayout::SetMinimumSize);
-  sp_lay->addWidget(_signal_processing_widget);
-
-  pv::widgets::SmoothScrollArea *sp_scroll =
-      new pv::widgets::SmoothScrollArea();
-  sp_scroll->setWidgetResizable(true);
-  sp_scroll->setFrameShape(QFrame::NoFrame);
-  sp_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  sp_scroll->setWidget(sp_container);
-  _signal_processing_dock->setFeatures(QDockWidget::NoDockWidgetFeatures);
-  _signal_processing_dock->setTitleBarWidget(new QWidget());
-  _signal_processing_dock->setVisible(false);
+  // Signal processing dock is intentionally NOT created — its sidebar button
+  // was removed and the dock page is not registered. All related references
+  // (_signal_processing_widget, _signal_processing_dock,
+  // _drawer_page_signal_processing) remain nullptr/-1 and are no-op guarded.
 
   // MCP control dock
   _mcp_control_widget = new dock::McpControlDock(AppControl::Instance(), this);
@@ -583,7 +564,6 @@ void MainWindow::setup_ui() {
   _measure_dock->setVisible(false);
   _search_dock->setVisible(false);
   _device_options_dock->setVisible(false);
-  _signal_processing_dock->setVisible(false);
   _log_dock->setVisible(false);
 
   // --- Create SlidingDrawer (overlay child of _central_widget, push via
@@ -630,12 +610,6 @@ void MainWindow::setup_ui() {
       dock_scroll,
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
 
-  // Signal Processing
-  _signal_processing_dock->setWidget(nullptr);
-  _drawer_page_signal_processing = _sliding_drawer->addPage(
-      sp_scroll,
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SIGNAL_PROCESSING), "Signal Processing"));
-
   // Log
   _log_dock->setWidget(nullptr);
   _drawer_page_log = _sliding_drawer->addPage(
@@ -663,7 +637,6 @@ void MainWindow::setup_ui() {
               opt->measureDock = false;
               opt->searchDock = false;
               opt->deviceOptionsDock = false;
-              opt->signalProcessingDock = false;
               AppConfig::Instance().SaveFrame();
             }
             current_view()->setFocus();
@@ -719,7 +692,8 @@ void MainWindow::setup_ui() {
   _measure_dock->installEventFilter(this);
   _search_dock->installEventFilter(this);
   _device_options_dock->installEventFilter(this);
-  _signal_processing_dock->installEventFilter(this);
+  if (_signal_processing_dock)
+    _signal_processing_dock->installEventFilter(this);
   _sliding_drawer->installEventFilter(this);
 
   // defaut language
@@ -816,7 +790,8 @@ void MainWindow::setup_ui() {
   _search_widget->bind_context(initial_ctx);
   _protocol_widget->bind_context(initial_ctx);
   _device_options_widget->bind_context(initial_ctx);
-  _signal_processing_widget->bind_context(initial_ctx);
+  if (_signal_processing_widget)
+    _signal_processing_widget->bind_context(initial_ctx);
   _log_widget->bind_context(initial_ctx);
   _trigger_widget->bind_context(initial_ctx);
   _dso_trigger_widget->bind_context(initial_ctx);
@@ -975,10 +950,6 @@ void MainWindow::retranslateUi() {
     _sliding_drawer->setPageTitle(
         _drawer_page_device_options,
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
-    _sliding_drawer->setPageTitle(_drawer_page_signal_processing,
-                                  L_S(STR_PAGE_DLG,
-                                      S_ID(IDS_DLG_SIGNAL_PROCESSING),
-                                      "Signal Processing"));
     _sliding_drawer->setPageTitle(
         _drawer_page_log,
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
@@ -1151,7 +1122,6 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
       opt->measureDock = false;
       opt->searchDock = false;
       opt->deviceOptionsDock = false;
-      opt->signalProcessingDock = false;
       opt->logDock = false;
       AppConfig::Instance().SaveFrame();
     }
@@ -1192,10 +1162,6 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     _device_options_widget->update_view();
     drawerPage = _drawer_page_device_options;
     break;
-  case SIDEBAR_SIGNAL_PROCESSING:
-    _signal_processing_widget->update_view();
-    drawerPage = _drawer_page_signal_processing;
-    break;
   case SIDEBAR_MCP:
     _mcp_control_widget->refresh_status();
     drawerPage = _drawer_page_mcp;
@@ -1219,7 +1185,6 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     opt->measureDock = (index == SIDEBAR_MEASURE);
     opt->searchDock = (index == SIDEBAR_SEARCH);
     opt->deviceOptionsDock = (index == SIDEBAR_OPTIONS);
-    opt->signalProcessingDock = (index == SIDEBAR_SIGNAL_PROCESSING);
     opt->logDock = (index == SIDEBAR_LOG);
     AppConfig::Instance().SaveFrame();
   }
@@ -1876,11 +1841,6 @@ void MainWindow::restore_dock() {
       _device_options_widget->update_view();
       _sliding_drawer->open(_drawer_page_device_options);
       _drawer_current_page = _drawer_page_device_options;
-    } else if (opt->signalProcessingDock) {
-      _side_bar->setItemChecked(SIDEBAR_SIGNAL_PROCESSING, true);
-      _signal_processing_widget->update_view();
-      _sliding_drawer->open(_drawer_page_signal_processing);
-      _drawer_current_page = _drawer_page_signal_processing;
     } else if (opt->logDock) {
       _side_bar->setItemChecked(SIDEBAR_LOG, true);
       _sliding_drawer->open(_drawer_page_log);
@@ -2565,7 +2525,8 @@ void MainWindow::reset_all_view() {
   _dso_trigger_widget->update_view();
   _measure_widget->reload();
   _device_options_widget->update_view();
-  _signal_processing_widget->update_view();
+  if (_signal_processing_widget)
+    _signal_processing_widget->update_view();
   // if (_sliding_drawer->isOpen())
   //   _sliding_drawer->close();
   // _side_bar->clearAllChecked();
@@ -2823,14 +2784,16 @@ void MainWindow::update_toolbar_view_status() {
 void MainWindow::on_event(const pv::interface::CaptureStateChanged &) {
   update_toolbar_view_status();
   _device_options_widget->update_widgets_status();
-  _signal_processing_widget->update_widgets_status();
+  if (_signal_processing_widget)
+    _signal_processing_widget->update_widgets_status();
 }
 void MainWindow::on_event(const pv::interface::StartCollectWork &) {
   update_toolbar_view_status();
   current_view()->on_state_changed(false);
   _protocol_widget->update_view_status();
   _device_options_widget->update_widgets_status();
-  _signal_processing_widget->update_widgets_status();
+  if (_signal_processing_widget)
+    _signal_processing_widget->update_widgets_status();
 }
 void MainWindow::on_event(const pv::interface::CollectStart &) {
   // 状态栏提示"采集中"
@@ -2857,10 +2820,12 @@ void MainWindow::on_event(const pv::interface::EndCollectWork &) {
         m->set_trig_type(ch.trig_type);
     }
     _device_options_widget->update_view();
-    _signal_processing_widget->update_view();
+    if (_signal_processing_widget)
+      _signal_processing_widget->update_view();
   } else {
     _device_options_widget->update_widgets_status();
-    _signal_processing_widget->update_widgets_status();
+    if (_signal_processing_widget)
+      _signal_processing_widget->update_widgets_status();
   }
   // R6: activate 在 working 时跳过了 set_active_document，工作结束后
   // 显式恢复当前 tab 的 active_document 归属。
@@ -3063,7 +3028,8 @@ void MainWindow::on_event(const pv::interface::DeviceOpenFailed &evt) {
 void MainWindow::on_event(const pv::interface::DeviceOptionsUpdated &) {
   _trigger_widget->device_updated();
   _device_options_widget->device_updated();
-  _signal_processing_widget->device_updated();
+  if (_signal_processing_widget)
+    _signal_processing_widget->device_updated();
   _measure_widget->reload();
   // Calibration dialog check removed (SR_CONF_CALI key deleted).
 
@@ -3633,7 +3599,8 @@ void MainWindow::remove_tab(int index) {
   _search_widget->bind_context(new_ctx);
   _protocol_widget->bind_context(new_ctx);
   _device_options_widget->bind_context(new_ctx);
-  _signal_processing_widget->bind_context(new_ctx);
+  if (_signal_processing_widget)
+    _signal_processing_widget->bind_context(new_ctx);
   _log_widget->bind_context(new_ctx);
   _trigger_widget->bind_context(new_ctx);
   _dso_trigger_widget->bind_context(new_ctx);
@@ -3688,7 +3655,8 @@ void MainWindow::on_tab_changed(int index) {
       _search_widget->unbind_context();
       _protocol_widget->unbind_context();
       _device_options_widget->unbind_context();
-      _signal_processing_widget->unbind_context();
+      if (_signal_processing_widget)
+        _signal_processing_widget->unbind_context();
       _log_widget->unbind_context();
       _trigger_widget->unbind_context();
       _dso_trigger_widget->unbind_context();
@@ -3700,7 +3668,8 @@ void MainWindow::on_tab_changed(int index) {
     _search_widget->bind_context(new_ctx);
     _protocol_widget->bind_context(new_ctx);
     _device_options_widget->bind_context(new_ctx);
-    _signal_processing_widget->bind_context(new_ctx);
+    if (_signal_processing_widget)
+      _signal_processing_widget->bind_context(new_ctx);
     _log_widget->bind_context(new_ctx);
     _trigger_widget->bind_context(new_ctx);
     _dso_trigger_widget->bind_context(new_ctx);

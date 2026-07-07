@@ -322,8 +322,8 @@ private:
     dock::DeviceOptionsDock *_device_options_widget;
     QDockWidget             *_log_dock;
     dock::LogDock           *_log_widget;
-    QDockWidget             *_signal_processing_dock;
-    dock::SignalProcessingDock *_signal_processing_widget;
+    QDockWidget             *_signal_processing_dock = nullptr;
+    dock::SignalProcessingDock *_signal_processing_widget = nullptr;
     dock::McpControlDock       *_mcp_control_widget;
 
     // Sliding drawer panel
@@ -334,7 +334,7 @@ private:
     int _drawer_page_measure;
     int _drawer_page_search;
     int _drawer_page_device_options;
-    int _drawer_page_signal_processing;
+    int _drawer_page_signal_processing = -1;
     int _drawer_page_log;
     int _drawer_page_mcp;
     int _drawer_current_page; // -1 = no page open
@@ -386,11 +386,10 @@ private:
         SIDEBAR_SEARCH = 3,
         SIDEBAR_FUNCTION = 4,
         SIDEBAR_OPTIONS = 5,
-        SIDEBAR_SIGNAL_PROCESSING = 6,
-        SIDEBAR_MCP = 7,
-        SIDEBAR_LOG = 8,
-        SIDEBAR_RUNSTOP = 9,
-        SIDEBAR_INSTANT = 10
+        SIDEBAR_MCP = 6,
+        SIDEBAR_LOG = 7,
+        SIDEBAR_RUNSTOP = 8,
+        SIDEBAR_INSTANT = 9
     };
 
     ::DockOptions* getDockOptions();
