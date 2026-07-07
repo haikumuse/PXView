@@ -270,9 +270,14 @@ void DsoSignal::init_vDial(DsoSignal *src) {
 
   QVector<uint64_t> vValue = _data_source->device()->get_probe_vdiv_list();
   if (vValue.isEmpty()) {
-    // SR_CONF_PROBE_VDIV was a fork DSO key (deleted). Provide a fallback
-    // single-entry dial so DsoSignal does not crash on paint.
-    vValue.push_back(1000);
+    // Device does not expose SR_CONF_PROBE_VDIV. Use a standard 8-step
+    // vdiv range (10mV..2V, same as demo driver's dso_vdivs[]) so the dial
+    // is rotatable instead of being stuck on a single entry.
+    static const uint64_t default_vdivs[] = {
+        10, 20, 50, 100, 200, 500, 1000, 2000
+    };
+    for (uint64_t v : default_vdivs)
+      vValue.push_back(v);
   }
 
   _vDial = new dslDial(vValue.count(), DsoSignal::vDialValueStep, vValue, vUnit, false);

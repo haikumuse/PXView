@@ -824,14 +824,21 @@ void SigSession::init_signals() {
     assert(probe);
 
     // Channel visibility by work mode:
-    //   DSO    — show only SR_CHANNEL_DSO (legacy behavior)
-    //   ANALOG — show only SR_CHANNEL_ANALOG (data logger mode)
-    //   MSO    — show all enabled channels (logic + analog + DSO)
-    //   LOGIC  — show all enabled channels (PulseView native behavior)
+    //   LOGIC  — only SR_CHANNEL_LOGIC (logic analyzer)
+    //   DSO    — only SR_CHANNEL_DSO (oscilloscope)
+    //   ANALOG — only SR_CHANNEL_ANALOG (data acquisition / logger)
+    //   MSO    — SR_CHANNEL_LOGIC + SR_CHANNEL_ANALOG (mixed signal;
+    //            no DSO controls — MSO analog channels are DAQ-style)
+    if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
+      continue;
+    }
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
       continue;
     }
     if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
+      continue;
+    }
+    if (mode == MSO && probe->type == SR_CHANNEL_DSO) {
       continue;
     }
 
@@ -958,7 +965,16 @@ void SigSession::reload() {
     assert(probe);
 
     // Channel visibility by work mode (mirrors init_signals()).
+    if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
+      continue;
+    }
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
+      continue;
+    }
+    if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
+      continue;
+    }
+    if (mode == MSO && probe->type == SR_CHANNEL_DSO) {
       continue;
     }
 

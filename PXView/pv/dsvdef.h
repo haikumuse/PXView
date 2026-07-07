@@ -275,10 +275,11 @@ struct sr_status {
 // in upstream libsigrok.h (same numeric values). No #define stubs needed.
 
 // Fork libsigrok misc config keys not in upstream libsigrok. Used by
-// probeoptions.cpp (PROBE_CONFIGS), deviceoptions.cpp (STATUS/CLOCK_TYPE/
-// BANDWIDTH_LIMIT/BANDWIDTH). Defined as 60080+ in the free range between
-// the DSO calibration keys (60067-60079) and SR_CONF_USB (60088).
-#define SR_CONF_PROBE_CONFIGS       60080
+// deviceoptions.cpp (STATUS/CLOCK_TYPE/BANDWIDTH_LIMIT/BANDWIDTH).
+// Defined as 60081+ in the free range between the DSO calibration keys
+// (60067-60079) and SR_CONF_USB (60088).
+// NOTE: SR_CONF_PROBE_CONFIGS is now in libsigrok.h enum (60062) and is
+// no longer #defined here.
 #define SR_CONF_STATUS              60081
 #define SR_CONF_CLOCK_TYPE          60082
 #define SR_CONF_BANDWIDTH_LIMIT     60083
