@@ -40,6 +40,7 @@ private:
   void feed_in_trigger();
   void feed_in_logic(const sr_datafeed_logic &o);
   void feed_in_analog(const sr_datafeed_analog &o);
+  void feed_in_dso(const sr_datafeed_dso &o);
 
   EventBus *_event_bus;
   // Shared session state (capture_data / view_data / device_agent /

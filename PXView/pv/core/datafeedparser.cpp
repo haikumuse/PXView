@@ -7,6 +7,7 @@
 #include "sessionstatecontext.h"
 #include "../sigsession.h"  // SessionData full definition
 #include "../data/analogsnapshot.h"
+#include "../data/dsosnapshot.h"
 #include "../data/logicsnapshot.h"
 #include "../data/mathstack.h"
 #include "../data/spectrumstack.h"
@@ -145,6 +146,43 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
   _event_bus->broadcast_async<interface::DataUpdated>({});
 }
 
+void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
+  if (_state->capture_data()->get_dso()->memory_failed()) {
+    pxv_err("Unexpected dso packet");
+    return;
+  }
+
+  if (!_state->is_triged() && o.num_samples > 0) {
+    _state->set_is_triged(true);
+    _state->set_trig_time(QDateTime::currentDateTime());
+  }
+
+  if (_state->capture_data()->get_dso()->last_ended()) {
+    // first payload
+    _state->capture_data()->get_dso()->first_payload(
+        o, _state->device_agent().get_ring_sample_count(),
+        _state->device_agent().get_channels(),
+        _state->capture_manager()->is_instant(),
+        false /* isFile */);
+    _state->frame_began();
+  } else {
+    // Append to the existing data snapshot
+    _state->capture_data()->get_dso()->append_payload(o);
+  }
+
+  if (_state->capture_data()->get_dso()->memory_failed()) {
+    _state->set_error(SessionStateContext::Malloc_err);
+    _state->session_error();
+    return;
+  }
+
+  _state->set_receive_data_len(o.num_samples);
+  _state->capture_manager()->set_data_updated(true);
+
+  // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
+  _event_bus->broadcast_async<interface::DataUpdated>({});
+}
+
 void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
                                   const struct sr_datafeed_packet *packet) {
   if (!sdi) {
@@ -197,6 +235,11 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
   case SR_DF_ANALOG:
     assert(packet->payload);
     feed_in_analog(*(const sr_datafeed_analog *)packet->payload);
+    break;
+
+  case SR_DF_DSO:
+    assert(packet->payload);
+    feed_in_dso(*(const sr_datafeed_dso *)packet->payload);
     break;
 
   case SR_DF_END: {

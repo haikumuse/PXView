@@ -826,10 +826,14 @@ void SigSession::init_signals() {
     assert(probe);
 
     // Channel visibility by work mode:
-    //   DSO  — show only SR_CHANNEL_DSO (legacy behavior)
-    //   MSO  — show all enabled channels (logic + analog + DSO)
-    //   LOGIC/ANALOG — show all enabled channels (PulseView native behavior)
+    //   DSO    — show only SR_CHANNEL_DSO (legacy behavior)
+    //   ANALOG — show only SR_CHANNEL_ANALOG (data logger mode)
+    //   MSO    — show all enabled channels (logic + analog + DSO)
+    //   LOGIC  — show all enabled channels (PulseView native behavior)
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
+      continue;
+    }
+    if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
       continue;
     }
 

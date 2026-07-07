@@ -822,11 +822,12 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 
     const bool fork_only = is_fork_only_key(key);
     const bool dsl = is_dsl_device();
+    const bool demo = is_demo();
     if (key == SR_CONF_DEVICE_OPTIONS) {
         pxv_info("get_config_list: key=SR_CONF_DEVICE_OPTIONS(%d), fork_only=%d, dsl=%d, _dev_handle=%p, _di=%p",
                  key, fork_only, dsl, _dev_handle, _di);
     }
-    if (fork_only && !dsl)
+    if (fork_only && !dsl && !demo)
         return nullptr;
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
@@ -870,6 +871,20 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         return nullptr;
     }
 
+    // For per-channel config keys, if cg is NULL but ch is provided,
+    // find the channel group that contains ch so the driver can identify
+    // the channel. This is needed because upstream sr_config_get only takes
+    // cg (not ch), but PXView's DeviceAgent passes ch for per-channel config.
+    if (!cg && ch) {
+        for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
+            struct sr_channel_group *grp = (struct sr_channel_group *)l->data;
+            if (grp && g_slist_find(grp->channels, (gpointer)ch)) {
+                cg = grp;
+                break;
+            }
+        }
+    }
+
     // App-layer C-class keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF,
     // STREAM_MEM_BUFF): served from DeviceAgent member state for ALL devices.
     // These are application-layer concepts (disk cache is implemented by
@@ -899,7 +914,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         return g_variant_new_string(mode_str);
     }
 
-    if (is_fork_only_key(key) && !is_dsl_device())
+    if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())
         return nullptr;
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
@@ -937,6 +952,17 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     if (!_dev_handle || !_di) {
         pxv_warn("%s", "DeviceAgent::set_config: no device instance");
         return false;
+    }
+
+    // For per-channel config keys, auto-find cg from ch (same as get_config).
+    if (!cg && ch) {
+        for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
+            struct sr_channel_group *grp = (struct sr_channel_group *)l->data;
+            if (grp && g_slist_find(grp->channels, (gpointer)ch)) {
+                cg = grp;
+                break;
+            }
+        }
     }
 
     // App-layer C-class keys: store in member state for ALL devices.
@@ -990,7 +1016,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         return true;
     }
 
-    if (is_fork_only_key(key) && !is_dsl_device())
+    if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())
         return false;
 
     int ret = sr_config_set(_di, cg, (uint32_t)key, data);
@@ -1272,62 +1298,68 @@ bool DeviceAgent::is_roll_mode(bool &roll) {
 // query entirely. Callers (DsoSignal / AnalogSignal / MathTrace / capturemanager)
 // already handle a false return value gracefully (fall back to defaults).
 bool DeviceAgent::get_unit_bits(int &v) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_byte(SR_CONF_UNIT_BITS, v);
 }
 
 bool DeviceAgent::get_ref_min(uint32_t &v) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_uint32(SR_CONF_REF_MIN, v);
 }
 
 bool DeviceAgent::get_ref_max(uint32_t &v) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_uint32(SR_CONF_REF_MAX, v);
 }
 
 bool DeviceAgent::get_probe_vdiv(uint64_t &v, sr_channel *probe) {
-    (void)probe;
-    v = 0;
-    return false;
+    if (!is_dsl_device() && !is_demo()) { v = 0; return false; }
+    return get_config_uint64(SR_CONF_PROBE_VDIV, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_uint64(SR_CONF_PROBE_FACTOR, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
-    (void)probe;
-    v = 0;
-    return false;
+    if (!is_dsl_device() && !is_demo()) { v = 0; return false; }
+    return get_config_int32(SR_CONF_PROBE_COUPLING, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_uint16(SR_CONF_PROBE_OFFSET, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_hw_offset(int &v, sr_channel *probe) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_uint16(SR_CONF_PROBE_HW_OFFSET, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_map_default(bool &v, sr_channel *probe) {
-    if (!is_dsl_device()) return false;
+    if (!is_dsl_device() && !is_demo()) return false;
     return get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, v, probe, NULL);
 }
 
 bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
-    (void)probe;
-    v = 0;
-    return false;
+    if (!is_dsl_device() && !is_demo()) { v = 0; return false; }
+    return get_config_int32(SR_CONF_TRIGGER_VALUE, v, probe, NULL);
 }
 
 QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
-    // SR_CONF_PROBE_VDIV was a fork DSO key (deleted). DSO mode is deprecated;
-    // return empty list — DsoSignal::init_vDial handles this gracefully.
-    return {};
+    if (!is_dsl_device() && !is_demo())
+        return {};
+    GVariant *gvar = get_config_list(NULL, SR_CONF_PROBE_VDIV);
+    if (!gvar)
+        return {};
+    QVector<uint64_t> result;
+    gsize num;
+    uint64_t *arr = (uint64_t *)g_variant_get_fixed_array(gvar, &num, sizeof(uint64_t));
+    for (gsize i = 0; i < num; i++)
+        result.append(arr[i]);
+    g_variant_unref(gvar);
+    return result;
 }
 
 // --- USB link info (replaces deleted SR_CONF_USB_SPEED/USB30_SUPPORT keys) ---

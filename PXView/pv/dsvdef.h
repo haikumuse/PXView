@@ -170,18 +170,7 @@ struct sr_status {
     uint8_t _pad[32];
 };
 
-// Fork libsigrok DSO datafeed payload. DSO mode is deprecated.
-struct sr_datafeed_dso {
-    void *data;
-    uint32_t num_samples;
-    uint8_t trig_flag;
-    uint8_t trig_ch;
-    uint8_t en_ch_num;
-    uint8_t sample_bits;
-    int16_t trig_offset;
-    uint32_t packet_len;
-    uint32_t samplerate_tog;
-};
+// sr_datafeed_dso is now defined in upstream libsigrok.h.
 
 // Fork libsigrok max probe count constants (used to size fixed envelope arrays).
 // DSO mode is deprecated; values kept conservative so legacy fixed-size arrays
@@ -281,12 +270,9 @@ struct sr_datafeed_dso {
 #define SR_CONF_TOTAL_CH_NUM       60062
 #define SR_CONF_RLE_SUPPORT        60065
 
-// Fork libsigrok analog probe mapping config keys. Used by analogsignal.cpp
-// and probeoptions.cpp for analog channel unit/min/max mapping. Upstream
-// libsigrok does not expose these — defined as 60059+.
-#define SR_CONF_PROBE_MAP_UNIT   60059
-#define SR_CONF_PROBE_MAP_MIN    60060
-#define SR_CONF_PROBE_MAP_MAX    60061
+// Fork libsigrok analog probe mapping config keys were previously defined
+// here as 60059/60060/60061. They are now enum members of sr_config_keys
+// in upstream libsigrok.h (same numeric values). No #define stubs needed.
 
 // Fork libsigrok misc config keys not in upstream libsigrok. Used by
 // probeoptions.cpp (PROBE_CONFIGS), deviceoptions.cpp (STATUS/CLOCK_TYPE/
@@ -319,13 +305,9 @@ struct sr_datafeed_dso {
 #define SR_DC_COUPLING   1
 #define SR_AC_COUPLING   2
 
-// Fork libsigrok SI unit multiplier macros. Used by samplingbar.h
-// (SR_GB/SR_Mn/SR_US for sample-depth constants) and lissajousoptions.h
-// (SR_Kn). Upstream libsigrok does not provide these — define as simple
-// uint64_t multipliers.
-#define SR_NS(x)  ((uint64_t)(x))
-#define SR_US(x)  ((uint64_t)(x) * 1000ULL)
-#define SR_MS(x)  ((uint64_t)(x) * 1000000ULL)
+// Fork libsigrok SI unit multiplier macros. SR_NS/SR_US/SR_MS are now
+// defined in upstream libsigrok.h (same values); the remaining multipliers
+// (SR_Kn/SR_KB/SR_Mn/SR_GB) are still PXView-local.
 #define SR_Kn(x)  ((uint64_t)(x) * 1000ULL)
 #define SR_KB(x)  ((uint64_t)(x) * 1000ULL)
 #define SR_Mn(x)  ((uint64_t)(x) * 1000000ULL)
@@ -386,15 +368,8 @@ enum DSO_MEASURE_TYPE {
 #define SR_PKT_OK 0
 
 // Fork libsigrok packet types not in upstream.
-#define SR_DF_DSO 10007
-#define SR_DF_OVERFLOW 10008
-
-// Fork libsigrok channel type for DSO (upstream only has LOGIC/ANALOG).
-// Upstream defines SR_CHANNEL_LOGIC=10000, SR_CHANNEL_ANALOG=10001 (enum
-// sr_channeltype). PXView fork had DSO=10001 which conflicted with upstream
-// SR_CHANNEL_ANALOG — redefined to 10002 to avoid duplicate case values in
-// switch statements. DSO mode is deprecated.
-#define SR_CHANNEL_DSO 10002
+// SR_DF_DSO is now in upstream libsigrok enum (value 10008).
+#define SR_DF_OVERFLOW 10009
 
 // Backward-compat alias: upstream libsigrok renamed sr_config_info to
 // sr_key_info. Callers that reference sr_config_info are updated gradually.
@@ -418,17 +393,16 @@ extern const sr_dev_mode kDevModeAnalog;
 extern const sr_dev_mode kDevModeDso;
 extern const sr_dev_mode kDevModeMso;
 
-// --- Fork Analog SR_CONF_* keys (temporary, removed by Task 4 migration) ---
-// These keys existed in PXView's fork libsigrok.h but are absent from upstream
-// libsigrok. Defined here as 60040+ (no conflict with 60001-60013/60020+
-// PXLogic extension keys). DSO keys (PROBE_VDIV/PROBE_COUPLING/TRIGGER_VALUE)
-// removed; Analog scaling keys retained for Task 4 migration to DeviceAgent.
-#define SR_CONF_PROBE_OFFSET      60042
-#define SR_CONF_PROBE_HW_OFFSET   60043
-#define SR_CONF_PROBE_MAP_DEFAULT 60044
-#define SR_CONF_REF_MIN           60045
-#define SR_CONF_REF_MAX           60046
-#define SR_CONF_UNIT_BITS         60047
+// --- Fork Analog SR_CONF_* keys (now defined in upstream libsigrok.h) ---
+// SR_CONF_PROBE_OFFSET / SR_CONF_PROBE_HW_OFFSET / SR_CONF_PROBE_MAP_DEFAULT
+// / SR_CONF_REF_MIN / SR_CONF_REF_MAX / SR_CONF_UNIT_BITS / SR_CONF_PROBE_FACTOR
+// / SR_CONF_PROBE_MAP_UNIT / SR_CONF_PROBE_MAP_MIN / SR_CONF_PROBE_MAP_MAX
+// are now enum members of sr_config_keys in libsigrok.h (ported from the
+// PXView fork). No #define stubs needed here anymore.
+//
+// SR_CONF_PROBE_MAP_UNIT/MIN/MAX were previously defined here as 60059/60060/
+// 60061 — those #define stubs have been removed; the libsigrok.h enum uses the
+// same numeric values so PXView code behavior is unchanged.
 
 #define DESTROY_OBJECT(p) if((p)){delete (p); p = NULL;} 
 #define DESTROY_QT_OBJECT(p) if((p)){((p))->deleteLater(); p = NULL;}
