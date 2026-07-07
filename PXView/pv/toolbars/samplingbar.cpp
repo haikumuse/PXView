@@ -700,7 +700,7 @@ void SamplingBar::update_sample_count_selector() {
   if (mode == LOGIC) {
     _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
     if (rle_support)
-      rle_depth = min(hw_depth * SR_KB(1), sw_depth);
+      rle_depth = min((uint64_t)(hw_depth * SR_KB(1)), sw_depth);
   }
   // DSO mode (max_timebase/min_timebase) was removed — DSO hardware dropped.
 
