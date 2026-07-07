@@ -35,7 +35,7 @@ jobs:
             libglib2.0-dev zlib1g-dev libusb-1.0-0-dev libudev-dev \
             libboost-dev libfftw3-dev libssl-dev \
             python3-dev python3-pip \
-            libgl1-mesa-dev libxkbcommon-dev libvulkan-dev \
+            libgl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libvulkan-dev \
             libzip-dev nettle-dev libftdi1-dev \
             sdcc \
             wget
