@@ -200,7 +200,7 @@ Result<void> AppService::connect_device(const std::string& device_id)
         return Result<void>::Fail(ErrorCode::InvalidRequest,
                                   "Device id is empty");
 
-    ds_device_handle handle = reinterpret_cast<ds_device_handle>(
+    ds_device_handle handle = static_cast<ds_device_handle>(
         std::stoull(device_id));
 
     if (!session->set_device(handle))
@@ -267,13 +267,13 @@ Result<int> AppService::create_session(
         bool device_already_active = false;
         if (session->get_device() && session->get_device()->have_instance()) {
             ds_device_handle current_handle = session->get_device()->handle();
-            ds_device_handle requested_handle = reinterpret_cast<ds_device_handle>(
+            ds_device_handle requested_handle = static_cast<ds_device_handle>(
                 std::stoull(device_id));
             device_already_active = (current_handle == requested_handle);
         }
 
         if (!device_already_active) {
-            ds_device_handle handle = reinterpret_cast<ds_device_handle>(
+            ds_device_handle handle = static_cast<ds_device_handle>(
                 std::stoull(device_id));
             if (!session->set_device(handle))
                 return Result<int>::Fail(ErrorCode::DeviceError,
