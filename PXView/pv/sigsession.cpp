@@ -320,14 +320,12 @@ extern "C" void pxv_libusb_log_cb(libusb_context *ctx,
     case LIBUSB_LOG_LEVEL_WARNING:
       pxv_warn("libusb: %s", buf);
       break;
-    case LIBUSB_LOG_LEVEL_INFO:
-      pxv_info("libusb: %s", buf);
-      break;
     default:
-      // LIBUSB_LOG_LEVEL_DEBUG — route to pxv_info so it's visible when
-      // log level is raised. libusb filters by level internally; if we
-      // receive a DEBUG message, the user explicitly enabled it.
-      pxv_info("libusb: %s", buf);
+      // LIBUSB_LOG_LEVEL_INFO / LIBUSB_LOG_LEVEL_DEBUG — dropped.
+      // libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_NONE) does not reliably
+      // suppress messages when a global log callback is registered, so
+      // filter here. Re-enable by forwarding to pxv_info if diagnostics
+      // are needed.
       break;
   }
 }

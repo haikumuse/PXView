@@ -1819,5 +1819,29 @@
     {
         "id": "IDS_DLG_STYLE_DELETE_CONFIRM",
         "text": "Are you sure you want to delete this preset?"
+    },
+    {
+        "id": "IDS_DSO_CTR_EN",
+        "text": "EN"
+    },
+    {
+        "id": "IDS_DSO_CTR_DIS",
+        "text": "DIS"
+    },
+    {
+        "id": "IDS_DSO_CTR_GND",
+        "text": "GND"
+    },
+    {
+        "id": "IDS_DSO_CTR_DC",
+        "text": "DC"
+    },
+    {
+        "id": "IDS_DSO_CTR_AC",
+        "text": "AC"
+    },
+    {
+        "id": "IDS_DSO_CTR_AUTO",
+        "text": "AUTO"
     }
 ]

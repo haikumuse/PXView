@@ -74,7 +74,7 @@ endif()
 #= `if(TARGET usb-1.0)` check. Otherwise deps.cmake falls back to the system
 #= libusb DLL (1.0.27), defeating the purpose of the submodule.
 #-------------------------------------------------------------------------------
-include(${CMAKE_SOURCE_DIR}/cmake/options.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/options.cmake)
 
 #===============================================================================
 #= libusb — project-internal submodule (v1.0.30 with Windows event abstraction)
@@ -95,10 +95,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/libusb/CMakeLists.txt" AND EXISTS "${CMAKE_SOURCE
 	add_subdirectory(libusb)
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/flags.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/core_sources.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/gui_sources.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/deps.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/flags.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/core_sources.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/gui_sources.cmake)
 
 #===============================================================================
 #= libsigrok — upstream libsigrok 0.6.0 as a STATIC library (100% unmodified
@@ -258,12 +258,12 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
 #===============================================================================
 #= Decoders (C decoder DLLs + irmp + decoder_test) — needs EXECUTABLE_OUTPUT_PATH
 #-------------------------------------------------------------------------------
-include(${CMAKE_SOURCE_DIR}/cmake/decoders.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/decoders.cmake)
 
 #===============================================================================
 #= Installation + CPack packaging
 #-------------------------------------------------------------------------------
-include(${CMAKE_SOURCE_DIR}/cmake/install_packaging.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/install_packaging.cmake)
 
 #===============================================================================
 #= Tests

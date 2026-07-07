@@ -1350,7 +1350,25 @@ bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
 QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
     if (!is_dsl_device() && !is_demo())
         return {};
-    GVariant *gvar = get_config_list(NULL, SR_CONF_PROBE_VDIV);
+
+    /* SR_CONF_PROBE_VDIV is a per-channel-group key in the demo driver.
+     * Find the first DSO channel's group so sr_config_list reaches the
+     * cg branch that actually returns the vdiv list. */
+    const struct sr_channel_group *cg = NULL;
+    for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
+        const struct sr_channel_group *grp =
+            (const struct sr_channel_group *)l->data;
+        if (grp && grp->channels) {
+            const struct sr_channel *ch =
+                (const struct sr_channel *)grp->channels->data;
+            if (ch && ch->type == SR_CHANNEL_DSO) {
+                cg = grp;
+                break;
+            }
+        }
+    }
+
+    GVariant *gvar = get_config_list(cg, SR_CONF_PROBE_VDIV);
     if (!gvar)
         return {};
     QVector<uint64_t> result;

@@ -1823,5 +1823,29 @@
     {
         "id": "IDS_DLG_STYLE_DELETE_CONFIRM",
         "text": "确定要删除此预设吗？"
+    },
+    {
+        "id": "IDS_DSO_CTR_EN",
+        "text": "使能"
+    },
+    {
+        "id": "IDS_DSO_CTR_DIS",
+        "text": "禁用"
+    },
+    {
+        "id": "IDS_DSO_CTR_GND",
+        "text": "GND"
+    },
+    {
+        "id": "IDS_DSO_CTR_DC",
+        "text": "DC"
+    },
+    {
+        "id": "IDS_DSO_CTR_AC",
+        "text": "AC"
+    },
+    {
+        "id": "IDS_DSO_CTR_AUTO",
+        "text": "AUTO"
     }
 ]
