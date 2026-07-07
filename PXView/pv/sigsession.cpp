@@ -964,8 +964,11 @@ void SigSession::reload() {
   int channel_count = g_slist_length((GSList *)_state->device_agent().get_channels());
   pxv_info("SigSession::reload() start. mode=%d, channel_count=%d", mode, channel_count);
 
-  set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
-  set_cur_samplelimits(_state->device_agent().get_sample_limit());
+  uint64_t sr = _state->device_agent().get_sample_rate();
+  uint64_t sl = _state->device_agent().get_sample_limit();
+  pxv_info("[DEBUG-DSO] reload: get_sample_rate=%llu get_sample_limit=%llu", (unsigned long long)sr, (unsigned long long)sl);
+  set_cur_snap_samplerate(sr);
+  set_cur_samplelimits(sl);
 
   for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;

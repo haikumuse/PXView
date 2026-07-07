@@ -961,11 +961,18 @@ double SamplingBar::commit_hori_res() {
   // configured sample rate as the upper bound.
   const uint64_t max_sample_rate = _device_agent->get_sample_rate();
 
-  const uint64_t sample_rate = min(
-      (uint64_t)(sample_limit * SR_SEC(1) / (hori_res * DS_CONF_DSO_HDIVS)),
-      (uint64_t)(max_sample_rate / (_session->get_ch_num(SR_CHANNEL_DSO)
-                                        ? _session->get_ch_num(SR_CHANNEL_DSO)
-                                        : 1)));
+  const int dso_ch_num = _session->get_ch_num(SR_CHANNEL_DSO);
+  const uint64_t rate_by_limit = (uint64_t)(sample_limit * SR_SEC(1) / (hori_res * DS_CONF_DSO_HDIVS));
+  const uint64_t rate_by_max = (uint64_t)(max_sample_rate / (dso_ch_num ? dso_ch_num : 1));
+  const uint64_t sample_rate = min(rate_by_limit, rate_by_max);
+
+  pxv_info("[DEBUG-DSO] commit_hori_res: hori_res=%.9g sample_limit=%llu max_sample_rate=%llu dso_ch_num=%d rate_by_limit=%llu rate_by_max=%llu -> sample_rate=%llu",
+           hori_res, (unsigned long long)sample_limit,
+           (unsigned long long)max_sample_rate, dso_ch_num,
+           (unsigned long long)rate_by_limit,
+           (unsigned long long)rate_by_max,
+           (unsigned long long)sample_rate);
+
   set_sample_rate(sample_rate);
 
   _device_agent->set_config_uint64(SR_CONF_TIMEBASE, hori_res);

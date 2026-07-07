@@ -767,6 +767,17 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
         min(max((int64_t)ceil(end) + 1, (int64_t)0), last_sample);
     const int hw_offset = get_hw_offset();
 
+    static int _range_cnt = 0;
+    _range_cnt++;
+    if (_range_cnt % 100 == 1) {
+      pxv_info("[DEBUG-DSO] paint_mid range: name=%s view_scale=%.9g offset=%lld samplerate=%llu samples_per_pixel=%.6f width=%d start=%.2f end=%.2f start_sample=%lld end_sample=%lld last_sample=%lld trig_hoff=%lld sample_count=%lld",
+               get_name().toUtf8().data(), scale, (long long)offset,
+               (unsigned long long)samplerate, samples_per_pixel, width,
+               start, end, (long long)start_sample, (long long)end_sample,
+               (long long)last_sample, (long long)_view->trig_hoff(),
+               (long long)(end_sample - start_sample + 1));
+    }
+
     if (samples_per_pixel < EnvelopeThreshold) {
       _data->enable_envelope(false);
       paint_trace(p, _data, zeroY, left, start_sample, end_sample, hw_offset,
