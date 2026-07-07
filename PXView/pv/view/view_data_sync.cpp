@@ -316,6 +316,23 @@ void ViewDataSync::data_updated() {
       case SR_CHANNEL_DSO: {
         view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
         s->set_data(source->get_dso_snapshot());
+        // Original DSView called DsoSignal::set_scale() + paint_prepare()
+        // from SigSession::feed_in_dso() on every DSO packet. Under the
+        // Core/View split, DataFeedParser (Core) cannot touch View objects,
+        // so we perform the equivalent work here when the DataUpdated event
+        // reaches the View layer.
+        //
+        // set_scale() MUST be re-applied here because rebuild_signals()
+        // (view_signal_sync.cpp) also calls set_scale(), but at that moment
+        // the viewport may not be realized yet (height==0) — leaving
+        // _scale==0 and collapsing paint_trace() output to a flat line at
+        // zeroY. By the time data arrives the viewport is sized, so this
+        // call finally gives a non-zero _scale.
+        const int scale_height =
+            s->get_view_rect().height() - View::DsoStatusHeight;
+        s->set_scale(scale_height > 0 ? scale_height
+                                      : s->get_view_rect().height());
+        s->paint_prepare();
         break;
       }
       }

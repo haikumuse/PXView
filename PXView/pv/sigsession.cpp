@@ -267,6 +267,11 @@ static int sigrok_log_callback(void *cb_data, int loglevel,
 // into PXView's xlog so they're visible in PXView.log. Without this, the
 // messages go to OutputDebugStringW/stderr which are invisible in MSYS.
 // level: 0=info, 1=warn, 2=err. msg is fully formatted with trailing newline.
+// Windows-only: the windows_hotplug_set_log_cb symbol exists only in the
+// libusb event-abstraction-v4 fork's windows_hotplug.c. On Linux/macOS with
+// system libusb, hotplug uses native backends (udev/IOKit) that log via the
+// standard libusb_set_log_cb path — no separate hotplug log callback needed.
+#ifdef _WIN32
 extern "C" {
 typedef void (*windows_hotplug_log_cb_t)(int level, const char *msg);
 void windows_hotplug_set_log_cb(windows_hotplug_log_cb_t cb);
@@ -290,6 +295,7 @@ extern "C" void pxv_hotplug_log_cb(int level, const char *msg)
     default: pxv_info("libusb-hotplug: %s", buf); break;
   }
 }
+#endif
 
 // libusb global log callback — routes ALL libusb log messages (usbi_dbg,
 // usbi_err, usbi_warn, usbi_info) into PXView's xlog. This covers the entire
@@ -383,7 +389,11 @@ bool SigSession::init() {
   // messages (WM_DEVICECHANGE, device matching, notification dispatch) are
   // routed into PXView.log via pxv_info/pxv_warn/pxv_err. The callback is
   // set before sr_listen_hotplug so even initial-scan logs are captured.
+  // Windows-only: on Linux/macOS, hotplug uses native udev/IOKit backends
+  // that log via the standard libusb_set_log_cb path above.
+#ifdef _WIN32
   windows_hotplug_set_log_cb(pxv_hotplug_log_cb);
+#endif
 
   // Register USB hotplug listener (libsigrok sr_listen_hotplug).
   // The callback runs on a libsigrok internal GThread; hotplug_cb_ forwards
