@@ -34,7 +34,7 @@ namespace view {
  * Per-tab UI state cache for dock widgets and the sampling toolbar.
  *
  * Background: dock widgets (TriggerDock, DsoTriggerDock, MeasureDock,
- * SearchDock, ProtocolDock, DeviceOptionsDock, SignalProcessingDock) and
+ * SearchDock, ProtocolDock, DeviceOptionsDock) and
  * the SamplingBar are global singletons owned by MainWindow — they are NOT
  * per-tab. When the user switches tabs, each dock unbinds from the old
  * TabContext (saving its current UI state somewhere per-tab) and binds to
@@ -65,11 +65,10 @@ struct DockUiState {
   QJsonArray dock_measure_dist_rows;
   QJsonArray dock_measure_edge_rows;
 
-  // TriggerDock / DsoTriggerDock / DeviceOptionsDock / SignalProcessingDock
+  // TriggerDock / DsoTriggerDock / DeviceOptionsDock
   QJsonObject dock_trigger_session;
   QJsonObject dock_dso_trigger_session;
   QJsonObject dock_device_options_session;
-  QJsonObject dock_signal_processing_session;
 
   // ProtocolDock
   QString dock_protocol_search_text;
@@ -88,7 +87,6 @@ struct DockUiState {
     dock_trigger_session = QJsonObject();
     dock_dso_trigger_session = QJsonObject();
     dock_device_options_session = QJsonObject();
-    dock_signal_processing_session = QJsonObject();
     dock_protocol_search_text.clear();
     dock_protocol_expanded_states = QJsonArray();
   }

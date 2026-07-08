@@ -1,10 +1,6 @@
 name: Linux AppImage Build
 
 on:
-  push:
-    branches: [ "**" ]
-  pull_request:
-    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -68,13 +64,17 @@ jobs:
         run: |
           # aqtinstall 不提供 qtwayland 客户端平台插件,从源码编译安装
           # 这样 AppImage 会同时包含 xcb 和 wayland 两个平台插件
+          # 只编译 client 端 — compositor (server) 需要 libdrm,但 PXView
+          # 是客户端应用,不需要 compositor
           sudo apt-get install -y wayland-protocols libwayland-dev
           git clone --branch v${{ env.QT_VERSION }} --depth 1 https://github.com/qt/qtwayland.git
           cd qtwayland
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64" \
-            -DCMAKE_INSTALL_PREFIX="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64"
+            -DCMAKE_INSTALL_PREFIX="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64" \
+            -DQT_FEATURE_wayland_server=OFF \
+            -DQT_FEATURE_wayland_client=ON
           cmake --build build --parallel $(nproc)
           cmake --install build
           echo "=== Platform plugins after qtwayland build ==="

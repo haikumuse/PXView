@@ -82,7 +82,6 @@ class MeasureDock;
 class SearchDock;
 class DeviceOptionsDock;
 class LogDock;
-class SignalProcessingDock;
 class McpControlDock;
 }
 
@@ -322,8 +321,6 @@ private:
     dock::DeviceOptionsDock *_device_options_widget;
     QDockWidget             *_log_dock;
     dock::LogDock           *_log_widget;
-    QDockWidget             *_signal_processing_dock = nullptr;
-    dock::SignalProcessingDock *_signal_processing_widget = nullptr;
     dock::McpControlDock       *_mcp_control_widget;
 
     // Sliding drawer panel
@@ -334,7 +331,6 @@ private:
     int _drawer_page_measure;
     int _drawer_page_search;
     int _drawer_page_device_options;
-    int _drawer_page_signal_processing = -1;
     int _drawer_page_log;
     int _drawer_page_mcp;
     int _drawer_current_page; // -1 = no page open

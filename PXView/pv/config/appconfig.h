@@ -89,7 +89,6 @@ struct AppOptions
   bool        measureDock;
   bool        searchDock;
   bool        deviceOptionsDock;
-  bool        signalProcessingDock;
   bool        logDock;
 };
 

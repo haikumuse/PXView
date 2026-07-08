@@ -85,7 +85,6 @@
 #include "dock/measuredock.h"
 #include "dock/protocoldock.h"
 #include "dock/searchdock.h"
-#include "dock/signalprocessingdock.h"
 #include "dock/dsotriggerdock.h"
 #include "dock/triggerdock.h"
 
@@ -548,11 +547,6 @@ void MainWindow::setup_ui() {
   _log_widget = new dock::LogDock(_log_dock);
   _log_dock->setWidget(_log_widget);
 
-  // Signal processing dock is intentionally NOT created — its sidebar button
-  // was removed and the dock page is not registered. All related references
-  // (_signal_processing_widget, _signal_processing_dock,
-  // _drawer_page_signal_processing) remain nullptr/-1 and are no-op guarded.
-
   // MCP control dock
   _mcp_control_widget = new dock::McpControlDock(AppControl::Instance(), this);
 
@@ -692,8 +686,6 @@ void MainWindow::setup_ui() {
   _measure_dock->installEventFilter(this);
   _search_dock->installEventFilter(this);
   _device_options_dock->installEventFilter(this);
-  if (_signal_processing_dock)
-    _signal_processing_dock->installEventFilter(this);
   _sliding_drawer->installEventFilter(this);
 
   // defaut language
@@ -790,8 +782,6 @@ void MainWindow::setup_ui() {
   _search_widget->bind_context(initial_ctx);
   _protocol_widget->bind_context(initial_ctx);
   _device_options_widget->bind_context(initial_ctx);
-  if (_signal_processing_widget)
-    _signal_processing_widget->bind_context(initial_ctx);
   _log_widget->bind_context(initial_ctx);
   _trigger_widget->bind_context(initial_ctx);
   _dso_trigger_widget->bind_context(initial_ctx);
@@ -2525,8 +2515,6 @@ void MainWindow::reset_all_view() {
   _dso_trigger_widget->update_view();
   _measure_widget->reload();
   _device_options_widget->update_view();
-  if (_signal_processing_widget)
-    _signal_processing_widget->update_view();
   // if (_sliding_drawer->isOpen())
   //   _sliding_drawer->close();
   // _side_bar->clearAllChecked();
@@ -2784,16 +2772,12 @@ void MainWindow::update_toolbar_view_status() {
 void MainWindow::on_event(const pv::interface::CaptureStateChanged &) {
   update_toolbar_view_status();
   _device_options_widget->update_widgets_status();
-  if (_signal_processing_widget)
-    _signal_processing_widget->update_widgets_status();
 }
 void MainWindow::on_event(const pv::interface::StartCollectWork &) {
   update_toolbar_view_status();
   current_view()->on_state_changed(false);
   _protocol_widget->update_view_status();
   _device_options_widget->update_widgets_status();
-  if (_signal_processing_widget)
-    _signal_processing_widget->update_widgets_status();
 }
 void MainWindow::on_event(const pv::interface::CollectStart &) {
   // 状态栏提示"采集中"
@@ -2820,12 +2804,8 @@ void MainWindow::on_event(const pv::interface::EndCollectWork &) {
         m->set_trig_type(ch.trig_type);
     }
     _device_options_widget->update_view();
-    if (_signal_processing_widget)
-      _signal_processing_widget->update_view();
   } else {
     _device_options_widget->update_widgets_status();
-    if (_signal_processing_widget)
-      _signal_processing_widget->update_widgets_status();
   }
   // R6: activate 在 working 时跳过了 set_active_document，工作结束后
   // 显式恢复当前 tab 的 active_document 归属。
@@ -3028,8 +3008,6 @@ void MainWindow::on_event(const pv::interface::DeviceOpenFailed &evt) {
 void MainWindow::on_event(const pv::interface::DeviceOptionsUpdated &) {
   _trigger_widget->device_updated();
   _device_options_widget->device_updated();
-  if (_signal_processing_widget)
-    _signal_processing_widget->device_updated();
   _measure_widget->reload();
   // Calibration dialog check removed (SR_CONF_CALI key deleted).
 
@@ -3171,10 +3149,6 @@ void MainWindow::on_event(const pv::interface::StyleChanged &) {
 // --- Data group ---
 void MainWindow::on_event(const pv::interface::DataPoolChanged &) {
   current_view()->check_measure();
-  // Auto-apply signal processing settings on new data
-  if (_signal_processing_widget) {
-    _signal_processing_widget->auto_apply_settings();
-  }
 }
 void MainWindow::on_event(const pv::interface::CopyInProgressChanged &) {
   // 显示后台 copy 指示器；完成后由其它消息刷新
@@ -3227,9 +3201,6 @@ void MainWindow::on_event(const pv::interface::GlitchFilterCompleted &) {
   if (ctx && ctx->document()) {
     _session->copy_data_to_document(ctx->document());
   }
-  if (_signal_processing_widget) {
-    _signal_processing_widget->update_glitch_filter_state();
-  }
   // Restart decoders after data change
   _session->restart_decoders();
 
@@ -3243,9 +3214,6 @@ void MainWindow::on_event(const pv::interface::GlitchFilterCleared &) {
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
     _session->copy_data_to_document(ctx->document());
-  }
-  if (_signal_processing_widget) {
-    _signal_processing_widget->update_glitch_filter_state();
   }
   // Restart decoders after data change
   _session->restart_decoders();
@@ -3265,9 +3233,6 @@ void MainWindow::on_event(const pv::interface::SignalInvertCompleted &) {
   if (ctx2 && ctx2->document()) {
     _session->copy_data_to_document(ctx2->document());
   }
-  if (_signal_processing_widget) {
-    _signal_processing_widget->update_invert_state();
-  }
   // Restart decoders after data change
   _session->restart_decoders();
 }
@@ -3275,9 +3240,6 @@ void MainWindow::on_event(const pv::interface::SignalInvertCleared &) {
   pv::TabContext *ctx2 = current_context();
   if (ctx2 && ctx2->document()) {
     _session->copy_data_to_document(ctx2->document());
-  }
-  if (_signal_processing_widget) {
-    _signal_processing_widget->update_invert_state();
   }
   // Restart decoders after data change
   _session->restart_decoders();
@@ -3599,8 +3561,6 @@ void MainWindow::remove_tab(int index) {
   _search_widget->bind_context(new_ctx);
   _protocol_widget->bind_context(new_ctx);
   _device_options_widget->bind_context(new_ctx);
-  if (_signal_processing_widget)
-    _signal_processing_widget->bind_context(new_ctx);
   _log_widget->bind_context(new_ctx);
   _trigger_widget->bind_context(new_ctx);
   _dso_trigger_widget->bind_context(new_ctx);
@@ -3655,8 +3615,6 @@ void MainWindow::on_tab_changed(int index) {
       _search_widget->unbind_context();
       _protocol_widget->unbind_context();
       _device_options_widget->unbind_context();
-      if (_signal_processing_widget)
-        _signal_processing_widget->unbind_context();
       _log_widget->unbind_context();
       _trigger_widget->unbind_context();
       _dso_trigger_widget->unbind_context();
@@ -3668,8 +3626,6 @@ void MainWindow::on_tab_changed(int index) {
     _search_widget->bind_context(new_ctx);
     _protocol_widget->bind_context(new_ctx);
     _device_options_widget->bind_context(new_ctx);
-    if (_signal_processing_widget)
-      _signal_processing_widget->bind_context(new_ctx);
     _log_widget->bind_context(new_ctx);
     _trigger_widget->bind_context(new_ctx);
     _dso_trigger_widget->bind_context(new_ctx);

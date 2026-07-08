@@ -28,10 +28,6 @@
         "text": "选项"
     },
     {
-        "id": "IDS_TOOLBAR_SIGNAL_PROCESSING",
-        "text": "滤波"
-    },
-    {
         "id": "IDS_TOOLBAR_CAPTURE_MODE",
         "text": "模式"
     },
