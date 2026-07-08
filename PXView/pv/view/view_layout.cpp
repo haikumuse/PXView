@@ -168,10 +168,13 @@ bool ViewLayout::zoom(double steps, int offset) {
     }
 
     double hori_res = -1;
+    // DSO scroll direction: wheel up (steps>0) zooms IN (smaller timebase),
+    // wheel down (steps<0) zooms OUT (larger timebase). This matches the
+    // conventional oscilloscope scroll-to-zoom direction.
     if (steps > 0.5)
-      hori_res = _view->_sampling_bar->hori_knob(-1);
-    else if (steps < -0.5)
       hori_res = _view->_sampling_bar->hori_knob(1);
+    else if (steps < -0.5)
+      hori_res = _view->_sampling_bar->hori_knob(-1);
 
     pxv_info("[DEBUG-DSO] zoom: hori_res=%.9g cur_view_time=%.9g",
              hori_res, _view->_data_source->cur_view_time());

@@ -57,11 +57,28 @@ jobs:
           # 注意:默认 install-qt 只装 qtbase,WebSockets 是独立 addon 模块需用 -m 显式安装
           # 模块名带 qt 前缀(用 `aqt list-qt linux desktop --modules <ver> <arch>` 查询)
           # (CMake/deps.cmake 的 find_package(Qt6 ... COMPONENTS ... WebSockets) 依赖此模块)
-          # qtwayland 必须显式安装,否则 AppImage 只打包 xcb 插件,在 Wayland 系统上无法启动
           pip3 install aqtinstall
           aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 \
-            -m qtwebsockets qtwayland \
+            -m qtwebsockets \
             --outputdir ${{ env.QT_PREFIX }}
+          echo "=== Platform plugins before qtwayland build ==="
+          ls -la ${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/plugins/platforms/ || true
+
+      - name: Build qtwayland platform plugin
+        run: |
+          # aqtinstall 不提供 qtwayland 客户端平台插件,从源码编译安装
+          # 这样 AppImage 会同时包含 xcb 和 wayland 两个平台插件
+          sudo apt-get install -y wayland-protocols libwayland-dev
+          git clone --branch v${{ env.QT_VERSION }} --depth 1 https://github.com/qt/qtwayland.git
+          cd qtwayland
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64" \
+            -DCMAKE_INSTALL_PREFIX="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64"
+          cmake --build build --parallel $(nproc)
+          cmake --install build
+          echo "=== Platform plugins after qtwayland build ==="
+          ls -la ${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/plugins/platforms/
 
       - name: Build fx2lafw firmware
         run: |
@@ -129,12 +146,76 @@ jobs:
           ls -la PXView-x86_64.AppImage
           # 验证 AppImage 可执行权限
           chmod +x PXView-x86_64.AppImage
-          # 列出 AppImage 内容(可选,用于调试)
-          # ./PXView-x86_64.AppImage --appimage-extract >/dev/null 2>&1 && ls squashfs-root/ || true
 
-      - name: Upload Artifact
+      - name: Package udev rules (separate artifact)
+        run: |
+          # udev rules 必须安装到系统路径,不应打包进 AppImage
+          # 单独打包成一个 artifact,用户下载后手动安装
+          # 包含:
+          #   - 60-px.rules: PXView 专用规则 (PXLogic/Qinheng/Van Ooijen VID)
+          #   - 60-libsigrok.rules: 标记所有 libsigrok 支持的 USB 设备 (ID_SIGROK=1)
+          #   - 61-libsigrok-plugdev.rules: 授权 plugdev 组访问 (Debian 系)
+          #   - 61-libsigrok-uaccess.rules: 授权本地登录用户访问 (systemd-logind)
+          mkdir -p udev-rules
+          cp install.dir/usr/lib/udev/rules.d/60-px.rules udev-rules/
+          cp libsigrok/contrib/60-libsigrok.rules udev-rules/
+          cp libsigrok/contrib/61-libsigrok-plugdev.rules udev-rules/
+          cp libsigrok/contrib/61-libsigrok-uaccess.rules udev-rules/
+          cat > udev-rules/install-udev-rules.sh << 'EOF'
+          #!/bin/bash
+          # 安装 PXView 硬件访问 udev 规则(让非 root 用户能访问 USB 设备)
+          # 覆盖 PXView 设备 (PXLogic, Qinheng 等) 和所有 libsigrok 支持的设备
+          # 用法: sudo ./install-udev-rules.sh
+          set -e
+          RULES_FILES="60-px.rules 60-libsigrok.rules 61-libsigrok-plugdev.rules 61-libsigrok-uaccess.rules"
+          if [ "$(id -u)" -ne 0 ]; then
+            echo "请用 sudo 运行: sudo $0"
+            exit 1
+          fi
+          # 查找系统 udev rules 目录
+          if [ -d /usr/lib/udev/rules.d ]; then
+            DEST=/usr/lib/udev/rules.d
+          elif [ -d /lib/udev/rules.d ]; then
+            DEST=/lib/udev/rules.d
+          elif [ -d /etc/udev/rules.d ]; then
+            DEST=/etc/udev/rules.d
+          else
+            echo "错误: 找不到 udev rules 目录"
+            exit 1
+          fi
+          echo "安装 udev 规则到 $DEST/"
+          for f in $RULES_FILES; do
+            if [ ! -f "$f" ]; then
+              echo "警告: 找不到 $f, 跳过"
+              continue
+            fi
+            cp "$f" "$DEST/$f"
+            echo "  -> 已安装 $f"
+          done
+          udevadm control --reload-rules
+          udevadm trigger
+          echo ""
+          echo "完成。现在 PXView 硬件设备无需 sudo 即可访问。"
+          echo "注意: 若要使用 plugdev 组规则生效,请将自己加入该组:"
+          echo "  sudo usermod -aG plugdev \$USER"
+          echo "然后重新登录 (或运行 'newgrp plugdev')。"
+          EOF
+          chmod +x udev-rules/install-udev-rules.sh
+          tar -czf PXView-udev-rules.tar.gz -C udev-rules .
+          ls -la PXView-udev-rules.tar.gz
+          echo "=== udev rules 内容 ==="
+          tar -tzf PXView-udev-rules.tar.gz
+
+      - name: Upload AppImage Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PXView-Linux-x86_64-AppImage
           path: PXView-x86_64.AppImage
+          if-no-files-found: error
+
+      - name: Upload udev rules Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PXView-Linux-udev-rules
+          path: PXView-udev-rules.tar.gz
           if-no-files-found: error
