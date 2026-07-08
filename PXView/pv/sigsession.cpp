@@ -1551,7 +1551,12 @@ void SigSession::on_event(const interface::RevEndPacket &) {
            _state->device_agent().get_work_mode(),
            _capture_manager->is_stream_mode(),
            _capture_manager->is_single_mode());
-  if (_state->device_agent().get_work_mode() == LOGIC) {
+  // MSO (Mixed Signal Oscilloscope) includes logic channels — decoders
+  // and the capture→copy→decode pipeline must run in MSO just as in LOGIC.
+  // This matches is_logic_rendering_mode() (view.cpp) and the existing
+  // LOGIC||MSO merges in switch_work_mode / get_ring_sample_count.
+  int cur_mode = _state->device_agent().get_work_mode();
+  if (cur_mode == LOGIC || cur_mode == MSO) {
     bool bAddDecoder = false;
     bool bSwapBuffer = false;
 

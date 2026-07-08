@@ -468,7 +468,13 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
     if (cur_ch_num > vld_ch_num)
       probe->enabled = false;
 
-    bool is_analog = (probe->type == SR_CHANNEL_ANALOG);
+    // DSO channels (oscilloscope) are grouped with analog, not digital —
+    // otherwise they appear as extra buttons in the Digital Channel grid
+    // (e.g. demo device's O0/O1 at index 13/14). Core disables DSO channels
+    // in LOGIC/MSO modes (sigsession.cpp switch_work_mode), so they are
+    // either hidden (LOGIC: analog group hidden) or shown disabled (MSO).
+    bool is_analog = (probe->type == SR_CHANNEL_ANALOG ||
+                      probe->type == SR_CHANNEL_DSO);
     ChannelLabel *ch_item = new ChannelLabel(
         this, NULL, probe->index,
         is_analog ? ChannelLabel::Analog : ChannelLabel::Logic);

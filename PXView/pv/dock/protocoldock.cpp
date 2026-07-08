@@ -506,7 +506,8 @@ void ProtocolDock::on_add_protocol() {
 bool ProtocolDock::add_protocol_by_id(
     QString id, bool silent,
     std::list<pv::data::decode::Decoder *> &sub_decoders) {
-  if (_session->get_device()->get_work_mode() != LOGIC) {
+  int cur_mode = _session->get_device()->get_work_mode();
+  if (cur_mode != LOGIC && cur_mode != MSO) {
     pxv_info(
         "Protocol Analyzer\nProtocol Analyzer is only valid in Digital Mode!");
     return false;

@@ -2402,10 +2402,11 @@ Result<std::string> SessionService::add_decoder(
     // If already on the main thread, execute directly to avoid deadlock.
 
     auto do_add = [this, dec, &options, &channel_map, &label]() -> Result<std::string> {
-        // Validate: decoder can only be added in LOGIC mode.
-        // This mirrors ProtocolDock::add_protocol_by_id() which checks
-        // get_work_mode() != LOGIC and rejects the operation.
-        if (_session->get_device()->get_work_mode() != LOGIC) {
+        // Validate: decoder can only be added in LOGIC or MSO mode.
+        // MSO (Mixed Signal Oscilloscope) includes logic channels, so
+        // protocol decoders are valid. This mirrors ProtocolDock::add_protocol_by_id().
+        int cur_mode = _session->get_device()->get_work_mode();
+        if (cur_mode != LOGIC && cur_mode != MSO) {
             return Result<std::string>::Fail(
                 ErrorCode::DecoderError,
                 "Protocol analyzers are only valid in Digital/Logic mode. "
