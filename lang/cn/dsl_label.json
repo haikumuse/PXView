@@ -72,11 +72,11 @@
         "text": "时基"
     },
     {
-        "id": "Max Height",
+        "id": "Max height",
         "text": "最大高度"
     },
     {
-        "id": "Max Height value",
+        "id": "Max height value",
         "text": "最大高度值"
     },
     {
@@ -84,28 +84,52 @@
         "text": "滤波器设置"
     },
     {
+        "id": "Filter",
+        "text": "滤波器"
+    },
+    {
         "id": "Datalog",
         "text": "数据记录"
     },
     {
-        "id": "Operation Mode",
+        "id": "Operation mode",
         "text": "运行模式"
+    },
+    {
+        "id": "Buffer options",
+        "text": "缓冲选项"
     },
     {
         "id": "Stop Options",
         "text": "停止选项"
     },
     {
-        "id": "Channel Mode",
+        "id": "Channel mode",
         "text": "通道模式"
     },
     {
-        "id": "Threshold Levels",
+        "id": "Threshold levels",
         "text": "阈值电压"
     },
     {
         "id": "Threshold Level",
         "text": "阈值电压"
+    },
+    {
+        "id": "Voltage threshold",
+        "text": "电压阈值"
+    },
+    {
+        "id": "Clock edge",
+        "text": "时钟边沿"
+    },
+    {
+        "id": "External trigger match",
+        "text": "外部触发匹配"
+    },
+    {
+        "id": "Trigger output enable",
+        "text": "触发输出使能"
     },
     {
         "id": "Enable RLE Compress",

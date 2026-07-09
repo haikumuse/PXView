@@ -787,9 +787,6 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
       paint_envelope(p, _data, zeroY, left, start_sample, end_sample, hw_offset,
                      pixels_offset, samples_per_pixel, enabled_channels);
     }
-
-    // Per-frame measurement status update (extracted to DsoMeasure).
-    _measure->update_measure_status(index, hw_offset, enabled_channels, samplerate);
   }
 }
 

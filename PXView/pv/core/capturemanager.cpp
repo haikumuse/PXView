@@ -151,7 +151,6 @@ bool CaptureManager::action_start_capture(bool instant,
   _is_stream_mode = false;
   _capture_times = 0;
   _dso_packet_count = 0;
-  _state->set_dso_status_valid(false);
 
   _state->set_capture_data(_state->view_data());
   _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());

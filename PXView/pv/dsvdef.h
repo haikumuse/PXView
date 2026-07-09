@@ -117,58 +117,9 @@ struct ds_trigger_pos {
     uint8_t status;
 };
 
-// Fork libsigrok DSO status struct (50 fields). DSO mode is deprecated
-// (DSCope hardware dropped); this struct is retained as a stub so
-// dso_measure.cpp / deviceagent.cpp / storesession.cpp compile until the
-// DSO code paths are fully removed. Fields ch0_*/ch1_* are read by
-// storesession.cpp export-proc to write DSO measurement metadata.
-struct sr_status {
-    uint8_t trig_glitch;
-    uint8_t trig_ch;
-    int16_t vpos_rms;
-    int16_t vpos_max;
-    int16_t vpos_min;
-    int16_t vpos_cyc_rms;
-    int16_t vpos_mean;
-    int16_t vpos_cyc_mean;
-    uint32_t vlen;
-    uint8_t trig_flag;
-    uint16_t trig_offset;
-    uint8_t measure_valid;
-    // Per-channel DSO measurement fields (fork). ch0_* for channel 0, ch1_*
-    // for channel 1. Storesession.cpp reads these to populate the .dsd file
-    // metadata header. All zeroed by default — DSO measure code is deprecated.
-    uint32_t ch0_cyc_tlen;
-    uint32_t ch0_cyc_cnt;
-    uint8_t  ch0_max;
-    uint8_t  ch0_min;
-    uint32_t ch0_cyc_plen;
-    uint32_t ch0_cyc_llen;
-    uint8_t  ch0_level_valid;
-    uint8_t  ch0_plevel;
-    uint8_t  ch0_low_level;
-    uint8_t  ch0_high_level;
-    uint32_t ch0_cyc_rlen;
-    uint32_t ch0_cyc_flen;
-    uint64_t ch0_acc_square;
-    uint64_t ch0_acc_mean;
-    uint32_t ch1_cyc_tlen;
-    uint32_t ch1_cyc_cnt;
-    uint8_t  ch1_max;
-    uint8_t  ch1_min;
-    uint32_t ch1_cyc_plen;
-    uint32_t ch1_cyc_llen;
-    uint8_t  ch1_level_valid;
-    uint8_t  ch1_plevel;
-    uint8_t  ch1_low_level;
-    uint8_t  ch1_high_level;
-    uint32_t ch1_cyc_rlen;
-    uint32_t ch1_cyc_flen;
-    uint64_t ch1_acc_square;
-    uint64_t ch1_acc_mean;
-    // Padding for remaining fork fields not yet referenced.
-    uint8_t _pad[32];
-};
+// Fork libsigrok DSO status struct deleted — DSO mode is deprecated and all
+// DSO status code paths have been removed (dso_measure / storesession /
+// datasource / sessionstatecontext).
 
 // sr_datafeed_dso is now defined in upstream libsigrok.h.
 
@@ -280,7 +231,6 @@ struct sr_status {
 // (60067-60079) and SR_CONF_USB (60088).
 // NOTE: SR_CONF_PROBE_CONFIGS is now in libsigrok.h enum (60062) and is
 // no longer #defined here.
-#define SR_CONF_STATUS              60081
 #define SR_CONF_CLOCK_TYPE          60082
 #define SR_CONF_BANDWIDTH_LIMIT     60083
 #define SR_CONF_BANDWIDTH           60084

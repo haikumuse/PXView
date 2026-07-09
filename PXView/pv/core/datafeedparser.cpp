@@ -47,14 +47,19 @@ void DataFeedParser::feed_in_meta(const sr_dev_inst *sdi,
 
 void DataFeedParser::feed_in_trigger() {
   // Upstream SR_DF_TRIGGER has NO payload (fork ds_trigger_pos removed).
-  // We can no longer read the trigger sample position from the packet.
-  // Set hw_replied + trigger_flag; the trigger position remains 0 (start
-  // of capture) unless the driver provides it via another mechanism.
+  // Query the real trigger sample position from the driver via the
+  // PXView-local SR_CONF_TRIGGER_POS key. PXLogic exposes it (returns
+  // devc->trigger_pos_set); other devices return 0 (start-of-capture
+  // fallback, matching prior behavior). device_agent() returns a
+  // reference (never null); the no-device case is handled inside
+  // get_config (returns false → get_trigger_pos returns 0).
   _state->set_hw_replied(true);
 
   if (_state->device_agent().get_work_mode() != DSO) {
     _state->set_trigger_flag(true);
-    _state->capture_data()->_trig_pos = 0;
+
+    // Read the trigger position reported by the driver.
+    _state->capture_data()->_trig_pos = _state->device_agent().get_trigger_pos();
 
     // Update trig position for current view.
     if (_state->capture_data() == _state->view_data()) {

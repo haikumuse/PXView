@@ -91,6 +91,27 @@ bool AppControl::Init()
     cs = pv::path::ToUnicodePath(qs);
     pxv_info("GetFirmwareDir:\"%s\"", cs.c_str());
 
+    // Expose PXView/res as a libsigrok firmware search path. Upstream
+    // libsigrok's sr_resource_open() searches SIGROK_FIRMWARE_PATH (a
+    // path-separator-delimited list) plus the default sigrok-firmware dirs.
+    // The pxlogic driver uses sr_resource_open(SR_RESOURCE_FIRMWARE, name)
+    // with a bare filename (e.g. "SCI_LOGIC.bin"), so PXView's private
+    // firmware dir (install.dir/share/PXView/res) MUST be on the search
+    // path or FPGA/CPU firmware loading fails with "Firmware not found.",
+    // which previously caused the device to be reset (rst usb) and drop
+    // off the bus. Set the env var before _session->init() so the very
+    // first sr_resourcepaths_get() call (during scan/dev_open) sees it.
+    {
+        // Preserve any pre-existing SIGROK_FIRMWARE_PATH entries.
+        QString combined = QString::fromLocal8Bit(
+            g_getenv("SIGROK_FIRMWARE_PATH"));
+        if (!combined.isEmpty())
+            combined += QString::fromLatin1(G_SEARCHPATH_SEPARATOR_S);
+        combined += qs;
+        g_setenv("SIGROK_FIRMWARE_PATH",
+            combined.toUtf8().constData(), TRUE);
+    }
+
     qs = GetUserDataDir();
     cs = pv::path::ToUnicodePath(qs);
     pxv_info("GetUserDataDir:\"%s\"", cs.c_str());

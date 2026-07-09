@@ -149,9 +149,12 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
           &DeviceOptionsDock::mode_check_timeout);
 
   _mode_check_timer.setInterval(500);
+
+  ADD_UI(this);
 }
 
 DeviceOptionsDock::~DeviceOptionsDock() {
+  REMOVE_UI(this);
   for (auto ptr : _probe_options_binding_list) {
     const auto &props = ptr->properties();
     for (auto p : props) {
@@ -365,10 +368,12 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
 
     if (gvar_opts != NULL) {
       /* Task 10.6: config_list now returns a GVariant string array
-       * (g_variant_new_strv) instead of a uint64 bare-pointer cast. */
+       * (g_variant_new_strv) instead of a uint64 bare-pointer cast.
+       * Note: g_variant_get_strv returns pointers into the GVariant's
+       * internal buffer — the variant must NOT be unref'd until we're
+       * done using strs[]. Unref after the loop, just before g_free. */
       gsize n_items;
       const gchar **strs = g_variant_get_strv(gvar_opts, &n_items);
-      g_variant_unref(gvar_opts);
 
       /* Task 10/Phase 3: driver config_get now returns the current channel
        * mode as a string (channel_mode_str[ch_mode]). Compare against the
@@ -381,8 +386,9 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
 
       for (gsize i = 0; i < n_items; i++) {
         row1++;
-        QString mode_bt_text = LangResource::Instance()->get_lang_text(
-            STR_PAGE_DSL, strs[i], strs[i]);
+        QString mode_bt_text = QString::fromUtf8(
+            LangResource::Instance()->get_lang_text(
+                STR_PAGE_DSL, strs[i], strs[i]));
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
         mode_button->setFont(contentFont);
         ChannelModePair mode_index;
@@ -400,6 +406,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
           mode_button->setChecked(true);
       }
 
+      g_variant_unref(gvar_opts);
       g_free((gpointer)strs);
     }
   }
@@ -1080,6 +1087,9 @@ void DeviceOptionsDock::update_dynamic_panel_visibility(bool visible) {
 
 void DeviceOptionsDock::try_resize_scroll() {
 #ifdef _WIN32
+  if (_dynamic_panel == NULL)
+    return;
+
   auto labels = _dynamic_panel->findChildren<QLabel *>();
   int max_label_width = 0;
 
@@ -1089,7 +1099,7 @@ void DeviceOptionsDock::try_resize_scroll() {
     QFontMetrics labelFm(o->font());
     QRect rc = labelFm.boundingRect(o->text());
     QSize size(rc.width() + 15, rc.height());
-    o->setFixedSize(size);
+    o->setMinimumSize(size);
 
     if (size.width() > max_label_width) {
       max_label_width = size.width();

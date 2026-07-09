@@ -648,31 +648,41 @@ Result<int> SessionService::configure_and_start(
     // config_changed() callback) to avoid cascading UI updates while
     // we're in the middle of reconfiguring. We'll rebuild signals
     // once at the end via init_signals().
+    //
+    // If the caller does NOT specify digital_channels/analog_channels,
+    // leave the driver's default enabled state untouched — disabling all
+    // channels and enabling none would produce an empty channel list and
+    // break capture ("channel list is empty" error).
     {
-        // Disable all channels first
         GSList *channels = _device->get_channels();
         int ch_count = 0;
         for (GSList *l = channels; l; l = l->next) ch_count++;
         dbg_log(QString("  total channels: %1").arg(ch_count).toUtf8().constData());
 
-        for (GSList *l = channels; l; l = l->next) {
-            auto *ch = static_cast<sr_channel *>(l->data);
-            if (ch && ch->enabled) {
-                dbg_log(QString("  disabling channel %1 via sr_dev_channel_enable").arg(ch->index).toUtf8().constData());
-                _device->enable_probe(ch->index, false);
+        if (digital_channels.empty() && analog_channels.empty()) {
+            // No channel selection requested — keep driver defaults.
+            dbg_log("  no channel selection requested, keeping driver defaults");
+        } else {
+            // Disable all channels first
+            for (GSList *l = channels; l; l = l->next) {
+                auto *ch = static_cast<sr_channel *>(l->data);
+                if (ch && ch->enabled) {
+                    dbg_log(QString("  disabling channel %1 via sr_dev_channel_enable").arg(ch->index).toUtf8().constData());
+                    _device->enable_probe(ch->index, false);
+                }
             }
-        }
 
-        // Enable specified digital channels
-        for (int16_t idx : digital_channels) {
-            dbg_log(QString("  enabling digital channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
-            _device->enable_probe(idx, true);
-        }
+            // Enable specified digital channels
+            for (int16_t idx : digital_channels) {
+                dbg_log(QString("  enabling digital channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
+                _device->enable_probe(idx, true);
+            }
 
-        // Enable specified analog channels
-        for (int16_t idx : analog_channels) {
-            dbg_log(QString("  enabling analog channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
-            _device->enable_probe(idx, true);
+            // Enable specified analog channels
+            for (int16_t idx : analog_channels) {
+                dbg_log(QString("  enabling analog channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
+                _device->enable_probe(idx, true);
+            }
         }
     }
 

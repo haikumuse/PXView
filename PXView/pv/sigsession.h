@@ -266,8 +266,6 @@ public:
   void rebuild_decoder_pannel() { if (_decoder_pannel) _decoder_pannel->rebuild_layers(); }
   void update_dso_data_scale() override;
   void remove_decode_task(std::shared_ptr<data::DecoderStack> stack);
-  sr_status get_dso_status() override { return _state->dso_status(); }
-  bool dso_status_is_valid() override { return _state->dso_status_valid(); }
   double get_logic_data_view_time() override;
   int64_t get_ring_sample_count();
   bool dso_data_is_out_off_range() { return _state->view_data()->get_dso()->data_is_out_off_range(); }
@@ -343,10 +341,10 @@ private:
   // All fields previously declared here (_sampling_mutex, _data_mutex,
   // _signal_models, _spectrum_stacks, _lissajous_model, _math_stack,
   // _session_time, _trig_time, _is_triged, _trigger_flag, _hw_replied,
-  // _bClose, _is_saving, _dso_status_valid, _trigger_ch, _error,
+  // _bClose, _is_saving, _trigger_ch, _error,
   // _error_pattern, _save_start, _save_end, _map_zoom, _is_working,
   // _device_status, _next_decoder_handle_id, _device_agent, _view_data,
-  // _capture_data, _data_list, _dso_status, _trigger_config) now live on
+  // _capture_data, _data_list, _trigger_config) now live on
   // SessionStateContext and are accessed via `_state->xxx()` accessors.
   // The 5 managers no longer hold a SigSession* — they hold a
   // SessionStateContext* and use the same accessors, eliminating the need
@@ -375,14 +373,27 @@ private:
   // (Qt::QueuedConnection) so on_hotplug_event_() can safely touch Qt
   // objects and the EventBus. Reconnect watchdog gives a 500ms grace
   // period for the device to re-enumerate during capture before tearing
-  // down the capture state.
-  static void hotplug_cb_(int event, void *user_data);
-  void on_hotplug_event_(int event);
+  // down the capture state. device_handle is the libusb_device* for both
+  // ATTACH and DETACH (see hotplug.c); it is captured by value and used
+  // for pointer-identity comparison (DETACH) and VID/PID matching (ATTACH
+  // rebind). Comparing two pointer values is safe even after the
+  // underlying libusb_device has been freed (no dereference is performed).
+  static void hotplug_cb_(int event, void *user_data, void *device_handle);
+  void on_hotplug_event_(int event, void *device_handle);
   QTimer *reconnect_timer_ = nullptr;
   void start_reconnect_watchdog_();
   void on_reconnect_timeout_();
-  bool is_current_device_gone_();
-  void update_device_handle_();
+  // Returns true if the detached device (identified by device_handle, a
+  // libusb_device*) is the currently-open device. NULL device_handle is
+  // treated conservatively as "current device gone" (safe fallback).
+  bool is_current_device_gone_(void *device_handle);
+  // Rebinds the active sdi to a freshly-scanned device matching the
+  // current device's VID/PID. Called on ATTACH during the reconnect
+  // watchdog window. device_handle is the ATTACHed libusb_device*
+  // (reserved for future pointer-based matching; currently unused —
+  // matching is by VID/PID). On mismatch or failure, falls back to
+  // stop_capture() + set_default_device().
+  void update_device_handle_(void *device_handle);
 };
 
 } // namespace pv

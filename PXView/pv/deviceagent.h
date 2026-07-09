@@ -243,6 +243,11 @@ public:
     bool get_probe_hw_offset(int &v, sr_channel *probe);
     bool get_probe_map_default(bool &v, sr_channel *probe);
     bool get_trigger_value(int &v, sr_channel *probe);
+    // PXView-local: real trigger sample position (uint64, read-only). Only
+    // the PXLogic driver exposes it via SR_CONF_TRIGGER_POS. Returns 0 for
+    // devices that don't support it (start-of-capture fallback). Safe to
+    // call when no device is connected (get_config handles the null case).
+    uint64_t get_trigger_pos() const;
     QVector<uint64_t> get_probe_vdiv_list();
 
     // --- USB link info (replaces deleted SR_CONF_USB_SPEED/USB30_SUPPORT keys) ---
@@ -256,6 +261,19 @@ public:
     // Convenience: true when get_usb_speed() == PXV_USB_SPEED_SUPER or
     // PXV_USB_SPEED_SUPER_PLUS. Returns false for UNKNOWN (treats as USB 2.0).
     bool is_usb30();
+
+    // Returns the active device's underlying libusb_device* (as void* to
+    // avoid pulling libusb.h into the header). NULL when no device is open
+    // or the device is not USB. Intended for pointer-identity comparison
+    // against hotplug DETACH device_handle values — comparing two pointer
+    // values is safe even if one has been freed by libusb (no dereference).
+    void *get_libusb_device();
+
+    // Reads the active device's USB VID/PID from the libusb device
+    // descriptor. Returns false on failure (non-USB device, no device, or
+    // descriptor unreadable). Used by hotplug ATTACH rebind to match a
+    // re-enumerated device by VID/PID.
+    bool get_vid_pid(uint16_t &vid, uint16_t &pid);
 
     // --- Config info ---
     const struct sr_key_info* get_config_info(int key);

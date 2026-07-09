@@ -68,19 +68,25 @@ DeviceOptions::DeviceOptions(SigSession *session)
 		return;
     }
 
-	const int *const options = (const int32_t *)g_variant_get_fixed_array(
-		gvar_opts, &num_opts, sizeof(int32_t));
+	const uint32_t *const options = (const uint32_t *)g_variant_get_fixed_array(
+		gvar_opts, &num_opts, sizeof(uint32_t));
 
     pxv_info("DeviceOptions binding: num_opts=%zu", num_opts);
-	
+
 	for (unsigned int i = 0; i < num_opts; i++) {
+		/* Mask off capability bits (SR_CONF_GET/SET/LIST, top 3 bits) to
+		 * get the bare config key. pxlogic.c now routes DEVICE_OPTIONS through
+		 * STD_CONFIG_LIST which returns uint32 entries with cap bits
+		 * (e.g. SR_CONF_SAMPLERATE | SR_CONF_GET | SR_CONF_SET | SR_CONF_LIST).
+		 * sr_key_info_get only recognizes bare keys.
+		 * SR_CONF_MASK = 0x1fffffff (libsigrok-internal.h, not public). */
+		const int key = (int)(options[i] & 0x1fffffff);
+
 		const struct sr_config_info *const info =
-			_device_agent->get_config_info(options[i]);
+			_device_agent->get_config_info(key);
 
 		if (!info)
 			continue;
-
-		const int key = info->key;
 
 		gvar_list = _device_agent->get_config_list(NULL, key);
 
@@ -186,7 +192,7 @@ DeviceOptions::DeviceOptions(SigSession *session)
         if (!_device_agent->is_dsl_device()) {
             GVariant *opmode_list = _device_agent->get_config_list(
                 NULL, SR_CONF_OPERATION_MODE);
-            bind_list("operation_mode", "Operation Mode",
+            bind_list("operation_mode", "Operation mode",
                       SR_CONF_OPERATION_MODE, opmode_list);
             if (opmode_list)
                 g_variant_unref(opmode_list);
@@ -421,7 +427,8 @@ void DeviceOptions::bind_bandwidths(const QString &name, const QString label, in
 
 	for (gsize i = 0; i < n_items; i++)
 	{
-		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]);
+		QString v = QString::fromUtf8(
+			LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]));
 		gvar = g_variant_new_string(strs[i]);
 		values.push_back(make_pair(gvar, v));
 	}
@@ -458,7 +465,8 @@ void DeviceOptions::bind_list(const QString &name, const QString label, int key,
 
 	for (gsize i = 0; i < n_items; i++)
 	{
-		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]);
+		QString v = QString::fromUtf8(
+			LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]));
 		gvar = g_variant_new_string(strs[i]);
 		values.push_back(make_pair(gvar, v));
 	}

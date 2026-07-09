@@ -321,18 +321,16 @@ extern "C" void pxv_libusb_log_cb(libusb_context *ctx,
     buf[--n] = 0;
   switch (level) {
     case LIBUSB_LOG_LEVEL_ERROR:
-      // 调试时改为 pxv_err("libusb: %s", buf) 查看 libusb 错误。
-      // 用户要求完全屏蔽 libusb 日志，默认丢弃所有级别。
+      pxv_err("libusb: %s", buf);
       break;
     case LIBUSB_LOG_LEVEL_WARNING:
-      // 调试时改为 pxv_warn("libusb: %s", buf) 查看 libusb 警告。
+      pxv_warn("libusb: %s", buf);
+      break;
+    case LIBUSB_LOG_LEVEL_INFO:
+      pxv_info("libusb: %s", buf);
       break;
     default:
-      // LIBUSB_LOG_LEVEL_INFO / LIBUSB_LOG_LEVEL_DEBUG — dropped.
-      // libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_NONE) does not reliably
-      // suppress messages when a global log callback is registered, so
-      // filter here. Re-enable by forwarding to pxv_info if diagnostics
-      // are needed.
+      pxv_info("libusb-dbg: %s", buf);
       break;
   }
 }
@@ -349,11 +347,11 @@ bool SigSession::init() {
 
   // Forward libsigrok internal logs (sr_err/sr_warn/sr_info/sr_dbg) into
   // PXView's xlog so driver failures are observable in PXView.log.
-  // 使用 SR_LOG_WARN 级别过滤 sr_dbg/sr_info 噪音（如 serial 扫描、
-  // usb_speed 检查等），仅保留 sr_warn/sr_err 用于诊断设备问题。
-  // 调试设备打开失败时可临时改为 SR_LOG_DBG。
+  // 临时调到 SR_LOG_INFO 诊断 pxlogic 采集无数据问题:
+  // 需要 usb_wr_reg/transfer/receive_transfer 的 sr_info 日志。
+  // 修复后改回 SR_LOG_WARN 过滤 sr_dbg/sr_info 噪音。
   sr_log_callback_set(sigrok_log_callback, nullptr);
-  sr_log_loglevel_set(SR_LOG_WARN);
+  sr_log_loglevel_set(SR_LOG_INFO);
 
   // Diagnostic: log every firmware search path libsigrok will consult, so
   // "Failed to locate 'fx2lafw-cypress-fx2.fw'" can be cross-checked against
@@ -379,7 +377,10 @@ bool SigSession::init() {
   // still logs via windows_hotplug_set_log_cb). Change to
   // LIBUSB_LOG_LEVEL_INFO/WARNING for diagnostics.
   libusb_set_log_cb(NULL, pxv_libusb_log_cb, LIBUSB_LOG_CB_GLOBAL);
-  libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_NONE);
+  // 临时调到 DEBUG 诊断 pxlogic 采集无数据问题:
+  // 需要 set_raw_io/submit_bulk/callback 的详细日志。
+  // 修复后改回 LIBUSB_LOG_LEVEL_NONE。
+  libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_DEBUG);
 
   // 首次扫描所有驱动，缓存到 DeviceAgent。后续 get_device_list 复用缓存，
   // 避免在设备 dev_open 后重复 sr_driver_scan 导致 LIBUSB_ERROR_ACCESS。
@@ -2172,26 +2173,35 @@ double SigSession::get_disk_write_speed_mbps() {
 bool SigSession::is_disk_write_disk_full() { return false; }
 
 // ============================================================================
-// USB hotplug (libsigrok sr_listen_hotplug) — Tasks 9/10/11.
+// USB hotplug (libsigrok sr_listen_hotplug) — Tasks 9/10/11 + Task 4/5.
 //
 // Flow: libsigrok internal GThread -> hotplug_cb_ (static trampoline) ->
 //   QMetaObject::invokeMethod(Qt::QueuedConnection) ->
 //   on_hotplug_event_() (main thread, safe to touch Qt / EventBus).
 //
 // Reconnect tolerance: on DETACH during capture, start a 500ms watchdog.
-// If ATTACH arrives before timeout, the device is presumed re-enumerated
-// and capture continues. Otherwise stop_capture() + broadcast DeviceDetached.
+// If ATTACH arrives before timeout, update_device_handle_() rebinds the
+// active sdi to the re-enumerated device (matched by VID/PID). Otherwise
+// stop_capture() + broadcast DeviceDetached.
 //
-// Note: libusb_hotplug callback signature does not pass the libusb_device*
-// to our sr_hotplug_callback (we deliberately ignored dev in hotplug.c), so
-// is_current_device_gone_() conservatively returns true and the watchdog
-// logic is the safety net for any DETACH event.
+// Device identification (Task 4): sr_hotplug_callback now receives the
+// libusb_device* for BOTH ATTACH and DETACH (see hotplug.c). For DETACH,
+// is_current_device_gone_() compares the detached device_handle pointer
+// value against sr_dev_inst_libusb_device_get() of the active sdi — a pure
+// value comparison that is safe even after libusb frees the underlying
+// device (no dereference). For ATTACH, update_device_handle_() matches by
+// VID/PID via sr_dev_inst_usb_vidpid_get() (the freshly-scanned sdis have
+// no open handle, so pointer comparison is not possible there).
 // ============================================================================
 
-void SigSession::hotplug_cb_(int event, void *user_data) {
+void SigSession::hotplug_cb_(int event, void *user_data, void *device_handle) {
   // Runs on a libsigrok internal GThread — MUST NOT touch Qt objects.
   // Forward to the main thread via Qt::QueuedConnection so on_hotplug_event_
-  // can safely use QTimer / EventBus / DeviceAgent.
+  // can safely use QTimer / EventBus / DeviceAgent. device_handle is
+  // captured by value (a raw libusb_device* for both ATTACH and DETACH).
+  // Comparing the captured value later is safe even if libusb has since
+  // freed the underlying device — only the pointer VALUE is compared,
+  // never dereferenced.
   SigSession *self = static_cast<SigSession*>(user_data);
   if (!self)
     return;
@@ -2199,21 +2209,20 @@ void SigSession::hotplug_cb_(int event, void *user_data) {
   // the receiver, mirroring EventBus::broadcast_async's pattern. `self` is
   // safe to capture: SigSession outlives libusb hotplug thread (joined in
   // uninit() before _state is destroyed).
-  QMetaObject::invokeMethod(qApp, [self, event]() {
-    self->on_hotplug_event_(event);
+  QMetaObject::invokeMethod(qApp, [self, event, device_handle]() {
+    self->on_hotplug_event_(event, device_handle);
   }, Qt::QueuedConnection);
 }
 
-void SigSession::on_hotplug_event_(int event) {
+void SigSession::on_hotplug_event_(int event, void *device_handle) {
   // Main thread — safe to touch Qt objects and the EventBus.
   if (event == SR_HOTPLUG_ATTACH) {
     // If the reconnect watchdog is active, this is the device returning
-    // during an in-flight capture — stop the watchdog and let capture
-    // continue (fx2lafw sdi handle is rebound by libusb internally).
+    // during an in-flight capture — stop the watchdog and rebind the sdi
+    // to the freshly-enumerated device (matched by VID/PID).
     if (reconnect_timer_ && reconnect_timer_->isActive()) {
       reconnect_timer_->stop();
-      update_device_handle_();
-      pxv_info("Device reconnected, capture continues");
+      update_device_handle_(device_handle);
       return;
     }
     pxv_info("Hotplug: device arrived");
@@ -2221,21 +2230,17 @@ void SigSession::on_hotplug_event_(int event) {
     _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
   } else if (event == SR_HOTPLUG_DETACH) {
     pxv_info("Hotplug: device detached");
-    // libusb hotplug does not give us the libusb_device* in the callback
-    // signature, so we cannot tell which device left. Conservative policy:
-    // assume any DETACH may affect the current device and let the watchdog
-    // (during capture) or the immediate broadcast (idle) handle it.
-    if (!is_current_device_gone_()) {
-      // Conservatively treated as "current device may be gone": fall through
-      // to the current-device-gone branch. (is_current_device_gone_ always
-      // returns true in the simplified implementation, so this branch is
-      // currently unreachable but retained for future device-identifying
-      // implementations.)
+    // Identify whether the detached device is the currently-open one by
+    // comparing the libusb_device* pointer value (Task 4).
+    if (!is_current_device_gone_(device_handle)) {
+      // A different (non-current) device detached — refresh the device
+      // list so the UI dropdown is up to date, but don't disturb the
+      // current capture.
       refresh_device_list();
       _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
       return;
     }
-    // Current device (presumptively) gone.
+    // Current device gone.
     if (_state->is_working()) {
       // Capture in flight — give the device a 500ms grace period to
       // re-enumerate (e.g. firmware re-download) before tearing down.
@@ -2273,25 +2278,120 @@ void SigSession::on_reconnect_timeout_() {
   _event_bus->broadcast_async<interface::DeviceDetached>({});
 }
 
-bool SigSession::is_current_device_gone_() {
-  // Simplified conservative implementation. The libusb_hotplug callback we
-  // registered in libsigrok/hotplug.c deliberately ignores the libusb_device*
-  // argument (our sr_hotplug_callback signature is `void(int, void*)`), so
-  // we cannot identify WHICH device left at this layer. Returning true
-  // forces the watchdog logic to apply to every DETACH, which is the safe
-  // default. The 500ms reconnect grace period limits false-positive damage.
-  return true;
+bool SigSession::is_current_device_gone_(void *device_handle) {
+  // Conservative fallback: no device_handle means we can't identify the
+  // detached device, so assume the worst (current device may be gone).
+  // This preserves the pre-Task-4 behavior for any path that still passes
+  // NULL (e.g. a future libsigrok backend without libusb_device* support).
+  if (!device_handle)
+    return true;
+
+  DeviceAgent *agent = get_device();
+  // No active device — a DETACH can't affect us. Return false so the caller
+  // only refreshes the device list without triggering the watchdog.
+  if (!agent || !agent->have_instance())
+    return false;
+
+  // Get the current device's libusb_device*. This is a pointer-identity
+  // comparison: even after libusb frees the underlying device (which
+  // happens after the hotplug callback returns), comparing two pointer
+  // VALUES is safe — no dereference is performed. If the values match, the
+  // detached device IS the currently-open one.
+  void *cur_dev = agent->get_libusb_device();
+  // If we can't get the current device's libusb_device* (e.g. handle was
+  // never opened, or non-USB device), be conservative.
+  if (!cur_dev)
+    return true;
+
+  return cur_dev == device_handle;
 }
 
-void SigSession::update_device_handle_() {
-  // Phase 2 simplified stub. For fx2lafw devices, the libusb_device_handle
-  // inside the sdi is typically rebound by libusb's internal hotplug path
-  // when the same physical device re-enumerates with the same vid:pid, so
-  // the existing sdi remains valid and capture can continue without
-  // explicit re-open here. A full implementation would match vid:pid against
-  // the freshly scanned device list and rebind the DeviceAgent handle; that
-  // is deferred to a later phase. Log a warning so misbehavior is visible.
-  pxv_warn("update_device_handle_ not fully implemented, capture may need restart");
+void SigSession::update_device_handle_(void *device_handle) {
+  // Task 5: rebind the active sdi to a freshly-scanned device matching the
+  // current device's VID/PID. device_handle (the ATTACHed libusb_device*) is
+  // reserved for future pointer-based matching; freshly-scanned sdis have
+  // no open handle so pointer comparison isn't possible — VID/PID is the
+  // reliable identity for a re-enumerated device.
+  (void)device_handle;
+
+  DeviceAgent *agent = get_device();
+  if (!agent || !agent->have_instance()) {
+    pxv_warn("update_device_handle_: no active device to rebind");
+    return;
+  }
+
+  // Step 1: capture the current device's VID/PID and sdi pointer BEFORE any
+  // state changes. The VID/PID is the identity to match against; old_sdi is
+  // used to skip the stale entry in the refreshed list (the driver may or
+  // may not free old sdis on re-scan — skipping by pointer avoids matching
+  // a freed/reused entry). These must be captured now because release()
+  // below clears _di.
+  uint16_t cur_vid = 0, cur_pid = 0;
+  if (!agent->get_vid_pid(cur_vid, cur_pid)) {
+    pxv_warn("update_device_handle_: cannot get current VID/PID, stopping capture");
+    stop_capture();
+    set_default_device();
+    return;
+  }
+  struct sr_dev_inst *old_sdi = agent->inst();
+
+  // Step 2: stop any in-flight capture and release the old device. release()
+  // closes the old sdi (sr_dev_close) and clears _di, so the subsequent
+  // refresh_device_list() (which may free old sdis via sr_driver_scan) cannot
+  // cause a use-after-free on _di. Doing release() BEFORE refresh is
+  // critical: if we refreshed first, sr_driver_scan could free the old sdi
+  // while _di still pointed to it, and release()'s sr_dev_close(_di) would
+  // then be a use-after-free.
+  if (_state->is_working())
+    stop_capture();
+  agent->release();
+
+  // Step 3: refresh the scanned device list so the re-enumerated device is
+  // present among the freshly-scanned sdis.
+  refresh_device_list();
+
+  // Step 4: find a freshly-scanned sdi matching the current VID/PID. Skip
+  // the old sdi pointer (now closed; may have been freed by the driver
+  // during re-scan — comparing the pointer VALUE is safe even if freed,
+  // since no dereference is performed).
+  const auto &sdis = agent->scanned_sdi();
+  ds_device_handle new_handle = NULL_HANDLE;
+  for (size_t i = 0; i < sdis.size(); i++) {
+    struct sr_dev_inst *sdi = sdis[i];
+    if (!sdi || sdi == old_sdi)
+      continue;
+    uint16_t vid = 0, pid = 0;
+    if (sr_dev_inst_usb_vidpid_get(sdi, &vid, &pid) == SR_OK &&
+        vid == cur_vid && pid == cur_pid) {
+      new_handle = (ds_device_handle)(i + 1);  // handle = index + 1
+      break;
+    }
+  }
+
+  if (new_handle == NULL_HANDLE) {
+    // Step 5: no match — fall back to default device (capture already
+    // stopped above). set_default_device() will refresh + pick a device.
+    pxv_warn("Device reconnected but vid:pid %04x:%04x not found in scanned list, stopping capture",
+             cur_vid, cur_pid);
+    set_default_device();
+    return;
+  }
+
+  // Step 5: match found — open the new device (sr_dev_open inside
+  // open_by_handle) and rebind DeviceAgent. open_by_handle creates a fresh
+  // sr_session and re-registers the datafeed callback (stored in _datafeed_cb,
+  // which survives release()). The in-flight capture was stopped in step 2
+  // (the old USB handle was dead anyway); the user can restart capture to
+  // resume with the new device.
+  pxv_info("update_device_handle_: rebinding to vid:pid %04x:%04x (handle=%llu)",
+           cur_vid, cur_pid, (unsigned long long)new_handle);
+  if (!agent->open_by_handle(new_handle, _sr_ctx)) {
+    pxv_err("update_device_handle_: open_by_handle failed, setting default device");
+    set_default_device();
+    return;
+  }
+  agent->update();
+  pxv_info("Device reconnected, handle rebound");
 }
 
 } // namespace pv

@@ -25,9 +25,6 @@
 #include <QApplication>
 #include <functional>
 #include <math.h>
-// Retained: sr_status value-type dependency (lines ~482-553). Removal requires
-// introducing a Core DsoMeasureStatus mirror struct and changing
-// DataSource::get_dso_status() signature — deferred to a separate spec.
 #include <libsigrok/libsigrok.h>
 
 #include "../data/dsosnapshot.h"
@@ -478,82 +475,6 @@ void DsoMeasure::paint_hover_measure(QPainter &p, QColor fore, QColor back) {
 
     i++;
   }
-}
-
-void DsoMeasure::update_measure_status(int index, int hw_offset, uint16_t enabled_channels,
-                                       double samplerate) {
-  sr_status status;
-
-  if (!_signal->_data_source->dso_status_is_valid())
-    return;
-
-  _signal->_mValid = true;
-  status = _signal->_data_source->get_dso_status();
-
-  if (!status.measure_valid)
-    return;
-
-  _signal->_min = (index == 0) ? status.ch0_min : status.ch1_min;
-  _signal->_max = (index == 0) ? status.ch0_max : status.ch1_max;
-
-  _signal->_level_valid =
-      (index == 0) ? status.ch0_level_valid : status.ch1_level_valid;
-  _signal->_low = (index == 0) ? status.ch0_low_level : status.ch1_low_level;
-  _signal->_high = (index == 0) ? status.ch0_high_level : status.ch1_high_level;
-
-  const uint32_t count =
-      (index == 0) ? status.ch0_cyc_cnt : status.ch1_cyc_cnt;
-  const bool plevel =
-      (index == 0) ? status.ch0_plevel : status.ch1_plevel;
-  const bool startXORend = (index == 0) ? (status.ch0_cyc_llen == 0)
-                                        : (status.ch1_cyc_llen == 0);
-  uint16_t total_channels =
-      _signal->_data_source->device()->get_channel_count();
-
-  if (total_channels == 1 && _signal->_data->is_file()) {
-    total_channels++;
-  }
-
-  const double tfactor =
-      (total_channels / enabled_channels) * 1000000000ULL * 1.0 / samplerate;
-
-  double samples =
-      (index == 0) ? status.ch0_cyc_tlen : status.ch1_cyc_tlen;
-  _signal->_period = ((count == 0) ? 0 : samples / count) * tfactor;
-
-  samples = (index == 0) ? status.ch0_cyc_flen : status.ch1_cyc_flen;
-  _signal->_rise_time =
-      ((count == 0)
-           ? 0
-           : samples / ((plevel && startXORend) ? count : count + 1)) *
-      tfactor;
-  samples = (index == 0) ? status.ch0_cyc_rlen : status.ch1_cyc_rlen;
-  _signal->_fall_time =
-      ((count == 0)
-           ? 0
-           : samples / ((!plevel && startXORend) ? count : count + 1)) *
-      tfactor;
-
-  samples = (index == 0)
-                ? (status.ch0_plevel
-                       ? status.ch0_cyc_plen - status.ch0_cyc_llen
-                       : status.ch0_cyc_tlen - status.ch0_cyc_plen +
-                             status.ch0_cyc_llen)
-                : (status.ch1_plevel
-                       ? status.ch1_cyc_plen - status.ch1_cyc_llen
-                       : status.ch1_cyc_tlen - status.ch1_cyc_plen +
-                             status.ch1_cyc_llen);
-  _signal->_high_time = ((count == 0) ? 0 : samples / count) * tfactor;
-
-  samples = (index == 0) ? status.ch0_cyc_tlen + status.ch0_cyc_llen
-                         : status.ch1_cyc_flen + status.ch1_cyc_llen;
-  _signal->_burst_time = samples * tfactor;
-
-  _signal->_pcount = count + (plevel & !startXORend);
-  _signal->_rms = (index == 0) ? status.ch0_acc_square : status.ch1_acc_square;
-  _signal->_rms = sqrt(_signal->_rms / _signal->_data->get_sample_count());
-  _signal->_mean = (index == 0) ? status.ch0_acc_mean : status.ch1_acc_mean;
-  _signal->_mean = hw_offset - _signal->_mean / _signal->_data->get_sample_count();
 }
 
 } // namespace view

@@ -333,7 +333,7 @@ QLayout *DeviceOptions::get_property_form(QWidget *parent) {
     lb->setFont(font);
     layout->addWidget(lb, i, 0);
 
-    if (label == QString("Operation Mode")) {
+    if (label == QString("Operation mode")) {
       QWidget *wid = p->get_widget(parent, true);
       wid->setFont(font);
       layout->addWidget(wid, i, 1);
@@ -387,10 +387,11 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
       /* Task 10.6/Phase 3: config_list now returns a GVariant string array
        * (g_variant_new_strv). Read via g_variant_get_strv instead of the
        * fork-style uint64 bare-pointer cast. Driver config_get also returns
-       * the current channel mode as a string, so highlight by string match. */
+       * the current channel mode as a string, so highlight by string match.
+       * Note: g_variant_get_strv returns pointers into the GVariant's
+       * internal buffer — unref the variant AFTER we're done using strs[]. */
       gsize n_items;
       const gchar **strs = g_variant_get_strv(gvar_opts, &n_items);
-      g_variant_unref(gvar_opts);
 
       QString cur_ch_mode;
       _device_agent->get_config_string(SR_CONF_CHANNEL_MODE, cur_ch_mode);
@@ -398,8 +399,9 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
 
       for (gsize i = 0; i < n_items; i++) {
         row1++;
-        QString mode_bt_text = LangResource::Instance()->get_lang_text(
-            STR_PAGE_DSL, strs[i], strs[i]);
+        QString mode_bt_text = QString::fromUtf8(
+            LangResource::Instance()->get_lang_text(
+                STR_PAGE_DSL, strs[i], strs[i]));
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
         mode_button->setFont(font);
         ChannelModePair mode_index;
@@ -417,6 +419,7 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
           mode_button->setChecked(true);
       }
 
+      g_variant_unref(gvar_opts);
       g_free((gpointer)strs);
     }
   }

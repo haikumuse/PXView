@@ -31,9 +31,9 @@ namespace data {
 
 // Out-of-line default implementations for the session-facade hooks declared
 // in datasource.h. Moving these here lets datasource.h drop its
-// `#include <libsigrok/libsigrok.h>` (Track A pollution regression) and use a forward
-// declaration of `struct sr_status` instead — so the libsigrok header no
-// longer leaks into every translation unit that includes datasource.h.
+// `#include <libsigrok/libsigrok.h>` (Track A pollution regression) so the
+// libsigrok header no longer leaks into every translation unit that includes
+// datasource.h.
 //
 // Only SigSession overrides these with real behaviour; SessionDocument and
 // SessionSnapshot inherit the no-op defaults defined below.
@@ -61,8 +61,6 @@ void DataSource::close_file(unsigned long long dev_handle) { (void)dev_handle; }
 int DataSource::get_repeat_hold() { return 0; }
 bool DataSource::trigd() { return false; }
 uint8_t DataSource::trigd_ch() { return 0; }
-bool DataSource::dso_status_is_valid() { return false; }
-sr_status DataSource::get_dso_status() { return sr_status{}; }
 bool DataSource::get_data_auto_lock() { return false; }
 void DataSource::data_auto_lock(int lock) { (void)lock; }
 void DataSource::auto_end() {}

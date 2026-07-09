@@ -28,10 +28,6 @@
 #include <QString>
 #include <cstdint>
 
-// sr_status is only used as a value in dso_measure.cpp (which keeps
-// <libsigrok.h>); the header itself only needs a forward declaration.
-struct sr_status;
-
 namespace pv {
 namespace view {
 
@@ -78,15 +74,6 @@ public:
     void autoH_end();
     void auto_end();
     void auto_start();
-
-    /**
-     * Updates the per-frame measurement fields (_mValid / _min / _max / _period
-     * / _level_valid / _high / _low / _rise_time / _fall_time / _high_time /
-     * _burst_time / _pcount / _rms / _mean) from the device sr_status block.
-     * Extracted from DsoSignal::paint_mid so the DsoSignal paint method stays
-     * a thin render path.
-     */
-    void update_measure_status(int index, int hw_offset, uint16_t enabled_channels, double samplerate);
 
     /**
      * Paints the hover-point voltage label and the per-cursor voltage labels.

@@ -30,7 +30,6 @@
 #include <list>
 
 struct srd_decoder;
-struct sr_status;  // forward declaration; full definition only needed in datasource.cpp / callers
 class DecoderStatus;
 class DeviceAgent;  // forward declaration (global namespace); defined in deviceagent.h
 
@@ -133,8 +132,6 @@ public:
     virtual void close_file(unsigned long long dev_handle);
     virtual bool trigd();
     virtual uint8_t trigd_ch();
-    virtual bool dso_status_is_valid();
-    virtual sr_status get_dso_status();
     virtual bool get_data_auto_lock();
     virtual void data_auto_lock(int lock);
     virtual void auto_end();

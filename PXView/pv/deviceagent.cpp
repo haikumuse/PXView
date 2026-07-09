@@ -650,7 +650,11 @@ bool DeviceAgent::detect_stream_mode()
             guint32 key;
             bool is_stream = false;
             while (g_variant_iter_next(&iter, "u", &key)) {
-                if (key == SR_CONF_CONTINUOUS) {
+                /* Mask off capability bits to compare against bare key.
+                 * Some drivers advertise SR_CONF_CONTINUOUS with cap bits
+                 * (e.g. SR_CONF_CONTINUOUS | SR_CONF_GET), while fx2lafw
+                 * uses bare key. SR_CONF_MASK = 0x1fffffff. */
+                if ((key & 0x1fffffff) == SR_CONF_CONTINUOUS) {
                     is_stream = true;
                     break;
                 }
@@ -1373,6 +1377,18 @@ bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
     return get_config_int32(SR_CONF_TRIGGER_VALUE, v, probe, NULL);
 }
 
+uint64_t DeviceAgent::get_trigger_pos() const {
+    /* SR_CONF_TRIGGER_POS (60014) is a PXView-local extension implemented
+     * only by the PXLogic driver (returns devc->trigger_pos_set). Other
+     * drivers don't advertise it → sr_config_get returns SR_ERR_ARG →
+     * get_config_uint64 returns false → return 0 (start-of-capture).
+     * get_config_uint64 is non-const (it calls sr_config_get), but the
+     * operation is logically a read, so const_cast is safe here. */
+    uint64_t value = 0;
+    const_cast<DeviceAgent*>(this)->get_config_uint64(SR_CONF_TRIGGER_POS, value);
+    return value;
+}
+
 QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
     if (!is_dsl_device() && !is_demo())
         return {};
@@ -1434,6 +1450,20 @@ int DeviceAgent::get_usb_speed() {
 bool DeviceAgent::is_usb30() {
     int speed = get_usb_speed();
     return speed == PXV_USB_SPEED_SUPER || speed == PXV_USB_SPEED_SUPER_PLUS;
+}
+
+void *DeviceAgent::get_libusb_device() {
+    if (!_di)
+        return nullptr;
+    return sr_dev_inst_libusb_device_get(_di);
+}
+
+bool DeviceAgent::get_vid_pid(uint16_t &vid, uint16_t &pid) {
+    vid = 0;
+    pid = 0;
+    if (!_di)
+        return false;
+    return sr_dev_inst_usb_vidpid_get(_di, &vid, &pid) == SR_OK;
 }
 
 // --- Config info ---

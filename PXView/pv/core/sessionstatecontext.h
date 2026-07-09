@@ -137,8 +137,6 @@ public:
   void set_bClose(bool v) { _bClose = v; }
   bool is_saving() const { return _is_saving; }
   void set_saving(bool v) { _is_saving = v; }
-  bool dso_status_valid() const { return _dso_status_valid; }
-  void set_dso_status_valid(bool v) { _dso_status_valid = v; }
 
   // --- Numeric state ---
   uint8_t trigger_ch() const { return _trigger_ch; }
@@ -170,10 +168,6 @@ public:
   void set_capture_data(SessionData *d) { _capture_data = d; }
   std::vector<SessionData *> &data_list() { return _data_list; }
   bool is_single_buffer() const { return _view_data == _capture_data; }
-
-  // --- DSO status ---
-  const sr_status &dso_status() const { return _dso_status; }
-  void set_dso_status(const sr_status &s) { _dso_status = s; }
 
   // --- Trigger config ---
   const data::TriggerConfig &trigger_config() const { return _trigger_config; }
@@ -238,7 +232,7 @@ private:
   QDateTime _session_time, _trig_time;
 
   bool _is_triged = false, _trigger_flag = false, _hw_replied = false;
-  bool _bClose = false, _is_saving = false, _dso_status_valid = false;
+  bool _bClose = false, _is_saving = false;
 
   uint8_t _trigger_ch = 0;
   SESSION_ERROR_STATUS _error = No_err;
@@ -254,8 +248,6 @@ private:
   SessionData *_view_data = nullptr;
   SessionData *_capture_data = nullptr;
   std::vector<SessionData *> _data_list;
-
-  sr_status _dso_status{};
 
   data::TriggerConfig _trigger_config;
 };
