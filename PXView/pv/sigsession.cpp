@@ -57,6 +57,7 @@
 #include <cstdarg>
 #include <functional>
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <sys/stat.h>
 
@@ -2226,8 +2227,25 @@ void SigSession::on_hotplug_event_(int event, void *device_handle) {
       return;
     }
     pxv_info("Hotplug: device arrived");
+    // Filter out unsupported USB devices (e.g. ESP32 CDC serial, keyboards).
+    // libusb hotplug fires for ANY USB attach/detach; only notify the UI if
+    // libsigrok drivers actually found a new supported device (PXLogic etc.).
+    auto &old_sdis = _state->device_agent().scanned_sdi();
+    std::set<struct sr_dev_inst *> old_set(old_sdis.begin(), old_sdis.end());
     refresh_device_list();
-    _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
+    auto &new_sdis = _state->device_agent().scanned_sdi();
+    bool has_new_device = false;
+    for (auto *sdi : new_sdis) {
+      if (old_set.find(sdi) == old_set.end()) {
+        has_new_device = true;
+        break;
+      }
+    }
+    if (has_new_device) {
+      _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
+    } else {
+      pxv_info("Hotplug: device arrived but no new supported device found, ignoring");
+    }
   } else if (event == SR_HOTPLUG_DETACH) {
     pxv_info("Hotplug: device detached");
     // Identify whether the detached device is the currently-open one by
@@ -2237,7 +2255,6 @@ void SigSession::on_hotplug_event_(int event, void *device_handle) {
       // list so the UI dropdown is up to date, but don't disturb the
       // current capture.
       refresh_device_list();
-      _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
       return;
     }
     // Current device gone.
