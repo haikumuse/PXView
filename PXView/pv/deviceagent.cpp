@@ -22,7 +22,10 @@
 
 #include "deviceagent.h"
 #include <assert.h>
+#include <chrono>
+#include <cstring>
 #include <future>
+#include <thread>
 #include "log.h"
 #include "config/appconfig.h"
 
@@ -132,6 +135,66 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
     struct sr_dev_driver *open_drv = sr_dev_inst_driver_get(sdi);
     const char *drv_name = (open_drv && open_drv->name) ? open_drv->name : "?";
     int open_ret = sr_dev_open(sdi);
+
+    // PXLogic firmware upgrade path: hw_usb_open burns new firmware, then
+    // "rst usb" resets the device. The device drops off the USB bus and
+    // re-enumerates. hw_dev_open returns SR_ERR_DEV_CLOSED to signal this.
+    // The old libusb_device_handle is now stale — we must wait for the device
+    // to re-enumerate, rescan, and reopen. Retry up to 5 times with 1s delay.
+    if (open_ret == SR_ERR_DEV_CLOSED) {
+        pxv_info("open_by_handle: device reset after firmware upgrade (ret=-7), "
+                 "waiting for re-enumeration...");
+        for (int retry = 0; retry < 5; retry++) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            pxv_info("open_by_handle: retry %d/5 after firmware reset", retry + 1);
+            // Rescan to get the freshly-enumerated sdi with a new
+            // libusb_device_handle. The old sdi's conn handle is stale.
+            // Caller (SigSession) must refresh_device_list before retrying;
+            // we use the externally-provided refresh callback if set, or
+            // directly re-scan via the context.
+            // The sdi pointer may be freed by sr_driver_scan's clear_instances
+            // — re-find by connection_id (USB port path) which is stable.
+            const char *old_conn_id = sr_dev_inst_connid_get(sdi);
+            if (!old_conn_id) {
+                pxv_err("open_by_handle: cannot get connection_id for retry");
+                break;
+            }
+            // Re-scan: find sdi with same connection_id
+            struct sr_dev_inst *new_sdi = nullptr;
+            struct sr_dev_driver **drivers = sr_driver_list(ctx);
+            if (drivers) {
+                for (int d = 0; drivers[d]; d++) {
+                    if (sr_driver_init(ctx, drivers[d]) != SR_OK)
+                        continue;
+                    GSList *devs = sr_driver_scan(drivers[d], nullptr);
+                    for (GSList *l = devs; l; l = l->next) {
+                        struct sr_dev_inst *s = (struct sr_dev_inst *)l->data;
+                        const char *cid = sr_dev_inst_connid_get(s);
+                        if (cid && strcmp(cid, old_conn_id) == 0) {
+                            new_sdi = s;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!new_sdi) {
+                pxv_info("open_by_handle: device not yet re-enumerated, retrying...");
+                continue;
+            }
+            // Found the re-enumerated device — reopen it
+            sdi = new_sdi;
+            open_ret = sr_dev_open(sdi);
+            if (open_ret == SR_OK) {
+                pxv_info("open_by_handle: device reopened successfully after firmware upgrade");
+                break;
+            }
+            if (open_ret != SR_ERR_DEV_CLOSED) {
+                // Different error — not a firmware reset, surface it
+                break;
+            }
+        }
+    }
+
     if (open_ret != SR_OK) {
         pxv_err("DeviceAgent::open_by_handle: sr_dev_open failed (ret=%d, %s) driver=%s",
                 open_ret, sr_strerror(open_ret), drv_name);
@@ -1034,11 +1097,12 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         return true;
     }
 
-    // App-layer OPERATION_MODE for non-DSL hardware devices: accept a
-    // "Buffer Mode"/"Stream Mode" string and sync the cached stream-mode
-    // flag so is_stream_mode() reflects the user's choice. DSL/PXLogic
-    // devices forward to the driver.
-    if (key == SR_CONF_OPERATION_MODE && is_hardware() && !is_dsl_device()) {
+    // App-layer OPERATION_MODE sync: when the user switches Buffer/Stream
+    // mode, update the cached _app_stream_mode flag so is_stream_mode()
+    // reflects the new choice immediately. Non-DSL devices handle it purely
+    // in-app (no driver key); DSL/PXLogic devices also forward to the driver
+    // via sr_config_set below.
+    if (key == SR_CONF_OPERATION_MODE && is_hardware()) {
         const gchar *mode_str = g_variant_get_string(data, NULL);
         if (mode_str) {
             // Accept both short ("Stream"/"Buffer") and full
@@ -1056,9 +1120,13 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
                      "(driver=%s)",
                      mode_str, _app_stream_mode,
                      _driver_name.toUtf8().constData());
-            config_changed();
         }
-        return true;
+        // Non-DSL devices: no driver key to set, sync cache and done.
+        if (!is_dsl_device()) {
+            config_changed();
+            return true;
+        }
+        // DSL/PXLogic: fall through to sr_config_set below.
     }
 
     if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())

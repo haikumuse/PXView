@@ -59,6 +59,7 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <sys/stat.h>
 
 #include "config/appconfig.h"
@@ -2228,15 +2229,22 @@ void SigSession::on_hotplug_event_(int event, void *device_handle) {
     }
     pxv_info("Hotplug: device arrived");
     // Filter out unsupported USB devices (e.g. ESP32 CDC serial, keyboards).
-    // libusb hotplug fires for ANY USB attach/detach; only notify the UI if
-    // libsigrok drivers actually found a new supported device (PXLogic etc.).
+    // libusb hotplug fires for ANY USB attach/detach. sr_driver_scan reallocates
+    // sdi pointers on every call, so pointer comparison is unreliable — compare
+    // connection_id (USB port path) instead, which is stable across rescans.
     auto &old_sdis = _state->device_agent().scanned_sdi();
-    std::set<struct sr_dev_inst *> old_set(old_sdis.begin(), old_sdis.end());
+    std::set<std::string> old_conn_ids;
+    for (auto *sdi : old_sdis) {
+      const char *cid = sr_dev_inst_connid_get(sdi);
+      if (cid)
+        old_conn_ids.insert(cid);
+    }
     refresh_device_list();
     auto &new_sdis = _state->device_agent().scanned_sdi();
     bool has_new_device = false;
     for (auto *sdi : new_sdis) {
-      if (old_set.find(sdi) == old_set.end()) {
+      const char *cid = sr_dev_inst_connid_get(sdi);
+      if (cid && old_conn_ids.find(cid) == old_conn_ids.end()) {
         has_new_device = true;
         break;
       }
