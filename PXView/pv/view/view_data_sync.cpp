@@ -296,9 +296,24 @@ void ViewDataSync::data_updated() {
   // Refresh data pointers in render objects (does NOT rebuild them).
   // Signals hold raw snapshot pointers that may become stale when the
   // active data source swaps its backing snapshots (e.g. after a capture,
-  // glitch filter, or document switch). Re-bind the latest snapshots from
-  // the effective data source.
-  auto *source = _view->document_snapshot_source();
+  // glitch filter, or document switch). Re-bind the latest snapshots.
+  //
+  // Source selection follows tab data-ownership rules (same as
+  // TabContext::activate()): bind from the tab's own document if it has
+  // data; otherwise from the shared session only if this tab is the active
+  // capture owner. Do NOT fall back to the session for non-owner tabs —
+  // otherwise a new/blank tab inherits the previous tab's waveform from
+  // the session's shared live buffer.
+  auto *doc = _view->_document;
+  auto *session = _view->_session;
+  pv::data::DataSource *source = nullptr;
+  if (doc && doc->has_data()) {
+    source = doc;
+  } else if (session && session->have_view_data() &&
+             (session->is_working() || session->is_copy_in_progress()) &&
+             session->get_capture_owner_document() == doc) {
+    source = session;
+  }
   if (source) {
     for (auto sig : _view->_own_signals) {
       int type = sig->signal_type();

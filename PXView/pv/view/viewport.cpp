@@ -612,9 +612,8 @@ void Viewport::show_logic_contextmenu(const QPoint &pos) {
     has_decoder = (hit_dt != nullptr);
   _copy_decoder_group_action->setVisible(has_decoder);
 
-  // "复制所有通道波形数据" only visible when there are decoders (outputs decoded data)
-  bool has_any_decoder = !_view.get_own_decode_traces().empty();
-  _copy_all_channels_action->setVisible(has_any_decoder);
+  // "复制所有通道波形数据" always visible in logic mode — outputs all logic signals + decoders
+  _copy_all_channels_action->setVisible(true);
 
   _logic_cmenu->exec(QCursor::pos());
 }

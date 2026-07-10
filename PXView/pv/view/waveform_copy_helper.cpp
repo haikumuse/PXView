@@ -448,12 +448,18 @@ QString WaveformCopyHelper::format_range(View &view, int click_x, int click_y, S
     }
 
     if (scope == Scope::AllChannels) {
-        // Output all decoded annotations from all decoders (not raw level transitions)
-        // LLM-friendly: high semantic density, avoids disastrous raw 0/1 export
-        auto traces = view.get_own_decode_traces();
-        if (traces.empty())
-            return QString();
+        // Output all logic signals (Timing Analysis) + all decoder annotations
+        // LLM-friendly: combines raw timing for logic channels + decoded protocol data
         QString result;
+
+        // Part 1: All logic signals as Timing Analysis
+        auto logic_sigs = collect_all_logic_signals(view);
+        if (!logic_sigs.empty()) {
+            result += format_signals(logic_sigs, start, end);
+        }
+
+        // Part 2: All decoder annotations
+        auto traces = view.get_own_decode_traces();
         for (auto *dt : traces) {
             if (!dt || !dt->enabled())
                 continue;
@@ -464,6 +470,7 @@ QString WaveformCopyHelper::format_range(View &view, int click_x, int click_y, S
                 result += ann;
             }
         }
+
         return result;
     }
 

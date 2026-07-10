@@ -35,9 +35,6 @@ class SigSession;
 namespace data {
 class SignalModel;
 class DataSource;
-class LogicSnapshot;
-class AnalogSnapshot;
-class DsoSnapshot;
 }
 
 namespace view {
@@ -128,13 +125,6 @@ private:
      */
     static void restore_ui_state(std::vector<Signal*> &sigs,
                                   const std::map<int, SignalUiState> &saved_state);
-
-    /**
-     * Get the snapshot for a signal type from the data source.
-     */
-    static data::LogicSnapshot* get_logic_snapshot(data::DataSource *data_source);
-    static data::AnalogSnapshot* get_analog_snapshot(data::DataSource *data_source);
-    static data::DsoSnapshot* get_dso_snapshot(data::DataSource *data_source);
 };
 
 } // namespace view
