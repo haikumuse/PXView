@@ -49,6 +49,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/xcursor.cpp
     PXView/pv/view/pulsehistogramwidget.cpp
     PXView/pv/view/glitchfilterpopup.cpp
+    PXView/pv/view/waveform_copy_helper.cpp
     # Toolbars
     PXView/pv/toolbars/samplingbar.cpp
     PXView/pv/toolbars/trigbar.cpp
@@ -236,6 +237,7 @@ set(PXView_HEADERS
     PXView/pv/view/xcursor.h
     PXView/pv/view/pulsehistogramwidget.h
     PXView/pv/view/glitchfilterpopup.h
+    PXView/pv/view/waveform_copy_helper.h
     PXView/pv/view/signal.h
     PXView/pv/view/logicsignal.h
     PXView/pv/view/analogsignal.h

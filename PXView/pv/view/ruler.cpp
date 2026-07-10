@@ -38,6 +38,7 @@
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
 #include "../ui/dockfonts.h"
+#include "../ui/uimanager.h"
 
 
 using namespace std;
@@ -97,9 +98,31 @@ Ruler::Ruler(View &parent) :
     _curs_moved(false)
 {
 	setMouseTracking(true);
+    _foreColor = QColor();  // 无效色,UpdateTheme 会填充
 
 	connect(&_view, &View::hover_point_changed,
 		this, &Ruler::hover_point_changed);
+
+    ADD_UI(this);
+}
+
+Ruler::~Ruler()
+{
+    REMOVE_UI(this);
+}
+
+// IUiWindow:Ruler 之前未注册到 UiManager,主题切换时不会收到通知,
+// 只能被动依赖 palette 传播(同样不可靠)。现统一接入主题更新链路。
+void Ruler::UpdateLanguage() { update(); }
+void Ruler::UpdateFont() {}
+void Ruler::UpdateTheme()
+{
+    // 主动从主题 token 读取前景色,不再被动依赖 QWidget::palette()。
+    // 与 Header 同因:QSS 的 color→palette 传播在启动时序、父级自带
+    // stylesheet、事件处理顺序三场景下不可靠,会导致刻度文字/悬停箭头
+    // 在暗色主题下变黑不可见,且改主题走同一路径仍会失败。
+    _foreColor = AppConfig::Instance().GetThemeColor("@fg-base");
+    update();
 }
 
 QColor Ruler::GetColorByCursorOrder(int order)
@@ -495,7 +518,9 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
     const int text_height = p.boundingRect(0, 0, INT_MAX, INT_MAX,
         AlignLeft | AlignTop, "8").height();
 
-    QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
+    QColor fore = _foreColor.isValid()
+                      ? _foreColor
+                      : QWidget::palette().color(QWidget::foregroundRole());
     fore.setAlpha(View::ForeAlpha);
     p.setPen(fore);
 
@@ -652,7 +677,9 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
         AlignLeft | AlignTop, "8").height();
 
     // Draw the tick marks
-    QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
+    QColor fore = _foreColor.isValid()
+                      ? _foreColor
+                      : QWidget::palette().color(QWidget::foregroundRole());
     fore.setAlpha(View::ForeAlpha);
     p.setPen(fore);
 
@@ -757,7 +784,9 @@ void Ruler::draw_hover_mark(QPainter &p)
 	if (x == -1 || _grabbed_marker)
 		return;
 
-    QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
+    QColor fore = _foreColor.isValid()
+                      ? _foreColor
+                      : QWidget::palette().color(QWidget::foregroundRole());
     p.setPen(fore);
     p.setBrush(fore);
 

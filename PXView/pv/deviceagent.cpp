@@ -906,10 +906,6 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
     const bool fork_only = is_fork_only_key(key);
     const bool dsl = is_dsl_device();
     const bool demo = is_demo();
-    if (key == SR_CONF_DEVICE_OPTIONS) {
-        pxv_info("get_config_list: key=SR_CONF_DEVICE_OPTIONS(%d), fork_only=%d, dsl=%d, _dev_handle=%p, _di=%p",
-                 key, fork_only, dsl, _dev_handle, _di);
-    }
     if (fork_only && !dsl && !demo)
         return nullptr;
 
@@ -919,9 +915,6 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 
     GVariant *data = NULL;
     int ret = sr_config_list(drv, _di, group, (uint32_t)key, &data);
-    if (key == SR_CONF_DEVICE_OPTIONS) {
-        pxv_info("get_config_list: sr_config_list returned ret=%d, data=%p", ret, data);
-    }
     if (ret != SR_OK) {
         // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理避免日志噪音
         if (ret != SR_ERR_NA && ret != SR_ERR_ARG)
@@ -1016,6 +1009,31 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
 
     if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())
         return nullptr;
+
+    /* Fork-only key 预检查：DSL/PXLogic/demo 设备的 devopts[] 必须声明该 key
+     * 且带 SR_CONF_GET 位，否则 sr_config_get -> hwdriver.c check_key() 会打印
+     * "Option 'xxx' not available for this device instance" 错误日志。
+     * 典型场景：PROBE_CONFIGS(60062) 只有 demo 驱动声明，PXLogic 未声明，
+     * 但某些代码路径仍尝试 get_config(PROBE_CONFIGS)。 */
+    if (is_fork_only_key(key) && (is_dsl_device() || is_demo())) {
+        GVariant *gvar_devopts = get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+        bool devopt_has_get = false;
+        if (gvar_devopts) {
+            gsize n;
+            const uint32_t *opts = (const uint32_t *)g_variant_get_fixed_array(
+                gvar_devopts, &n, sizeof(uint32_t));
+            for (gsize i = 0; i < n; i++) {
+                if ((opts[i] & 0x1fffffff) == (uint32_t)key &&
+                    (opts[i] & SR_CONF_GET)) {
+                    devopt_has_get = true;
+                    break;
+                }
+            }
+            g_variant_unref(gvar_devopts);
+        }
+        if (!devopt_has_get)
+            return nullptr;
+    }
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
     if (!drv)

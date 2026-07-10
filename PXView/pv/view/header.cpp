@@ -34,7 +34,9 @@
 #include <QPainterPath>
 #include <QRect>
 #include <QScrollBar>
+#include <QScreen>
 #include <QStyleOption>
+#include <QGuiApplication>
 #include <algorithm>
 #include <assert.h>
 #include <set>
@@ -72,6 +74,7 @@ Header::Header(View &parent) : QWidget(&parent), _view(parent) {
   _resize_upper_height = 0;
   _resize_lower_height = 0;
   _mouse_is_down = false;
+  _foreColor = QColor();  // 无效色,UpdateTheme 会填充
 
   nameEdit = new PopupLineEdit(this);
   nameEdit->setFixedWidth(100);
@@ -124,7 +127,10 @@ void Header::paintEvent(QPaintEvent *) {
   _view.get_traces(ALL_VIEW, traces);
 
   const bool dragging = !_drag_traces.empty();
-  QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
+  // 优先用 UpdateTheme() 缓存的主题色;主题未加载时回退 palette
+  QColor fore = _foreColor.isValid()
+                    ? _foreColor
+                    : QWidget::palette().color(QWidget::foregroundRole());
   fore.setAlpha(View::ForeAlpha);
 
   QFont font = theme_font_trace_label();
@@ -396,15 +402,33 @@ void Header::mousePressEvent(QMouseEvent *event) {
     // Select the Trace if it has been clicked
     const auto mTrace = get_mTrace(action, event->position().toPoint());
     if (action == Trace::COLOR && mTrace) {
-      // 解码通道:单击 COLOR 区打开批量滤波浮窗(对其绑定的所有子逻辑通道统一滤波)
+      // 解码通道:单击 COLOR 区打开解码器设置对话框(与 ProtocolDock 齿轮入口一致)
       if (auto *dt = dynamic_cast<DecodeTrace *>(mTrace)) {
         _context_trace = mTrace;
-        // 弹窗(Qt::Popup)会捕获鼠标,导致后续 mouseReleaseEvent 不会被调用,
+        // 模态对话框(QDialog::exec)会捕获鼠标,导致后续 mouseReleaseEvent 不会被调用,
         // 必须在此重置按下态/拖拽缓存,否则 header_is_draging() 恒为 true,
         // 进而阻断 viewport 的 wheelEvent 缩放。
         _mouse_is_down = false;
         _drag_traces.clear();
-        emit show_batch_glitch_filter_popup(dt);
+        // 锚点定位(与毛刺滤波浮窗相同的弹出逻辑):基于 DecodeTrace 位置计算,
+        // 映射到全局坐标并按屏幕边界钳制,避免 QDialog 默认居中。
+        int name_right = width() - dt->get_rightWidth();
+        int anchor_x = name_right + 8;
+        int anchor_y = dt->get_y() - dt->get_totalHeight() / 2;
+        QPoint anchor = mapToGlobal(QPoint(anchor_x, anchor_y));
+        QScreen *screen = QGuiApplication::screenAt(anchor);
+        if (screen) {
+          QRect geo = screen->availableGeometry();
+          if (anchor.x() + 420 > geo.right())
+            anchor.setX(geo.right() - 420);
+          if (anchor.y() + 500 > geo.bottom())
+            anchor.setY(geo.bottom() - 500);
+          if (anchor.x() < geo.left())
+            anchor.setX(geo.left());
+          if (anchor.y() < geo.top())
+            anchor.setY(geo.top());
+        }
+        _view.rst_decoder_by_key_handel(dt->get_key_handel(), anchor);
         return;
       }
       // LOGIC 模式:单击 COLOR 区直接打开滤波浮窗(对齐 HTML 原型交互)
@@ -1195,7 +1219,17 @@ void Header::header_resize() {
 
 void Header::UpdateLanguage() { retranslateUi(); }
 
-void Header::UpdateTheme() { retranslateUi(); }
+void Header::UpdateTheme() {
+  // 主动从主题 token 读取前景色,不再被动依赖 QWidget::palette()。
+  // QSS 的 color 属性 → palette 传播在以下场景不可靠:
+  //  1) Header 在 switchTheme() 之前构造,palette 仍是默认黑色;
+  //  2) 父级 View 自带 setStyleSheet,阻断 qApp 级 palette 传播;
+  //  3) setStyleSheet 与 update() 都 post 事件,处理顺序不确定。
+  // 一旦 palette 拿到黑色,logicsignal.cpp 的触发图标(用 fore 画)
+  // 在暗色背景上就是黑字,且改主题走同一路径仍会失败。
+  _foreColor = AppConfig::Instance().GetThemeColor("@fg-base");
+  retranslateUi();
+}
 
 void Header::UpdateFont() {}
 

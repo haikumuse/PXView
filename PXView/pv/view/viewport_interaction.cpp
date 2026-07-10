@@ -492,24 +492,33 @@ void ViewportInteraction::onLogicMouseRelease(QMouseEvent *event) {
     break;
   }
   case LOGIC_ZOOM: {
-    if (event->position().toPoint().x() !=
-        _viewport->_mouse_down_point.x()) {
+    const QPoint releasePos = event->position().toPoint();
+    const QPoint downPos = _viewport->_mouse_down_point;
+    const int dx = abs(releasePos.x() - downPos.x());
+    const int dy = abs(releasePos.y() - downPos.y());
+    const int dragThreshold = 5;
+
+    if (dx < dragThreshold && dy < dragThreshold) {
+      // Right-click without drag: show context menu
+      _viewport->set_action(NO_ACTION);
+      _viewport->show_logic_contextmenu(releasePos);
+    } else if (releasePos.x() != downPos.x()) {
       int64_t newOffset =
           _viewport->_view.offset() +
-          (min(event->position().toPoint().x(),
-               _viewport->_mouse_down_point.x()));
+          (min(releasePos.x(), downPos.x()));
       const double newScale = max(
           min(_viewport->_view.scale() *
-                  abs(event->position().toPoint().x() -
-                      _viewport->_mouse_down_point.x()) /
+                  abs(releasePos.x() - downPos.x()) /
                   _viewport->_view.get_view_width(),
               _viewport->_view.get_maxscale()),
           _viewport->_view.get_minscale());
       newOffset = floor(newOffset * (_viewport->_view.scale() / newScale));
       if (newScale != _viewport->_view.scale())
         _viewport->_view.set_scale_offset(newScale, newOffset);
+      _viewport->set_action(NO_ACTION);
+    } else {
+      _viewport->set_action(NO_ACTION);
     }
-    _viewport->set_action(NO_ACTION);
     break;
   }
   default:

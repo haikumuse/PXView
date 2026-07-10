@@ -22,18 +22,21 @@
 
 #include "decoderoptionsdlg.h"
 #include <libsigrokdecode.h>
-#include <QScrollArea> 
+#include <QScrollArea>
 #include <QDialogButtonBox>
 #include <assert.h>
 #include <QVBoxLayout>
-#include <QLabel> 
+#include <QLabel>
 #include <QGridLayout>
 #include <QFormLayout>
-#include <QScrollArea> 
+#include <QScrollArea>
 #include <QVariant>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCheckBox>
+#include <QHideEvent>
+#include <QEventLoop>
+#include "../ui/popupdlglist.h"
 
 #include "../data/decoderstack.h"
 #include "../prop/binding/decoderoptions.h"
@@ -63,6 +66,13 @@ DecoderOptionsDlg::DecoderOptionsDlg(QWidget *parent)
     _contentHeight = 0;
     _is_reload_form = false;
     _content_width = 0;
+    // 覆盖 PxDialog 的 Qt::Dialog flag,改用 Qt::Popup 以获得点击外部自动关闭行为
+    // (与 GlitchFilterPopup 一致)。PxDialog 已设置 Qt::FramelessWindowHint。
+    setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
+    // QDialog 默认 WindowModal,会让 show() 走模态态路径(设置 grab/阻塞父窗口),
+    // 与 Qt::Popup 的 grab 冲突导致需双击外部才能关闭。显式 NonModal 让 show()
+    // 走纯 popup 路径,单击外部即关闭。
+    setWindowModality(Qt::NonModal);
 }
 
 DecoderOptionsDlg::~DecoderOptionsDlg()
@@ -71,6 +81,47 @@ DecoderOptionsDlg::~DecoderOptionsDlg()
         delete p;
     }
     _bindings.clear();
+}
+
+int DecoderOptionsDlg::exec()
+{
+    // 覆盖 PxDialog::exec()(其调用 QDialog::exec() 模态循环)。
+    // Qt::Popup 的自动关闭与 QDialog::exec() 的模态 grab 冲突,
+    // 导致需要双击外部才能关闭(第一次点击被模态循环吞掉)。
+    // 改用 QWidget::show()(跳过 QDialog/PxDialog 的 show 模态路径)
+    // + 本地 QEventLoop,由 finished 信号驱动退出,
+    // 与 GlitchFilterPopup(Qt::Popup + show)的行为一致。
+    update_font();
+    PopupDlgList::AddDlgTolist(this);
+    QWidget::show();  // 跳过 QDialog::show() 的模态态设置
+    QEventLoop loop;
+    connect(this, &QDialog::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+    return result();
+}
+
+void DecoderOptionsDlg::hideEvent(QHideEvent *event)
+{
+    PxDialog::hideEvent(event);
+    // Qt::Popup 点击外部时 Qt 会 hide 窗口,但本地 QEventLoop
+    // 不会因此退出,需要手动调用 reject() 触发 finished 信号。
+    // _handled_close 防止递归 (accept/reject → hide → hideEvent → reject)。
+    if (!_handled_close) {
+        _handled_close = true;
+        reject();
+    }
+}
+
+void DecoderOptionsDlg::accept()
+{
+    _handled_close = true;  // 正常确认关闭,阻止 hideEvent 再次调用 reject
+    PxDialog::accept();
+}
+
+void DecoderOptionsDlg::reject()
+{
+    _handled_close = true;  // 正常取消关闭,阻止 hideEvent 递归
+    PxDialog::reject();
 }
 
 void DecoderOptionsDlg::load_options(view::DecodeTrace *trace)

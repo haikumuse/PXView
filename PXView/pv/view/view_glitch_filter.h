@@ -50,7 +50,6 @@ public:
 
   // -- popup lifecycle ---------------------------------------------------
   void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
-  void on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace);
   void on_glitch_popup_closed();
 
   // -- filter apply / clear / invert ------------------------------------

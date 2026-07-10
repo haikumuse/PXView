@@ -656,10 +656,8 @@ void SamplingBar::update_sample_count_selector() {
   bool stream_mode = false;
   uint64_t hw_depth = 0;
   uint64_t sw_depth;
-  uint64_t rle_depth = 0;
   double pre_duration = SR_SEC(1);
   double duration;
-  bool rle_support = false;
 
   pxv_info("Update sample count list.");
 
@@ -695,12 +693,6 @@ void SamplingBar::update_sample_count_selector() {
 #endif
   } else {
     sw_depth = AnalogMaxSWDepth;
-  }
-
-  if (mode == LOGIC) {
-    _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
-    if (rle_support)
-      rle_depth = min((uint64_t)(hw_depth * SR_KB(1)), sw_depth);
   }
 
   // DSO mode uses driver-provided timebase range (SR_CONF_MAX/MIN_TIMEBASE)
@@ -754,9 +746,7 @@ void SamplingBar::update_sample_count_selector() {
     }
     uint64_t total_samples = (uint64_t)(buff_gb * SR_GB(1)) * 8 / ch_num;
     duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
-  } else if (rle_support)
-    duration = rle_depth / (samplerate * (1.0 / SR_SEC(1)));
-  else if (hw_duration > 0)
+  } else if (hw_duration > 0)
     duration = hw_duration;
   else
     // Devices without hardware depth limits (fx2lafw, demo): use software
@@ -777,9 +767,7 @@ void SamplingBar::update_sample_count_selector() {
   bool not_last = true;
 
   do {
-    QString suffix = (mode == DSO)                              ? DIVString
-                     : (!stream_mode && rle_support && duration > hw_duration) ? RLEString
-                                                                                : "";
+    QString suffix = (mode == DSO) ? DIVString : "";
     char *const s = sr_time_string(duration);
     _sample_count->addItem(QString(s) + suffix, QVariant::fromValue(duration));
     g_free(s);
@@ -1035,16 +1023,6 @@ void SamplingBar::commit_settings() {
       if (sample_count != 0 &&
           sample_count != _device_agent->get_sample_limit())
         _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
-
-      // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
-      // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
-      // "Option 'rle' not available" on every commit.
-      bool rle_support = false;
-      _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
-      if (rle_support) {
-        bool rle_mode = _sample_count->currentText().contains(RLEString);
-        _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
-      }
     }
     // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
     // (MainWindow::on_event(DeviceOptionsUpdated) -> rebuild_signals;

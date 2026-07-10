@@ -133,7 +133,7 @@ public:
 
   void *get_key_handel();
 
-  bool create_popup(bool isnew);
+  bool create_popup(bool isnew, QPoint anchor = QPoint());
 
 protected:
   void paint_type_options(QPainter &p, int right, const QPoint pt, QColor fore);
@@ -143,7 +143,7 @@ private:
                        QColor text_colour, int text_height, int left, int right,
                        double samples_per_pixel, double pixels_offset, int y,
                        size_t base_colour, double min_annWidth, QColor fore,
-                       QColor back, double &last_x);
+                       QColor back, double &last_x, double &last_drawn_start);
 
   void draw_nodetail(QPainter &p, int text_height, int left, int right, int y,
                      size_t base_colour, QColor fore, QColor back);

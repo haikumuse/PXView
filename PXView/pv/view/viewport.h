@@ -177,6 +177,11 @@ private slots:
   void show_contextmenu(const QPoint &pos);
   void add_cursor_x();
   void add_cursor_y();
+  void show_logic_contextmenu(const QPoint &pos);
+  void copy_waveform_this_channel();
+  void copy_waveform_decoder_track();
+  void copy_waveform_decoder_group();
+  void copy_waveform_all_channels();
 
 signals:
   void measure_updated();
@@ -263,6 +268,13 @@ private:
   int _tigger_wait_times;
   QAction *_yAction;
   QAction *_xAction;
+
+  QMenu *_logic_cmenu;
+  QAction *_copy_this_channel_action;
+  QAction *_copy_decoder_track_action;
+  QAction *_copy_decoder_group_action;
+  QAction *_copy_all_channels_action;
+  QPoint _logic_menu_pos;
 
   QColor _panelBgColor;
   QColor _panelTextColor;

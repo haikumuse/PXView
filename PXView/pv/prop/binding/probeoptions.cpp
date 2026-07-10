@@ -43,31 +43,41 @@ namespace binding {
 DeviceAgent* ProbeOptions::_static_device_agent = nullptr;
 
 ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
-    Binding(), 
+    Binding(),
 	_probe(probe)
-{ 
-	GVariant *gvar_opts;
-	gsize num_opts;
-
+{
     _device_agent = session->get_device();
     _static_device_agent = _device_agent;
 
-    pxv_info("ProbeOptions::ProbeOptions: constructing for probe=%p (name=%s), "
-             "is_demo=%d, is_dsl=%d",
-             (void*)probe, probe && probe->name ? probe->name : "(null)",
-             _device_agent ? _device_agent->is_demo() : -1,
-             _device_agent ? _device_agent->is_dsl_device() : -1);
+    /* Pre-check: only query SR_CONF_PROBE_CONFIGS if the device actually
+     * advertises it in SR_CONF_DEVICE_OPTIONS. PXLogic and most upstream
+     * drivers don't support this key (only demo does); querying it directly
+     * floods the log with "Option 'probe_configs' not available" per
+     * channel. */
+    GVariant *gvar_devopts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+    bool has_probe_configs = false;
+    if (gvar_devopts) {
+        gsize num_devopts;
+        const uint32_t *devopts = (const uint32_t *)g_variant_get_fixed_array(
+            gvar_devopts, &num_devopts, sizeof(uint32_t));
+        for (gsize i = 0; i < num_devopts; i++) {
+            if ((devopts[i] & 0x1fffffff) == SR_CONF_PROBE_CONFIGS) {
+                has_probe_configs = true;
+                break;
+            }
+        }
+        g_variant_unref(gvar_devopts);
+    }
+    if (!has_probe_configs)
+        return;
 
-    gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_PROBE_CONFIGS);
+    GVariant *gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_PROBE_CONFIGS);
     if (gvar_opts == NULL){
 		/* Driver supports no device instance options. */
-        pxv_warn("ProbeOptions::ProbeOptions: get_config_list(SR_CONF_PROBE_CONFIGS) "
-                 "returned NULL for probe=%p", (void*)probe);
         return;
     }
-    pxv_info("ProbeOptions::ProbeOptions: get_config_list(SR_CONF_PROBE_CONFIGS) "
-             "returned gvar_opts=%p", (void*)gvar_opts);
 
+	gsize num_opts;
 	const int *const options = (const int32_t *)g_variant_get_fixed_array(
 		gvar_opts, &num_opts, sizeof(int32_t));
 
@@ -82,9 +92,6 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
 		const int key = info->key;
 
         GVariant *gvar_list = _device_agent->get_config_list(NULL, key);
-
-        pxv_info("ProbeOptions: iter %d key=%d name='%s' gvar_list=%p",
-                 i, key, info->name ? info->name : "(null)", (void*)gvar_list);
 
         const QString name(info->name);
         const char *label_char =  LangResource::Instance()->get_lang_text(STR_PAGE_DSL, info->name, info->name);
@@ -123,17 +130,9 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
 
 GVariant* ProbeOptions::config_getter(const struct sr_channel *probe, int key)
 {
-    if (!_static_device_agent) {
-        pxv_warn("ProbeOptions::config_getter: _static_device_agent is NULL "
-                 "(key=%d)", key);
+    if (!_static_device_agent)
         return nullptr;
-    }
-    GVariant *result = _static_device_agent->get_config(key, probe, NULL);
-    if (!result) {
-        pxv_warn("ProbeOptions::config_getter: get_config returned NULL "
-                 "(key=%d, probe=%p)", key, (void*)probe);
-    }
-    return result;
+    return _static_device_agent->get_config(key, probe, NULL);
 }
 
 void ProbeOptions::config_setter(struct sr_channel *probe, int key, GVariant* value)

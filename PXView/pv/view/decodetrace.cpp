@@ -338,6 +338,7 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
 
                 if (start_idx < end_idx) {
                   double last_x = -1;
+                  double last_drawn_start = -1;
                   for (size_t idx = start_idx; idx < end_idx; idx++) {
                     const Annotation *a = row_data->annotation_at(idx);
                     if (!a)
@@ -345,7 +346,7 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
                     draw_annotation(*a, p, get_text_colour(), annotation_height,
                                     left, right, samples_per_pixel,
                                     pixels_offset, y, 0, min_annWidth, fore,
-                                    back, last_x);
+                                    back, last_x, last_drawn_start);
                   }
                 }
               }
@@ -382,7 +383,8 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
                                   int left, int right, double samples_per_pixel,
                                   double pixels_offset, int y,
                                   size_t base_colour, double min_annWidth,
-                                  QColor fore, QColor back, double &last_x) {
+                                  QColor fore, QColor back, double &last_x,
+                                  double &last_drawn_start) {
   const double start =
       max(a.start_sample() / samples_per_pixel - pixels_offset, (double)left);
   const double end =
@@ -397,8 +399,11 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
   }
 
   // 完美无缝隙 LOD 防御：
-  // 1. 若当前标注完全被之前绘制的区域覆盖，则不可见，跳过
-  if (end <= last_x) {
+  // 1. 若当前标注完全被之前绘制的区域覆盖，则不可见，跳过。
+  //    同时检查 start 与 last_drawn_start：只有 [start, end] 都落在已绘制
+  //    区间内才跳过，避免对同一字节输出多个时间重叠/逆序标注的解码器
+  //    （如 I2C 地址字节的 R/W 标注 + 地址值标注）造成误杀。
+  if (end <= last_x && start >= last_drawn_start) {
     return;
   }
 
@@ -410,6 +415,7 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
     return;
   }
 
+  last_drawn_start = start;
   if (start + 2.0 > end) {
     last_x = start;
   } else {
@@ -796,7 +802,7 @@ QRectF DecodeTrace::get_rect(DecodeSetRegions type, int y, int right) {
 void *DecodeTrace::get_key_handel() { return _decoder_stack->get_key_handel(); }
 
 // to show decoder's property setting dialog
-bool DecodeTrace::create_popup(bool isnew) {
+bool DecodeTrace::create_popup(bool isnew, QPoint anchor) {
   (void)isnew;
 
   int ret = false; // setting have changed flag
@@ -810,6 +816,11 @@ bool DecodeTrace::create_popup(bool isnew) {
     dialogs::DecoderOptionsDlg dlg(top);
     dlg.set_cursor_range(_decode_cursor1, _decode_cursor2);
     dlg.load_options(this);
+
+    // 锚点定位(与毛刺滤波浮窗相同的弹出逻辑):若调用方提供了有效锚点,
+    // 在 exec() 前移动对话框,避免 QDialog 默认居中。
+    if (!anchor.isNull())
+      dlg.move(anchor);
 
     pxv_info("DecodeTrace: before dlg.exec()");
     int dlg_ret = dlg.exec();

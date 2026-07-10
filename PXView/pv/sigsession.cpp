@@ -282,6 +282,10 @@ extern "C" void pxv_hotplug_log_cb(int level, const char *msg)
 {
   if (!msg)
     return;
+  // Suppress info-level hotplug messages (initial scan, polling, etc.) to
+  // keep PXView.log clean. Only forward warnings and errors.
+  if (level == 0)
+    return;
   // Strip trailing newline (xlog adds its own).
   char buf[600];
   size_t n = strlen(msg);
@@ -294,7 +298,7 @@ extern "C" void pxv_hotplug_log_cb(int level, const char *msg)
   switch (level) {
     case 2: pxv_err("libusb-hotplug: %s", buf); break;
     case 1: pxv_warn("libusb-hotplug: %s", buf); break;
-    default: pxv_info("libusb-hotplug: %s", buf); break;
+    default: break;
   }
 }
 #endif
@@ -379,10 +383,7 @@ bool SigSession::init() {
   // still logs via windows_hotplug_set_log_cb). Change to
   // LIBUSB_LOG_LEVEL_INFO/WARNING for diagnostics.
   libusb_set_log_cb(NULL, pxv_libusb_log_cb, LIBUSB_LOG_CB_GLOBAL);
-  // 临时调到 DEBUG 诊断 pxlogic 采集无数据问题:
-  // 需要 set_raw_io/submit_bulk/callback 的详细日志。
-  // 修复后改回 LIBUSB_LOG_LEVEL_NONE。
-  libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_DEBUG);
+  libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_NONE);
 
   // 首次扫描所有驱动，缓存到 DeviceAgent。后续 get_device_list 复用缓存，
   // 避免在设备 dev_open 后重复 sr_driver_scan 导致 LIBUSB_ERROR_ACCESS。

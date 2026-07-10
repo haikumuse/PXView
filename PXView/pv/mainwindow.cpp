@@ -1361,45 +1361,46 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
 
   gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_SESSIONS);
   if (gvar_opts == NULL) {
-    pxv_warn("Device config list is empty. id:SR_CONF_DEVICE_SESSIONS");
-    /* Driver supports no device instance sessions. */
-    return false;
-  }
+    /* Driver supports no device instance sessions — skip the per-device
+     * config loop but still save channel/trigger/decoder/measure sections.
+     * Mirrors load_config_from_json() which also tolerates NULL here. */
+    pxv_detail("No SR_CONF_DEVICE_SESSIONS for this device, skipping per-device config section.");
+  } else {
+    const int *const options = (const int32_t *)g_variant_get_fixed_array(
+        gvar_opts, &num_opts, sizeof(int32_t));
 
-  const int *const options = (const int32_t *)g_variant_get_fixed_array(
-      gvar_opts, &num_opts, sizeof(int32_t));
-
-  for (unsigned int i = 0; i < num_opts; i++) {
-    const struct sr_config_info *const info =
-        _device_agent->get_config_info(options[i]);
-    gvar = _device_agent->get_config(info->key);
-    if (gvar != NULL) {
-      if (info->datatype == SR_T_BOOL)
-        sessionVar[info->name] =
-            QJsonValue::fromVariant(g_variant_get_boolean(gvar));
-      else if (info->datatype == SR_T_UINT64)
-        sessionVar[info->name] = QJsonValue::fromVariant(
-            QString::number(g_variant_get_uint64(gvar)));
-      else if (info->datatype == SR_T_UINT8)
-        sessionVar[info->name] =
-            QJsonValue::fromVariant(g_variant_get_byte(gvar));
-      else if (info->datatype == SR_T_INT16)
-        sessionVar[info->name] =
-            QJsonValue::fromVariant(g_variant_get_int16(gvar));
-      else if (info->datatype == SR_T_FLOAT) // save as string format
-        sessionVar[info->name] = QJsonValue::fromVariant(
-            QString::number(g_variant_get_double(gvar)));
-      else if (info->datatype == SR_T_CHAR)
-        sessionVar[info->name] =
-            QJsonValue::fromVariant(g_variant_get_string(gvar, NULL));
-      else if (info->datatype == SR_T_LIST)
-        sessionVar[info->name] =
-            QJsonValue::fromVariant(g_variant_get_int16(gvar));
-      else {
-        pxv_err("Unkown config info type:%d", info->datatype);
-        assert(false);
+    for (unsigned int i = 0; i < num_opts; i++) {
+      const struct sr_config_info *const info =
+          _device_agent->get_config_info(options[i]);
+      gvar = _device_agent->get_config(info->key);
+      if (gvar != NULL) {
+        if (info->datatype == SR_T_BOOL)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_boolean(gvar));
+        else if (info->datatype == SR_T_UINT64)
+          sessionVar[info->name] = QJsonValue::fromVariant(
+              QString::number(g_variant_get_uint64(gvar)));
+        else if (info->datatype == SR_T_UINT8)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_byte(gvar));
+        else if (info->datatype == SR_T_INT16)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_int16(gvar));
+        else if (info->datatype == SR_T_FLOAT) // save as string format
+          sessionVar[info->name] = QJsonValue::fromVariant(
+              QString::number(g_variant_get_double(gvar)));
+        else if (info->datatype == SR_T_CHAR)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_string(gvar, NULL));
+        else if (info->datatype == SR_T_LIST)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_int16(gvar));
+        else {
+          pxv_err("Unkown config info type:%d", info->datatype);
+          assert(false);
+        }
+        g_variant_unref(gvar);
       }
-      g_variant_unref(gvar);
     }
   }
 
@@ -1628,7 +1629,10 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
 
         if (s->get_name() == obj["name"].toString() &&
             s->get_type() == obj["type"].toDouble()) {
-          s->set_colour(QColor(obj["colour"].toString()));
+          QString colourStr = obj["colour"].toString();
+          // "default" 表示使用主题色板,不覆盖构造函数的颜色
+          if (colourStr != "default")
+            s->set_colour(QColor(colourStr));
 
           if (s->signal_type() == SR_CHANNEL_DSO) {
             view::DsoSignal *dsoSig = (view::DsoSignal *)s;
@@ -1656,7 +1660,10 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
             chan_name = QString::number(s->get_index());
           }
 
-          s->set_colour(QColor(obj["colour"].toString()));
+          QString colourStr = obj["colour"].toString();
+          // "default" 表示使用主题色板,不覆盖构造函数的颜色
+          if (colourStr != "default")
+            s->set_colour(QColor(colourStr));
           s->set_name(chan_name);
 
           view::LogicSignal *logicSig = NULL;

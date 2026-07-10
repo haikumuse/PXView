@@ -28,6 +28,7 @@
 #include <list>
 #include <utility>
 #include <QWidget>
+#include <QColor>
 #include "../ui/uimanager.h"
 #include "../dock/keywordlineedit.h"
 #include <QMenu>
@@ -106,7 +107,6 @@ signals:
     void acdc_changed(quint16);
     void ch_changed(quint16);
     void show_glitch_filter_popup(pv::view::LogicSignal* sig);
-    void show_batch_glitch_filter_popup(pv::view::DecodeTrace* trace);
     void clear_glitch_filter_requested(bool all_channels);
     void toggle_signal_invert_requested(pv::view::LogicSignal* sig);
 
@@ -127,6 +127,10 @@ private:
     int         _resize_upper_height;
     int         _resize_lower_height;
     bool    _mouse_is_down;
+
+    // 主动缓存的标题前景色,避免依赖 Qt 的 stylesheet→palette 传播
+    // (该传播在启动时序和父级自带 stylesheet 时不可靠,会导致图标变黑)
+    QColor  _foreColor;
 };
 
 } // namespace view

@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <QPoint>
 
 struct srd_decoder;
 class DecoderStatus;
@@ -60,7 +61,7 @@ public:
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
                    std::list<pv::data::decode::Decoder *> &sub_decoders,
                    std::shared_ptr<pv::data::DecoderStack> &out_stack);
-  bool rst_decoder_by_key_handel(void *handel);
+  bool rst_decoder_by_key_handel(void *handel, QPoint anchor = QPoint());
   void remove_decoder(DecodeTrace *trace);
   void remove_decoder(int index);
   void remove_decoder_by_key_handel(void *key_handel);

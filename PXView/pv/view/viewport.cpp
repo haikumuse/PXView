@@ -55,6 +55,11 @@
 #include "../ui/langresource.h"
 #include "lissajoustrace.h"
 #include "mathtrace.h"
+#include "waveform_copy_helper.h"
+#include "decodetrace.h"
+
+#include <QClipboard>
+#include <QGuiApplication>
 
 using namespace std;
 
@@ -136,6 +141,25 @@ Viewport::Viewport(View &parent, View_type type)
   connect(xAction, &QAction::triggered, this, &Viewport::add_cursor_x);
   connect(this, &QWidget::customContextMenuRequested, this,
           &Viewport::show_contextmenu);
+
+  // Logic/MSO mode context menu for "copy waveform between cursors"
+  _logic_cmenu = new QMenu(this);
+  _copy_this_channel_action = _logic_cmenu->addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_THIS_CHANNEL), "Copy Channel Waveform Data"));
+  _copy_decoder_track_action = _logic_cmenu->addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_DECODER_TRACK), "Copy Decoder Waveform Data"));
+  _copy_decoder_group_action = _logic_cmenu->addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_DECODER_GROUP), "Copy Decoder Group Waveform Data"));
+  _copy_all_channels_action = _logic_cmenu->addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_ALL_CHANNELS), "Copy All Channels Waveform Data"));
+  connect(_copy_this_channel_action, &QAction::triggered,
+          this, &Viewport::copy_waveform_this_channel);
+  connect(_copy_decoder_track_action, &QAction::triggered,
+          this, &Viewport::copy_waveform_decoder_track);
+  connect(_copy_decoder_group_action, &QAction::triggered,
+          this, &Viewport::copy_waveform_decoder_group);
+  connect(_copy_all_channels_action, &QAction::triggered,
+          this, &Viewport::copy_waveform_all_channels);
 
   connect(&_fps_timer, &QTimer::timeout, this, [this]() {
     if (_paint_in_this_second > 0) {
@@ -563,11 +587,83 @@ void Viewport::add_cursor_x() {
   _view.show_xcursors(true);
 }
 
+void Viewport::show_logic_contextmenu(const QPoint &pos) {
+  if (!_logic_cmenu || !_view.is_logic_rendering_mode())
+    return;
+
+  _logic_menu_pos = pos;
+
+  // Show/hide menu items based on hit test (hide unavailable instead of disable)
+  LogicSignal *hit_sig = WaveformCopyHelper::hit_test_signal(
+      _view, pos.x(), pos.y());
+  DecodeTrace *hit_dt = (hit_sig == nullptr) ?
+      WaveformCopyHelper::hit_test_decode_trace(_view, pos.x(), pos.y()) : nullptr;
+
+  // "复制该通道波形数据" only visible when hit LogicSignal
+  _copy_this_channel_action->setVisible(hit_sig != nullptr);
+
+  // "复制该解码器波形数据" only visible when hit DecodeTrace
+  _copy_decoder_track_action->setVisible(hit_dt != nullptr);
+
+  bool has_decoder = false;
+  if (hit_sig)
+    has_decoder = WaveformCopyHelper::find_decoder_for_signal(_view, hit_sig) != nullptr;
+  if (!has_decoder)
+    has_decoder = (hit_dt != nullptr);
+  _copy_decoder_group_action->setVisible(has_decoder);
+
+  // "复制所有通道波形数据" only visible when there are decoders (outputs decoded data)
+  bool has_any_decoder = !_view.get_own_decode_traces().empty();
+  _copy_all_channels_action->setVisible(has_any_decoder);
+
+  _logic_cmenu->exec(QCursor::pos());
+}
+
+void Viewport::copy_waveform_this_channel() {
+  QString text = WaveformCopyHelper::format_range(
+      _view, _logic_menu_pos.x(), _logic_menu_pos.y(),
+      WaveformCopyHelper::Scope::ThisChannel);
+  if (!text.isEmpty())
+    QGuiApplication::clipboard()->setText(text);
+}
+
+void Viewport::copy_waveform_decoder_track() {
+  QString text = WaveformCopyHelper::format_range(
+      _view, _logic_menu_pos.x(), _logic_menu_pos.y(),
+      WaveformCopyHelper::Scope::DecoderTrack);
+  if (!text.isEmpty())
+    QGuiApplication::clipboard()->setText(text);
+}
+
+void Viewport::copy_waveform_decoder_group() {
+  QString text = WaveformCopyHelper::format_range(
+      _view, _logic_menu_pos.x(), _logic_menu_pos.y(),
+      WaveformCopyHelper::Scope::ThisDecoderGroup);
+  if (!text.isEmpty())
+    QGuiApplication::clipboard()->setText(text);
+}
+
+void Viewport::copy_waveform_all_channels() {
+  QString text = WaveformCopyHelper::format_range(
+      _view, _logic_menu_pos.x(), _logic_menu_pos.y(),
+      WaveformCopyHelper::Scope::AllChannels);
+  if (!text.isEmpty())
+    QGuiApplication::clipboard()->setText(text);
+}
+
 void Viewport::UpdateLanguage() {
   _yAction->setText(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ADD_Y_CURSOR), "Add Y-cursor"));
   _xAction->setText(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ADD_X_CURSOR), "Add X-cursor"));
+  _copy_this_channel_action->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_THIS_CHANNEL), "Copy Channel Waveform Data"));
+  _copy_decoder_track_action->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_DECODER_TRACK), "Copy Decoder Waveform Data"));
+  _copy_decoder_group_action->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_DECODER_GROUP), "Copy Decoder Group Waveform Data"));
+  _copy_all_channels_action->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COPY_ALL_CHANNELS), "Copy All Channels Waveform Data"));
 }
 
 void Viewport::UpdateTheme() {

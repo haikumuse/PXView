@@ -94,6 +94,14 @@ public:
 
     void apply_setting();
 
+public slots:
+    int exec() override;
+    void accept() override;
+    void reject() override;
+
+protected:
+    void hideEvent(QHideEvent *event) override;
+
 private:
     void load_options_view();
 
@@ -126,6 +134,7 @@ private:
     std::vector<ProbeSelector> _probe_selectors;
     bool        _is_reload_form;
     int         _content_width;
+    bool        _handled_close = false;  // 防止 hideEvent 与 accept/reject 递归
 };
 
 }//dialogs

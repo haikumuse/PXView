@@ -155,7 +155,7 @@ bool ViewDerivedTraces::add_decoder(
   return true;
 }
 
-bool ViewDerivedTraces::rst_decoder_by_key_handel(void *handel) {
+bool ViewDerivedTraces::rst_decoder_by_key_handel(void *handel, QPoint anchor) {
   if (!_view->_session || !handel)
     return false;
 
@@ -184,7 +184,7 @@ bool ViewDerivedTraces::rst_decoder_by_key_handel(void *handel) {
   // do NOT reset the decoder — keep the existing configuration. This
   // restores the pre-de-view-ization behavior where SigSession bailed out
   // of rst_decoder() when create_popup() returned false.
-  bool settings_changed = target->create_popup(false);
+  bool settings_changed = target->create_popup(false, anchor);
   if (!settings_changed)
     return false;
 

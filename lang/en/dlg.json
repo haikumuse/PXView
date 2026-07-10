@@ -193,6 +193,14 @@
         "text": "Decoding End Position"
     },
     {
+        "id": "IDS_DLG_START_CURSOR",
+        "text": "Start Cursor"
+    },
+    {
+        "id": "IDS_DLG_END_CURSOR",
+        "text": "End Cursor"
+    },
+    {
         "id": "IDS_DLG_DEVICE_OPTIONS",
         "text": "Device Options"
     },
@@ -1847,5 +1855,25 @@
     {
         "id": "IDS_DSO_CTR_AUTO",
         "text": "AUTO"
+    },
+    {
+        "id": "IDS_DLG_COPY_THIS_CHANNEL",
+        "text": "Copy Channel Waveform Data"
+    },
+    {
+        "id": "IDS_DLG_COPY_DECODER_TRACK",
+        "text": "Copy Decoder Waveform Data"
+    },
+    {
+        "id": "IDS_DLG_COPY_DECODER_GROUP",
+        "text": "Copy Decoder Group Waveform Data"
+    },
+    {
+        "id": "IDS_DLG_COPY_ALL_CHANNELS",
+        "text": "Copy All Channels Waveform Data"
+    },
+    {
+        "id": "IDS_DLG_NO_DATA",
+        "text": "No data available"
     }
 ]

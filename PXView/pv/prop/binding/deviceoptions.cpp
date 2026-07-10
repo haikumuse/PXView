@@ -88,7 +88,11 @@ DeviceOptions::DeviceOptions(SigSession *session)
 		if (!info)
 			continue;
 
-		gvar_list = _device_agent->get_config_list(NULL, key);
+		/* 只在驱动声明了 SR_CONF_LIST 能力位时才查询可选值列表。
+		 * 否则 hwdriver.c check_key() 会因 pub_opt & SR_CONF_LIST == 0
+		 * 打印 "Option 'xxx' not available to list" 错误日志。 */
+		const bool can_list = (options[i] & SR_CONF_LIST) != 0;
+		gvar_list = can_list ? _device_agent->get_config_list(NULL, key) : NULL;
 
         const QString name(info->name);
         const char *label_char = info->name;
@@ -146,7 +150,6 @@ DeviceOptions::DeviceOptions(SigSession *session)
             break;
 
 		case SR_CONF_RLE:
-        case SR_CONF_RLE_SUPPORT:
         case SR_CONF_CLOCK_TYPE:
         case SR_CONF_CLOCK_EDGE:
 		case SR_CONF_TRIGGER_OUT:

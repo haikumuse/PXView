@@ -1083,6 +1083,26 @@ int ViewSignalSync::headerWidth() {
 void ViewSignalSync::UpdateTheme() {
   View::refreshSignalColors();
 
+  // LogicSignal 的 _colour 没有像 AnalogSignal/DsoSignal 那样的 paint_mid
+  // 每帧刷新机制。配置加载(尤其是旧配置 color=#000000)会覆盖构造函数
+  // 的主题色,且主题切换不会重新刷新,导致改主题不染色。这里在主题切换
+  // 时重新应用 @logic-channel-N 主题色,与 AnalogSignal/DsoSignal 对齐。
+  std::vector<Trace *> traces;
+  _view->get_traces(ALL_VIEW, traces);
+  for (Trace *t : traces) {
+    if (!t || t->get_type() != SR_CHANNEL_LOGIC)
+      continue;
+    auto *logicSig = dynamic_cast<LogicSignal *>(t);
+    if (!logicSig || logicSig->get_index_list().empty())
+      continue;
+    int idx = *logicSig->get_index_list().begin() % 8;
+    QColor themeColor =
+        AppConfig::Instance().GetThemeColor(QString("@logic-channel-%1").arg(idx));
+    if (!themeColor.isValid())
+      themeColor = Trace::PROBE_COLORS[idx];
+    logicSig->set_colour(themeColor);
+  }
+
   QString heightStr =
       AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
   bool ok;

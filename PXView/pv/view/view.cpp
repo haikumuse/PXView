@@ -237,8 +237,6 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   connect(_header, &Header::header_updated, this, &View::header_updated);
   connect(_header, &Header::show_glitch_filter_popup, this,
           &View::on_show_glitch_filter_popup);
-  connect(_header, &Header::show_batch_glitch_filter_popup, this,
-          &View::on_show_batch_glitch_filter_popup);
   connect(_header, &Header::clear_glitch_filter_requested, this,
           &View::on_clear_glitch_filter_requested);
   connect(_header, &Header::toggle_signal_invert_requested, this,
@@ -738,10 +736,6 @@ void View::on_show_glitch_filter_popup(pv::view::LogicSignal *sig) {
   _glitch_filter->on_show_glitch_filter_popup(sig);
 }
 
-void View::on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace) {
-  _glitch_filter->on_show_batch_glitch_filter_popup(trace);
-}
-
 void View::on_clear_glitch_filter_requested(bool all_channels) {
   _glitch_filter->on_clear_glitch_filter_requested(all_channels);
 }
@@ -832,7 +826,7 @@ void View::remove_decoder(DecodeTrace *trace) { _derived->remove_decoder(trace);
 void View::remove_decoder(int index) { _derived->remove_decoder(index); }
 void View::remove_decoder_by_key_handel(void *key_handel) { _derived->remove_decoder_by_key_handel(key_handel); }
 void View::clear_all_decoders() { _derived->clear_all_decoders(); }
-bool View::rst_decoder_by_key_handel(void *handel) { return _derived->rst_decoder_by_key_handel(handel); }
+bool View::rst_decoder_by_key_handel(void *handel, QPoint anchor) { return _derived->rst_decoder_by_key_handel(handel, anchor); }
 void View::sync_derived_traces() { _derived->sync_derived_traces(); }
 void View::mark_derived_traces_dirty() { _derived->mark_derived_traces_dirty(); }
 } // namespace view

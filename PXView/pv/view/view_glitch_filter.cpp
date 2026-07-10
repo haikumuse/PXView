@@ -33,7 +33,6 @@
 #include "view_glitch_filter.h"
 
 #include <algorithm>
-#include <set>
 #include <vector>
 
 #include <QCursor>
@@ -96,77 +95,6 @@ void ViewGlitchFilter::on_show_glitch_filter_popup(
   }
 
   _view->_glitch_filter_popup->open_for_signal(sig, anchor);
-}
-
-void ViewGlitchFilter::on_show_batch_glitch_filter_popup(
-    pv::view::DecodeTrace *trace) {
-  if (!trace)
-    return;
-  if (!_view->_glitch_filter_popup)
-    return;
-
-  // 从根解码器(stack().front())的 probes 提取绑定的逻辑通道索引,
-  // 然后在 _own_signals 中线性扫描匹配的 LogicSignal。
-  // probe index = SignalModel::index(),与 LogicSignal::model()->index() 一致。
-  auto decoder_stack = trace->decoder();
-  if (!decoder_stack)
-    return;
-  auto &stack = decoder_stack->stack();
-  if (stack.empty())
-    return;
-  auto *root_decoder = stack.front();
-  if (!root_decoder)
-    return;
-
-  std::vector<LogicSignal *> sigs;
-  std::set<int> seen;  // 去重(多个 probe 可能绑定同一通道)
-  auto probe_list = root_decoder->binded_probe_list();
-  for (auto *pdch : probe_list) {
-    int probe_index = root_decoder->binded_probe_index(pdch);
-    if (probe_index < 0 || seen.count(probe_index))
-      continue;
-    seen.insert(probe_index);
-    for (auto s : _view->_own_signals) {
-      if (!s || s->signal_type() != SR_CHANNEL_LOGIC)
-        continue;
-      auto *ls = static_cast<LogicSignal *>(s);
-      if (ls->model() && ls->model()->index() == probe_index) {
-        sigs.push_back(ls);
-        break;
-      }
-    }
-  }
-
-  if (sigs.empty()) {
-    pv::ui::Toast::show(_view, View::tr("该解码通道未绑定任何逻辑通道"),
-                        pv::ui::Toast::Warning);
-    return;
-  }
-
-  // 弹窗锚点:对齐解码轨道上界(与单通道模式一致的布局规则)
-  int name_right = _view->_header
-                       ? _view->_header->width() - trace->get_rightWidth()
-                       : 0;
-  int anchor_x = name_right + 8;
-  int anchor_y = trace->get_y() - trace->get_totalHeight() / 2;
-  QPoint anchor = _view->_header
-                      ? _view->_header->mapToGlobal(QPoint(anchor_x, anchor_y))
-                      : QCursor::pos();
-
-  QScreen *screen = QGuiApplication::screenAt(anchor);
-  if (screen) {
-    QRect geo = screen->availableGeometry();
-    if (anchor.x() + 420 > geo.right())
-      anchor.setX(geo.right() - 420);
-    if (anchor.y() + 500 > geo.bottom())
-      anchor.setY(geo.bottom() - 500);
-    if (anchor.x() < geo.left())
-      anchor.setX(geo.left());
-    if (anchor.y() < geo.top())
-      anchor.setY(geo.top());
-  }
-
-  _view->_glitch_filter_popup->open_for_batch(sigs, anchor);
 }
 
 void ViewGlitchFilter::on_clear_glitch_filter_requested(bool all_channels) {

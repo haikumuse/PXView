@@ -193,6 +193,14 @@
         "text": "解码结束位置"
     },
     {
+        "id": "IDS_DLG_START_CURSOR",
+        "text": "起始游标"
+    },
+    {
+        "id": "IDS_DLG_END_CURSOR",
+        "text": "结束游标"
+    },
+    {
         "id": "IDS_DLG_DEVICE_OPTIONS",
         "text": "设备选项"
     },
@@ -1851,5 +1859,25 @@
     {
         "id": "IDS_DSO_CTR_AUTO",
         "text": "AUTO"
+    },
+    {
+        "id": "IDS_DLG_COPY_THIS_CHANNEL",
+        "text": "复制该通道波形数据"
+    },
+    {
+        "id": "IDS_DLG_COPY_DECODER_TRACK",
+        "text": "复制该解码器波形数据"
+    },
+    {
+        "id": "IDS_DLG_COPY_DECODER_GROUP",
+        "text": "复制此解码器组波形数据"
+    },
+    {
+        "id": "IDS_DLG_COPY_ALL_CHANNELS",
+        "text": "复制所有通道波形数据"
+    },
+    {
+        "id": "IDS_DLG_NO_DATA",
+        "text": "无可用数据"
     }
 ]

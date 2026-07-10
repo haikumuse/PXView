@@ -442,7 +442,7 @@ public:
    * @return true if the reset proceeded (user accepted the dialog),
    *         false if the decoder was not found or the user cancelled.
    */
-  bool rst_decoder_by_key_handel(void *handel);
+  bool rst_decoder_by_key_handel(void *handel, QPoint anchor = QPoint());
 
   inline std::vector<Signal *> &get_own_signals() { return _own_signals; }
 
@@ -619,7 +619,6 @@ public slots:
 
   // -- glitch filter popup handlers (Task 7)
   void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
-  void on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace);
   void on_clear_glitch_filter_requested(bool all_channels);
   void on_toggle_invert_requested(pv::view::LogicSignal *sig);
 
