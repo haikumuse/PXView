@@ -34,7 +34,8 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCheckBox>
-#include <QHideEvent>
+#include <QEvent>
+#include <QMouseEvent>
 #include <QEventLoop>
 #include "../ui/popupdlglist.h"
 
@@ -66,12 +67,11 @@ DecoderOptionsDlg::DecoderOptionsDlg(QWidget *parent)
     _contentHeight = 0;
     _is_reload_form = false;
     _content_width = 0;
-    // 覆盖 PxDialog 的 Qt::Dialog flag,改用 Qt::Popup 以获得点击外部自动关闭行为
-    // (与 GlitchFilterPopup 一致)。PxDialog 已设置 Qt::FramelessWindowHint。
-    setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
-    // QDialog 默认 WindowModal,会让 show() 走模态态路径(设置 grab/阻塞父窗口),
-    // 与 Qt::Popup 的 grab 冲突导致需双击外部才能关闭。显式 NonModal 让 show()
-    // 走纯 popup 路径,单击外部即关闭。
+    // 用 Qt::Tool 替代 Qt::Dialog:Tool 窗口不走模态态路径,不 grabMouse,
+    // qApp 事件过滤器能正常收到外部点击事件。配合 show()+QEventLoop 实现
+    // "exec 语义但非模态",由事件过滤器检测外部点击调用 reject() 关闭。
+    // FramelessWindowHint 保留 PxDialog 的无边框样式。
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
     setWindowModality(Qt::NonModal);
 }
 
@@ -85,42 +85,56 @@ DecoderOptionsDlg::~DecoderOptionsDlg()
 
 int DecoderOptionsDlg::exec()
 {
-    // 覆盖 PxDialog::exec()(其调用 QDialog::exec() 模态循环)。
-    // Qt::Popup 的自动关闭与 QDialog::exec() 的模态 grab 冲突,
-    // 导致需要双击外部才能关闭(第一次点击被模态循环吞掉)。
-    // 改用 QWidget::show()(跳过 QDialog/PxDialog 的 show 模态路径)
-    // + 本地 QEventLoop,由 finished 信号驱动退出,
-    // 与 GlitchFilterPopup(Qt::Popup + show)的行为一致。
+    // 不调用 PxDialog::exec()(其内部 QDialog::exec() 会 grabMouse 进入模态态,
+    // 导致 qApp 事件过滤器收不到外部点击)。改用 show() + 本地 QEventLoop:
+    // Tool 窗口非模态,不 grabMouse,事件过滤器能正常检测外部点击,
+    // 由 finished 信号驱动 QEventLoop 退出,保持 exec() 同步返回语义。
     update_font();
     PopupDlgList::AddDlgTolist(this);
-    QWidget::show();  // 跳过 QDialog::show() 的模态态设置
+    qApp->installEventFilter(this);
+    show();
+    raise();
+    activateWindow();
     QEventLoop loop;
     connect(this, &QDialog::finished, &loop, &QEventLoop::quit);
     loop.exec();
+    qApp->removeEventFilter(this);
     return result();
 }
 
-void DecoderOptionsDlg::hideEvent(QHideEvent *event)
+bool DecoderOptionsDlg::eventFilter(QObject *obj, QEvent *event)
 {
-    PxDialog::hideEvent(event);
-    // Qt::Popup 点击外部时 Qt 会 hide 窗口,但本地 QEventLoop
-    // 不会因此退出,需要手动调用 reject() 触发 finished 信号。
-    // _handled_close 防止递归 (accept/reject → hide → hideEvent → reject)。
-    if (!_handled_close) {
-        _handled_close = true;
-        reject();
+    // 全局事件过滤器(安装在 qApp 上):检测鼠标按下事件落在对话框几何范围外时
+    // 调用 reject() 关闭(与毛刺滤波浮窗 Qt::Popup 的行为一致)。
+    // Tool 窗口非模态不 grabMouse,外部 widget 的鼠标事件能正常到达 qApp 过滤器。
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto *me = static_cast<QMouseEvent *>(event);
+        QPoint globalPos = me->globalPosition().toPoint();
+        if (!rect().contains(mapFromGlobal(globalPos))) {
+            // 点击在对话框 rect 外。但需排除对话框子控件(如 QComboBox
+            // 下拉列表可能延伸到 rect 之外):向上查找父链,若属于 this 则不关闭。
+            QWidget *w = qobject_cast<QWidget *>(obj);
+            bool is_child = false;
+            while (w) {
+                if (w == this) { is_child = true; break; }
+                w = w->parentWidget();
+            }
+            if (!is_child) {
+                reject();
+                return true;
+            }
+        }
     }
+    return PxDialog::eventFilter(obj, event);
 }
 
 void DecoderOptionsDlg::accept()
 {
-    _handled_close = true;  // 正常确认关闭,阻止 hideEvent 再次调用 reject
     PxDialog::accept();
 }
 
 void DecoderOptionsDlg::reject()
 {
-    _handled_close = true;  // 正常取消关闭,阻止 hideEvent 递归
     PxDialog::reject();
 }
 
