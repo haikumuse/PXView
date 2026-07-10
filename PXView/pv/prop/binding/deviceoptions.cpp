@@ -97,8 +97,11 @@ DeviceOptions::DeviceOptions(SigSession *session)
 		switch(key)
 		{
 		case SR_CONF_SAMPLERATE:
-            bind_samplerate(name, label, gvar_list);
-			break;
+            /* Skip: SamplingBar already provides the sample-rate dropdown in
+             * the device-options dock. Creating a duplicate here would show
+             * two sample-rate controls. The key stays in devopts[] so
+             * hwdriver.c check_key() permits get/set/list from SamplingBar. */
+            continue;
 
 		case SR_CONF_CAPTURE_RATIO:
             bind_int(name, label, key, "%", pair<int64_t, int64_t>(0, 100));

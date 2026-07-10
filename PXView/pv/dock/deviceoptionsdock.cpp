@@ -22,6 +22,7 @@
 
 #include "deviceoptionsdock.h"
 
+#include <QAbstractButton>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QElapsedTimer>
@@ -124,6 +125,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
     mode_title->setObjectName("dock_section_title");
     mode_title->setFont(dock_font_section_title());
+    mode_title->setProperty("lang_id", S_ID(IDS_DLG_MODE));
     QWidget *mode_section = new QWidget(_container_panel);
     mode_section->setObjectName("dock_mode_section");
     QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
@@ -272,6 +274,8 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
       QLabel *lb = new QLabel(lable_text, parent);
       lb->setObjectName("dock_label");
       lb->setFont(labelFont);
+      lb->setProperty("lang_src", label);
+      lb->setProperty("lang_page", STR_PAGE_DSL);
       layout->addWidget(lb, i, 0, Qt::AlignRight | Qt::AlignVCenter);
 
       // For path/dir properties, split the browse button and line edit
@@ -391,6 +395,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
                 STR_PAGE_DSL, strs[i], strs[i]));
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
         mode_button->setFont(contentFont);
+        mode_button->setProperty("lang_src", QString::fromUtf8(strs[i]));
+        mode_button->setProperty("lang_page", STR_PAGE_DSL);
         ChannelModePair mode_index;
         mode_index.key = mode_button;
         mode_index.value = QString::fromUtf8(strs[i]);
@@ -431,6 +437,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       digital_group);
   digital_title->setObjectName("dock_section_title");
   digital_title->setFont(dock_font_section_title());
+  digital_title->setProperty("lang_id", S_ID(IDS_DLG_DIGITAL_CHANNEL));
   digital_lay->addWidget(digital_title);
 
   QWidget *digital_grid_widget = new QWidget();
@@ -450,6 +457,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       analog_group);
   analog_title->setObjectName("dock_section_title");
   analog_title->setFont(dock_font_section_title());
+  analog_title->setProperty("lang_id", S_ID(IDS_DLG_ANALOG_CHANNEL));
   analog_lay->addWidget(analog_title);
 
   QWidget *analog_grid_widget = new QWidget();
@@ -552,6 +560,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   disable_all_probes->setMaximumHeight(33);
   enable_all_probes->setObjectName("dock_content");
   disable_all_probes->setObjectName("dock_content");
+  enable_all_probes->setProperty("lang_id", S_ID(IDS_DLG_ENABLE_ALL));
+  disable_all_probes->setProperty("lang_id", S_ID(IDS_DLG_DISABLE_ALL));
   enable_all_probes->setFont(contentFont);
   disable_all_probes->setFont(contentFont);
 
@@ -885,6 +895,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     en_label->setObjectName("dock_label");
     en_label->setFont(labelFont);
     en_label->setProperty("Enable", true);
+    en_label->setProperty("lang_id", S_ID(IDS_DLG_ENABLE));
     probe_layout->addWidget(en_label, 0, 0, 1, 1);
     probe_layout->addWidget(probe_checkBox, 0, 1, 1, 3);
 
@@ -894,9 +905,16 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
     for (auto p : properties) {
       const QString label = p->labeled_widget() ? QString() : p->label();
-      QLabel *lb = new QLabel(label, probe_widget);
+      QString lb_text = label;
+      if (!label.isEmpty()) {
+        lb_text = QString::fromUtf8(LangResource::Instance()->get_lang_text(
+            STR_PAGE_DSL, label.toUtf8().data(), label.toUtf8().data()));
+      }
+      QLabel *lb = new QLabel(lb_text, probe_widget);
       lb->setObjectName("dock_label");
       lb->setFont(labelFont);
+      lb->setProperty("lang_src", label);
+      lb->setProperty("lang_page", STR_PAGE_DSL);
       probe_layout->addWidget(lb, i, 0, 1, 1);
 
       QWidget *pow = p->get_widget(probe_widget);
@@ -1050,8 +1068,10 @@ void DeviceOptionsDock::build_dynamic_panel() {
   }
   QString title = dynamic_widget(inner);
   QLabel *dyn_title = _dynamic_panel->findChild<QLabel *>("dock_section_title");
-  if (dyn_title)
+  if (dyn_title) {
     dyn_title->setFont(sectionTitleFont);
+    dyn_title->setProperty("lang_id", S_ID(IDS_DLG_CHANNEL));
+  }
   dyn_title->setText(title);
 
   update_dynamic_panel_visibility(title != "");
@@ -1180,6 +1200,7 @@ void DeviceOptionsDock::update_view() {
                                   _container_panel);
   mode_title->setObjectName("dock_section_title");
   mode_title->setFont(sectionTitleFont);
+  mode_title->setProperty("lang_id", S_ID(IDS_DLG_MODE));
   QWidget *mode_section = new QWidget(_container_panel);
   mode_section->setObjectName("dock_mode_section");
   QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
@@ -1263,9 +1284,46 @@ void DeviceOptionsDock::device_updated() {
   }
 }
 
-void DeviceOptionsDock::UpdateLanguage() { update_view(); }
+void DeviceOptionsDock::UpdateLanguage() { retranslateUi(); }
 
-void DeviceOptionsDock::UpdateTheme() { update_view(); }
+void DeviceOptionsDock::UpdateTheme() { retranslateUi(); }
+
+void DeviceOptionsDock::retranslateUi() {
+  if (_container_panel == NULL || _device_options_binding == NULL)
+    return;
+
+  setUpdatesEnabled(false);
+
+  auto items = _container_panel->findChildren<QObject *>();
+  for (auto *obj : items) {
+    // dlg-page items: retranslate by symbolic ID stored in "lang_id"
+    QVariant idVar = obj->property("lang_id");
+    if (idVar.isValid() && idVar.canConvert<QString>()) {
+      QByteArray id = idVar.toString().toUtf8();
+      QString txt = QString::fromUtf8(LangResource::Instance()->get_lang_text(
+          STR_PAGE_DLG, id.constData(), id.constData()));
+      if (auto *lb = qobject_cast<QLabel *>(obj))
+        lb->setText(txt);
+      else if (auto *btn = qobject_cast<QAbstractButton *>(obj))
+        btn->setText(txt);
+      continue;
+    }
+    // dsl-page items: retranslate by literal source text in "lang_src"
+    QVariant srcVar = obj->property("lang_src");
+    if (srcVar.isValid() && srcVar.canConvert<QString>()) {
+      QByteArray bytes = srcVar.toString().toUtf8();
+      QString txt = QString::fromUtf8(LangResource::Instance()->get_lang_text(
+          STR_PAGE_DSL, bytes.constData(), bytes.constData()));
+      if (auto *lb = qobject_cast<QLabel *>(obj))
+        lb->setText(txt);
+      else if (auto *btn = qobject_cast<QAbstractButton *>(obj))
+        btn->setText(txt);
+    }
+  }
+
+  setUpdatesEnabled(true);
+  update();
+}
 
 void DeviceOptionsDock::UpdateFont() {
   if (_container_panel == NULL)

@@ -674,13 +674,13 @@ void SamplingBar::update_sample_count_selector() {
   assert(!_updating_sample_count);
   _updating_sample_count = true;
 
-  // SR_CONF_STREAM/SR_CONF_HW_DEPTH fork keys deleted — use DeviceAgent typed
-  // wrappers. hw_depth used to come from the driver (PXLogic hardware buffer
-  // depth); without it, derive an upper bound from the configured sample limit
-  // so the RLE depth cap is still meaningful. Stream 模式下用 ring buffer 大小
-  // 作为硬件缓冲深度的参考（RLE 上限）。
+  // 从驱动获取真实硬件存储深度（SR_CONF_HW_DEPTH），用于构建采样深度下拉框
+  // 上限，防止用户选择超过硬件存储能力的深度。驱动不支持时（如 fx2lafw、demo）
+  // 返回 0，回退到 get_ring_sample_count() 作为参考。
   stream_mode = _device_agent->is_stream_mode();
-  hw_depth = _device_agent->get_ring_sample_count();
+  hw_depth = _device_agent->get_hw_depth();
+  if (hw_depth == 0)
+    hw_depth = _device_agent->get_ring_sample_count();
   int mode = _device_agent->get_work_mode();
 
   if (mode == LOGIC) {

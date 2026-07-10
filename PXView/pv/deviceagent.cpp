@@ -464,6 +464,21 @@ uint64_t DeviceAgent::get_ring_sample_count()
     return v;
 }
 
+uint64_t DeviceAgent::get_hw_depth()
+{
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_hw_depth: _dev_handle is NULL");
+        return 0;
+    }
+    uint64_t v = 0;
+    GVariant *gvar = get_config(SR_CONF_HW_DEPTH, NULL, NULL);
+    if (gvar) {
+        v = g_variant_get_uint64(gvar);
+        g_variant_unref(gvar);
+    }
+    return v;
+}
+
 uint64_t DeviceAgent::get_sample_rate()
 {
     if (!_dev_handle) {

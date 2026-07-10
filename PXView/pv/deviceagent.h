@@ -161,6 +161,10 @@ public:
     // stream 模式下基于 _app_stream_mem_buff(GB) 计算；非 stream 模式与
     // get_sample_limit() 等价。
     uint64_t get_ring_sample_count();
+    // get_hw_depth() 返回硬件存储深度（每通道样本数）。Buffer 模式下为 FPGA
+    // DRAM 容量 / 通道数；用于 SamplingBar 构建采样深度下拉框上限，防止用户
+    // 选择超过硬件存储能力的深度。驱动不支持 SR_CONF_HW_DEPTH 时返回 0。
+    uint64_t get_hw_depth();
     uint64_t get_sample_rate();
     uint64_t get_time_base();
     double get_sample_time();

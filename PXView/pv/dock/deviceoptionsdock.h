@@ -87,6 +87,8 @@ private:
   void UpdateTheme() override;
   void UpdateFont() override;
 
+  void retranslateUi();
+
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 
