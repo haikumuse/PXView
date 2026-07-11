@@ -106,6 +106,51 @@ void ViewSignalSync::compute_signal_groups() {
     return a->get_view_index() < b->get_view_index();
   });
 
+  // 归一化 view_index：消除空洞与 -1，保持相对顺序
+  // 后续连续性检查要求 view_index 严格连续（相差1）才合并同组。两种情况会出问题：
+  // 1. view_index 有空洞（拖拽/删除解码器/.pxc 配置恢复留下跳号）→ unassigned
+  //    被误切成多个小组，按"组最小 view_index"重排后产生通道号逆序块。
+  // 2. view_index=-1（SignalFactory::create_signals 新建的 Signal 默认值）→
+  //    所有 -1 的 trace 各自独立成组，组排序时 min_vi 全为 INT_MAX，std::sort
+  //    不保证稳定 → 产生完全乱序（如 18,16,14,13,...）。
+  // 修复：把所有 trace 纳入归一化池，view_index>=0 的按 view_index 排在前，
+  // view_index<0 的按 channel index 排在后，然后统一赋值 0,1,2,... 连续序列。
+  {
+    std::vector<Trace *> normalize_pool;
+    normalize_pool.reserve(decode_traces.size() + logic_traces.size());
+    for (auto t : decode_traces) {
+      normalize_pool.push_back(t);
+    }
+    for (auto t : logic_traces) {
+      normalize_pool.push_back(t);
+    }
+    // view_index>=0 的按 view_index 排在前，view_index<0 的按 channel index 排在后
+    sort(normalize_pool.begin(), normalize_pool.end(), [](Trace *a, Trace *b) {
+      int va = a->get_view_index();
+      int vb = b->get_view_index();
+      if (va >= 0 && vb >= 0)
+        return va < vb;
+      if (va >= 0 && vb < 0)
+        return true;
+      if (va < 0 && vb >= 0)
+        return false;
+      // 两者都 < 0，按 channel index 排序
+      return a->get_index() < b->get_index();
+    });
+    int idx = 0;
+    for (auto t : normalize_pool) {
+      t->set_view_index(idx++);
+    }
+    // 归一化后重新对 decode_traces/logic_traces 按新 view_index 排序，
+    // 确保后续分组逻辑使用归一化后的顺序
+    sort(decode_traces.begin(), decode_traces.end(), [](Trace *a, Trace *b) {
+      return a->get_view_index() < b->get_view_index();
+    });
+    sort(logic_traces.begin(), logic_traces.end(), [](Trace *a, Trace *b) {
+      return a->get_view_index() < b->get_view_index();
+    });
+  }
+
   std::set<int> assigned_signals;
   int group_id = 0;
 
@@ -736,8 +781,14 @@ void ViewSignalSync::rebuild_signals() {
   // rebuild_signals_from_config() at line 2228 only runs when
   // _data_source == _document; this second path runs when _data_source is
   // _session (e.g., before/during capture), and must also restore layout.
-  if (_view->_document && _view->_document->has_signal_config()) {
-    const auto &cfg = _view->_document->get_signal_config();
+  // 当 _document 为 null 时（采集完成后 set_data_document 调用前 rebuild），
+  // 从 session.get_active_document() 获取 config，恢复用户拖拽后的通道顺序。
+  pv::data::SessionDocument *restore_doc = _view->_document;
+  if (!restore_doc && _view->_session) {
+    restore_doc = _view->_session->get_active_document();
+  }
+  if (restore_doc && restore_doc->has_signal_config()) {
+    const auto &cfg = restore_doc->get_signal_config();
     int view_index_seq = 0;
     for (auto *sig : _view->_own_signals) {
       auto it = std::find_if(cfg.channels.begin(), cfg.channels.end(),

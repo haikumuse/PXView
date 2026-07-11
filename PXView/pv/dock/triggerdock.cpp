@@ -306,14 +306,12 @@ void TriggerDock::device_updated() {
   // position-fixed (maxRange = 1).
   bool stream = false;
   uint8_t maxRange;
-  uint64_t sample_limits;
   int mode = _session->get_device()->get_work_mode();
   int ch_num;
 
   if (mode == LOGIC) {
     // SR_CONF_STREAM deleted — use DeviceAgent::is_stream_mode() instead.
     stream = _session->get_device()->is_stream_mode();
-    sample_limits = _session->get_device()->get_sample_limit();
 
     _adv_radioButton->setEnabled(!stream);
     _position_spinBox->setEnabled(!stream);

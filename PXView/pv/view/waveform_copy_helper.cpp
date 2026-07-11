@@ -323,6 +323,7 @@ std::pair<uint64_t, uint64_t> WaveformCopyHelper::resolve_cursor_range(View &vie
 
 LogicSignal* WaveformCopyHelper::hit_test_signal(View &view, int click_x, int click_y)
 {
+    (void)click_x;
     int mouseY = click_y + view.get_vOffset();
     for (auto *s : view.get_own_signals()) {
         if (!s)
@@ -339,6 +340,7 @@ LogicSignal* WaveformCopyHelper::hit_test_signal(View &view, int click_x, int cl
 
 DecodeTrace* WaveformCopyHelper::hit_test_decode_trace(View &view, int click_x, int click_y)
 {
+    (void)click_x;
     int mouseY = click_y + view.get_vOffset();
     for (auto *t : view.get_own_decode_traces()) {
         if (!t || !t->enabled())

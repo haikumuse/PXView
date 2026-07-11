@@ -965,7 +965,7 @@ void DsoSignal::paint_envelope(QPainter &p,
   data::DsoSnapshot *pshot = const_cast<data::DsoSnapshot *>(snapshot);
 
   DsoSnapshot::EnvelopeSection e;
-  const uint16_t index = get_index() % num_channels;
+  const uint16_t index = get_index();
   pshot->get_envelope_section(e, start, end, samples_per_pixel, index);
 
   if (e.length < 2)

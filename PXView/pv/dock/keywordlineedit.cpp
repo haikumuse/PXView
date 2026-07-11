@@ -188,7 +188,7 @@ PopupLineEditInput::PopupLineEditInput(QWidget *parent) : QDialog(parent) {
   QFont font = dock_font_content();
   _textInput->setFont(font);
 
-  connect(_textInput, &QLineEdit::returnPressed, [=]() { InputRelease(); });
+  connect(_textInput, &QLineEdit::returnPressed, this, [this]() { InputRelease(); });
 }
 
 void PopupLineEditInput::changeEvent(QEvent *event) {

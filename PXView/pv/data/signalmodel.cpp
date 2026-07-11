@@ -212,6 +212,7 @@ void SignalModel::set_trig_value(double v) {
 }
 
 void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
+    (void)probe;
     // Update the model field regardless of probe override.
     _trig_value = value;
     // Fork libsigrok's sr_channel had a `trig_value` field; upstream

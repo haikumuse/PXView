@@ -483,16 +483,29 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
     if (cur_ch_num > vld_ch_num)
       probe->enabled = false;
 
-    // DSO channels (oscilloscope) are grouped with analog, not digital —
-    // otherwise they appear as extra buttons in the Digital Channel grid
-    // (e.g. demo device's O0/O1 at index 13/14). Core disables DSO channels
-    // in LOGIC/MSO modes (sigsession.cpp switch_work_mode), so they are
-    // either hidden (LOGIC: analog group hidden) or shown disabled (MSO).
+    // DSO channels (oscilloscope) are not part of LOGIC/MSO channel
+    // selection — Core (sigsession.cpp init_signals) skips them when
+    // building signal models for these modes. Keep a ChannelLabel alive
+    // (parented to this dock, hidden) so _probes_checkBox_list stays
+    // aligned 1:1 with get_channels() for commit_channels(), but do NOT
+    // add it to any visible grid — otherwise O0/O1 show up in the Analog
+    // Channel group (demo device, indices 13/14).
+    int cur_mode = _device_agent->get_work_mode();
+    bool is_dso_hidden = (probe->type == SR_CHANNEL_DSO &&
+                          (cur_mode == LOGIC || cur_mode == MSO));
     bool is_analog = (probe->type == SR_CHANNEL_ANALOG ||
                       probe->type == SR_CHANNEL_DSO);
     ChannelLabel *ch_item = new ChannelLabel(
         this, NULL, probe->index,
         is_analog ? ChannelLabel::Analog : ChannelLabel::Logic);
+
+    if (is_dso_hidden) {
+      ch_item->setVisible(false);
+      _probes_checkBox_list.push_back(ch_item->getCheckBox());
+      ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked
+                                                           : Qt::Unchecked);
+      continue;
+    }
 
     if (is_analog) {
       analog_grid->addWidget(ch_item, analog_row, analog_column++,

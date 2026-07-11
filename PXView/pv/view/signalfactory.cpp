@@ -84,17 +84,13 @@ Signal *SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model,
   Signal *signal = nullptr;
   switch (model->type()) {
   case SR_CHANNEL_LOGIC:
-    // snapshot 传 nullptr：创建与数据绑定分离。数据绑定由调用方显式控制
-    // (set_data_document / set_signal_data_from_source / clear_signal_data /
-    // data_updated)。否则共享 session 的 _view_data 会被无条件绑到新 tab，
-    // 导致新 tab 继承上一个 tab 的波形。
-    signal = new LogicSignal(nullptr, model, data_source);
+    signal = new LogicSignal(get_logic_snapshot(data_source), model, data_source);
     break;
   case SR_CHANNEL_ANALOG:
-    signal = new AnalogSignal(nullptr, model, data_source);
+    signal = new AnalogSignal(get_analog_snapshot(data_source), model, data_source);
     break;
   case SR_CHANNEL_DSO:
-    signal = new DsoSignal(nullptr, model, data_source);
+    signal = new DsoSignal(get_dso_snapshot(data_source), model, data_source);
     break;
   default:
     pxv_warn("create_signal: UNKNOWN type=%d (index=%d), returning nullptr",
@@ -369,6 +365,24 @@ void SignalFactory::restore_ui_state(
     s->set_v_offset(ui.v_offset);
     s->set_own_height(ui.own_height);
   }
+}
+
+data::LogicSnapshot *SignalFactory::get_logic_snapshot(data::DataSource *data_source) {
+  if (!data_source)
+    return nullptr;
+  return data_source->get_logic_snapshot();
+}
+
+data::AnalogSnapshot *SignalFactory::get_analog_snapshot(data::DataSource *data_source) {
+  if (!data_source)
+    return nullptr;
+  return data_source->get_analog_snapshot();
+}
+
+data::DsoSnapshot *SignalFactory::get_dso_snapshot(data::DataSource *data_source) {
+  if (!data_source)
+    return nullptr;
+  return data_source->get_dso_snapshot();
 }
 
 } // namespace view

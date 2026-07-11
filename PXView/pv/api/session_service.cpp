@@ -1224,7 +1224,7 @@ uint16_t SessionService::get_channel_count(ChannelType type) const {
     if (!_session)
         return 0;
 
-    int sr_type = SR_CHANNEL_LOGIC;
+    int sr_type;
     switch (type) {
     case ChannelType::Logic:
         sr_type = SR_CHANNEL_LOGIC;
@@ -1235,6 +1235,8 @@ uint16_t SessionService::get_channel_count(ChannelType type) const {
     case ChannelType::Dso:
         sr_type = SR_CHANNEL_DSO;
         break;
+    default:
+        return 0;
     }
     return _session->get_ch_num(sr_type);
 }
@@ -1504,7 +1506,6 @@ ProbeConfig SessionService::get_probe_config(int16_t channel) const {
     }
 
     double dval = 0;
-    int ival = 0;
 
     if (target_ch) {
         if (_device->get_config_double(SR_CONF_PROBE_FACTOR, dval, target_ch))

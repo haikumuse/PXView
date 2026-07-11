@@ -436,7 +436,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       // LOGIC 全局色板,模拟/DSO 单通道颜色仍需此入口)
       if (_view.is_logic_rendering_mode()) {
         auto *sig = dynamic_cast<LogicSignal *>(mTrace);
-        if (sig && sig->data()) {
+        if (sig) {
           _context_trace = mTrace;
           // 同上:弹窗捕获鼠标,需重置按下态,避免滚轮缩放被锁死。
           _mouse_is_down = false;
@@ -898,7 +898,7 @@ void Header::keyPressEvent(QKeyEvent *event) {
   if (QApplication::activePopupWidget() == nullptr && _context_trace) {
     auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
     if (sig) {
-      if (event->key() == Qt::Key_F && sig->data()) {
+      if (event->key() == Qt::Key_F) {
         emit show_glitch_filter_popup(sig);
         event->accept();
         return;
@@ -1030,7 +1030,7 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
 
   // ===== Zone A: D0 名称区域 → 滤波菜单 =====
   auto *logic_sig = dynamic_cast<LogicSignal *>(target);
-  if (!logic_sig || !logic_sig->data())
+  if (!logic_sig)
     return;
 
   auto &session = _view.session();

@@ -381,6 +381,12 @@ void DsoSnapshot::get_envelope_section(EnvelopeSection &s,
 	assert(start <= end);
 	assert(min_length > 0);
 
+    const int order = get_ch_order(probe_index);
+    if (order == -1) {
+        s.length = 0;
+        return;
+    }
+
     if (!_envelope_done) {
         s.length = 0;
         return;
@@ -395,12 +401,12 @@ void DsoSnapshot::get_envelope_section(EnvelopeSection &s,
 
 	s.start = start << scale_power;
 	s.scale = 1 << scale_power;
-    if (_envelope_levels[probe_index][min_level].length == 0)
+    if (_envelope_levels[order][min_level].length == 0)
         s.length = 0;
     else
         s.length = end - start;
 
-    s.samples = _envelope_levels[probe_index][min_level].samples + start;
+    s.samples = _envelope_levels[order][min_level].samples + start;
 }
 
 void DsoSnapshot::reallocate_envelope(Envelope &e)
