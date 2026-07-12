@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "../core/eventbus.h"
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QFile>
@@ -110,10 +111,15 @@ void McpTransport::on_service_event(const ServiceEventData& data)
     // thread (e.g. SessionService::broadcast_event from a feed/device thread),
     // re-post to the main thread so send_sse_event touches the socket on the
     // correct thread.
-    if (QThread::currentThread() != qApp->thread()) {
-        QMetaObject::invokeMethod(
-            qApp, [this, data]() { on_service_event(data); },
-            Qt::QueuedConnection);
+    //
+    // CRITICAL: Use EventBus::post_async_dispatch (QCoreApplication::postEvent)
+    // instead of QMetaObject::invokeMethod. invokeMethod internally calls
+    // QThread::currentThread() which creates a QThreadData on the worker thread
+    // → SIGSEGV on thread exit (LdrShutdownThread). postEvent only accesses
+    // the receiver's (qApp's) QThreadData — safe for worker threads.
+    if (!pv::core::EventBus::on_main_thread()) {
+        pv::core::EventBus::post_async_dispatch(
+            [this, data]() { on_service_event(data); });
         return;
     }
 

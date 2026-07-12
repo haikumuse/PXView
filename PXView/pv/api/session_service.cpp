@@ -22,6 +22,7 @@
 
 #include "../sigsession.h"
 #include "../core/documentregistry.h"
+#include "../core/eventbus.h"
 #include "../deviceagent.h"
 #include "../dsvdef.h"
 #include "../data/signalmodel.h"
@@ -145,7 +146,10 @@ static std::string ensure_utf8(const char *str) {
 // The helpers below detect this case and invoke the lambda inline. Otherwise
 // they fall back to the queued dispatch + condition_variable wait.
 inline bool on_main_thread() {
-    return qApp && QThread::currentThread() == qApp->thread();
+    // Use EventBus::on_main_thread() (std::this_thread::get_id()) instead of
+    // QThread::currentThread() — the latter creates a QThreadData on worker
+    // threads, causing SIGSEGV on thread exit.
+    return pv::core::EventBus::on_main_thread();
 }
 
 // Run a `Result<std::string>`-returning lambda on the main thread.
@@ -160,14 +164,16 @@ inline Result<std::string> run_string_on_main_thread(
     std::condition_variable result_cv;
     bool done = false;
 
-    QMetaObject::invokeMethod(qApp, [&fn, &result, &result_mutex, &result_cv, &done]() {
+    // Use post_async_dispatch (QCoreApplication::postEvent) instead of
+    // QMetaObject::invokeMethod to avoid creating QThreadData on worker threads.
+    pv::core::EventBus::post_async_dispatch([&fn, &result, &result_mutex, &result_cv, &done]() {
         result = fn();
         {
             std::lock_guard<std::mutex> lock(result_mutex);
             done = true;
         }
         result_cv.notify_one();
-    }, Qt::QueuedConnection);
+    });
 
     {
         std::unique_lock<std::mutex> lock(result_mutex);
@@ -188,14 +194,14 @@ inline Result<void> run_void_on_main_thread(
     std::condition_variable result_cv;
     bool done = false;
 
-    QMetaObject::invokeMethod(qApp, [&fn, &result, &result_mutex, &result_cv, &done]() {
+    pv::core::EventBus::post_async_dispatch([&fn, &result, &result_mutex, &result_cv, &done]() {
         result = fn();
         {
             std::lock_guard<std::mutex> lock(result_mutex);
             done = true;
         }
         result_cv.notify_one();
-    }, Qt::QueuedConnection);
+    });
 
     {
         std::unique_lock<std::mutex> lock(result_mutex);
@@ -223,8 +229,22 @@ inline void invoke_or_call(QObject *ctx, F &&fn) {
         fn();
         return;
     }
-    QMetaObject::invokeMethod(ctx, std::forward<F>(fn),
-                              Qt::BlockingQueuedConnection);
+    // Use post_async_dispatch + condition_variable instead of
+    // QMetaObject::invokeMethod(BlockingQueuedConnection) — the latter creates
+    // a QThreadData on the calling worker thread → SIGSEGV on thread exit.
+    std::mutex m;
+    std::condition_variable cv;
+    bool done = false;
+    pv::core::EventBus::post_async_dispatch([&fn, &m, &cv, &done]() {
+        fn();
+        {
+            std::lock_guard<std::mutex> lock(m);
+            done = true;
+        }
+        cv.notify_one();
+    });
+    std::unique_lock<std::mutex> lock(m);
+    cv.wait(lock, [&done]() { return done; });
 }
 
 // ---------------------------------------------------------------------------

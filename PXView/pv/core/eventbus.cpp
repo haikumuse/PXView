@@ -7,6 +7,7 @@ namespace pv {
 namespace core {
 
 thread_local int EventBus::_broadcast_depth = 0;
+std::thread::id EventBus::_main_thread_id = std::this_thread::get_id();
 
 // ---------------------------------------------------------------------------
 // Custom QEvent subclass for async dispatch.

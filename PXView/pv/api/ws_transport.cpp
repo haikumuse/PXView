@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "../core/eventbus.h"
 #include <QCoreApplication>
 #include <QHostAddress>
 #include <QThread>
@@ -143,9 +144,12 @@ void WsTransport::send_to_clients(const QString& msg)
     // QWebSocket::sendTextMessage is not thread-safe; on_service_event may be
     // invoked from a worker thread (e.g. feed/device threads via
     // SessionService::broadcast_event). Marshal to the GUI thread first.
-    if (QThread::currentThread() != qApp->thread()) {
-        QMetaObject::invokeMethod(qApp, [this, msg]() { send_to_clients(msg); },
-                                  Qt::QueuedConnection);
+    //
+    // CRITICAL: Use EventBus::post_async_dispatch (QCoreApplication::postEvent)
+    // instead of QMetaObject::invokeMethod — see mcp_transport.cpp for details.
+    if (!pv::core::EventBus::on_main_thread()) {
+        pv::core::EventBus::post_async_dispatch(
+            [this, msg]() { send_to_clients(msg); });
         return;
     }
 

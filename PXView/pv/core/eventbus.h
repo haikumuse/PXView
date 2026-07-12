@@ -3,10 +3,10 @@
 
 #include <QObject>
 #include <QCoreApplication>
-#include <QThread>
 #include <QEvent>
-#include <vector>
+#include <thread>
 #include <functional>
+#include <vector>
 
 #include "../interface/icallbacks.h"
 #include "../interface/events.h"
@@ -126,17 +126,19 @@ public:
     // thread calling set_receive_data_len → dispatch_to<IDataCallback>),
     // the callbacks (MainWindow::receive_data_len emit signal with
     // AutoConnection, SessionService::receive_data_len → broadcast_event →
-    // transport QThread::currentThread()/QMetaObject::invokeMethod) would
-    // create a QThreadData on the worker thread. When the worker thread
-    // exits, LdrShutdownThread destroys QThreadData → SIGSEGV in Qt6Core.dll.
-    // See broadcast_async comment above for the full crash scenario.
+    // transport QMetaObject::invokeMethod) would create a QThreadData on the
+    // worker thread. When the worker thread exits, LdrShutdownThread destroys
+    // QThreadData → SIGSEGV in Qt6Core.dll. See broadcast_async comment above.
     //
     // Fix: on the main thread, dispatch synchronously (preserves existing
-    // semantics). On a worker thread, post to the main thread via
-    // postEvent (same technique as broadcast_async) to avoid creating
-    // QThreadData on the worker thread.
+    // semantics). On a worker thread, post to the main thread via postEvent
+    // (same technique as broadcast_async) to avoid creating QThreadData.
+    //
+    // Thread check uses std::this_thread::get_id() instead of
+    // QThread::currentThread() because QThread::currentThread() itself may
+    // create a QThreadData on the calling worker thread (defeating the purpose).
     template <typename Iface, typename F> void dispatch_to(F fn) {
-        if (QThread::currentThread() == qApp->thread()) {
+        if (std::this_thread::get_id() == _main_thread_id) {
             for (auto *cb : _callbacks) {
                 if (auto *iface = dynamic_cast<Iface *>(cb))
                     fn(iface);
@@ -159,12 +161,25 @@ public:
     // ---- Internal: post a functor to the main thread via QCoreApplication::postEvent ----
     // This avoids creating QThreadData on the calling thread (unlike
     // QMetaObject::invokeMethod), preventing Windows thread-exit crashes.
-    void post_async_dispatch(std::function<void()> fn);
+    // STATIC: can be called from anywhere without an EventBus instance —
+    // transport/API layer uses this directly.
+    static void post_async_dispatch(std::function<void()> fn);
+
+    // Check if the current thread is the main (GUI) thread.
+    // Uses std::this_thread::get_id() — NOT QThread::currentThread() —
+    // to avoid creating a QThreadData on worker threads.
+    static bool on_main_thread() {
+        return std::this_thread::get_id() == _main_thread_id;
+    }
 
 private:
     std::vector<ISessionCallbackBase *> _callbacks;
     std::vector<interface::IEventListener *> _event_listeners;
     static thread_local int _broadcast_depth;
+    // Cached main thread ID — used for thread checks without calling
+    // QThread::currentThread() (which may create QThreadData on worker threads).
+    // Static: initialized at first use (main thread constructs EventBus).
+    static std::thread::id _main_thread_id;
 
     // Event filter installed on qApp to process custom async-dispatch events.
     // Forward-declared to avoid exposing Qt internals in the header.
