@@ -389,6 +389,7 @@ AppConfig::AppConfig()
     , _saveHistoryTimer(nullptr)
     , _saveShortcutsTimer(nullptr)
     , _saveStyleTimer(nullptr)
+    , _saveDeviceTimer(nullptr)
 {
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      [](){ AppConfig::Instance().flushPendingSaves(); });
@@ -423,6 +424,12 @@ void AppConfig::LoadAll()
 
     st.beginGroup("Device");
     default_sample_limit_ = st.value("defaultSampleLimit", 1000000ULL).toULongLong();
+    deviceOptions.streamMemBuff = st.value("streamMemBuff", 16.0).toDouble();
+    deviceOptions.streamBuff = st.value("streamBuff", 16.0).toDouble();
+    deviceOptions.diskCacheEnable = st.value("diskCacheEnable", false).toBool();
+    deviceOptions.diskCachePath = st.value("diskCachePath", "").toString();
+    deviceOptions.lastDeviceDriver = st.value("lastDeviceDriver", "").toString();
+    deviceOptions.lastDeviceConnId = st.value("lastDeviceConnId", "").toString();
     st.endGroup();
 
     //pxv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
@@ -445,6 +452,29 @@ void AppConfig::doSaveApp()
 
     st.beginGroup("Device");
     st.setValue("defaultSampleLimit", (qulonglong)default_sample_limit_);
+    st.endGroup();
+}
+
+void AppConfig::SaveDevice()
+{
+    if (!_saveDeviceTimer) {
+        _saveDeviceTimer = new QTimer();
+        _saveDeviceTimer->setSingleShot(true);
+        QObject::connect(_saveDeviceTimer, &QTimer::timeout, [this](){ doSaveDevice(); });
+    }
+    _saveDeviceTimer->start(2000);
+}
+
+void AppConfig::doSaveDevice()
+{
+    QSettings st(QApplication::organizationName(), QApplication::applicationName());
+    st.beginGroup("Device");
+    st.setValue("streamMemBuff", deviceOptions.streamMemBuff);
+    st.setValue("streamBuff", deviceOptions.streamBuff);
+    st.setValue("diskCacheEnable", deviceOptions.diskCacheEnable);
+    st.setValue("diskCachePath", deviceOptions.diskCachePath);
+    st.setValue("lastDeviceDriver", deviceOptions.lastDeviceDriver);
+    st.setValue("lastDeviceConnId", deviceOptions.lastDeviceConnId);
     st.endGroup();
 }
 
@@ -533,6 +563,10 @@ void AppConfig::flushPendingSaves()
     if (_saveStyleTimer && _saveStyleTimer->isActive()) {
         _saveStyleTimer->stop();
         doSaveStyle();
+    }
+    if (_saveDeviceTimer && _saveDeviceTimer->isActive()) {
+        _saveDeviceTimer->stop();
+        doSaveDevice();
     }
 }
 

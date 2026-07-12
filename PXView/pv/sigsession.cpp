@@ -444,8 +444,7 @@ bool SigSession::set_default_device() {
     stop_capture();
   }
 
-  // Use the device list to pick the last device (matches fork behavior:
-  // the most recently scanned device becomes the default).
+  // Use the device list to pick the best device.
   int count = 0;
   int actived_index = -1;
   struct ds_device_base_info *array = get_device_list(count, actived_index);
@@ -456,10 +455,52 @@ bool SigSession::set_default_device() {
     return false;
   }
 
-  // Pick the last device (matches fork ds_get_device_list behavior where
-  // the last entry is the most recently scanned/added device).
-  struct ds_device_base_info *dev = (array + count - 1);
-  ds_device_handle dev_handle = dev->handle;
+  // Try to find the last-used device by matching driver name + connection ID.
+  // This is more stable than picking the last scanned device (USB scan order
+  // is not guaranteed). Falls back to last scanned device if no match.
+  const auto &devOpt = AppConfig::Instance().deviceOptions;
+  ds_device_handle dev_handle = (array + count - 1)->handle; // fallback: last scanned
+
+  if (!devOpt.lastDeviceDriver.isEmpty()) {
+    bool found = false;
+    for (int i = 0; i < count; i++) {
+      ds_device_handle h = array[i].handle;
+      struct sr_dev_inst *sdi = _state->device_agent().find_sdi_by_handle(h);
+      if (!sdi)
+        continue;
+      struct sr_dev_driver *drv = sr_dev_inst_driver_get(sdi);
+      if (!drv || !drv->name)
+        continue;
+      QString driver_name = QString::fromLocal8Bit(drv->name);
+      if (driver_name != devOpt.lastDeviceDriver)
+        continue;
+
+      // Driver name matches. If we also have a connection ID, match it too
+      // (distinguishes multiple devices of the same model). If no connId
+      // stored (old config), first match by driver name is fine.
+      if (!devOpt.lastDeviceConnId.isEmpty()) {
+        const char *cid = sr_dev_inst_connid_get(sdi);
+        if (cid && devOpt.lastDeviceConnId == QString::fromLocal8Bit(cid)) {
+          dev_handle = h;
+          found = true;
+          pxv_info("set_default_device: matched last device by driver=%s connId=%s",
+                   drv->name, cid);
+          break;
+        }
+      } else {
+        dev_handle = h;
+        found = true;
+        pxv_info("set_default_device: matched last device by driver=%s (no connId)",
+                 drv->name);
+        break;
+      }
+    }
+    if (!found) {
+      pxv_info("set_default_device: last device driver '%s' not found, "
+               "using last scanned device",
+               devOpt.lastDeviceDriver.toUtf8().constData());
+    }
+  }
 
   free(array);
 

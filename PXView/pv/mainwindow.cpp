@@ -1052,9 +1052,36 @@ void MainWindow::save_config() {
 
   AppConfig &app = AppConfig::Instance();
 
+  // Always persist the last-used device driver name so the next launch
+  // can prefer this device. Without this, switching to demo and exiting
+  // would leave lastDeviceDriver stale (still pointing to the hardware
+  // device), causing the app to jump back to hardware on restart.
+  app.deviceOptions.lastDeviceDriver = _device_agent->driver_name();
+  app.SaveDevice();
+
   if (_device_agent->is_hardware()) {
+    // Persist connection ID for hardware devices to distinguish multiple
+    // devices of the same model.
+    struct sr_dev_inst *sdi = _device_agent->inst();
+    if (sdi) {
+      const char *cid = sr_dev_inst_connid_get(sdi);
+      if (cid)
+        app.deviceOptions.lastDeviceConnId = QString::fromLocal8Bit(cid);
+    }
+
     QString sessionFile = gen_config_file_path(true);
     save_config_to_file(sessionFile);
+  } else if (_device_agent->is_demo()) {
+    // Demo device: save channel/trigger/decoder config to its own .pxc file
+    // so demo setups (channel enable, trigger, decoders) persist across restarts.
+    QDir dir(GetFirmwareDir());
+    if (dir.exists()) {
+      QString ses_name = dir.absolutePath() + "/" +
+                         _device_agent->driver_name() +
+                         QString::number(_device_agent->get_work_mode()) +
+                         ".pxc";
+      save_config_to_file(ses_name);
+    }
   }
 
   app.frameOptions.windowState = saveState();
@@ -1083,6 +1110,11 @@ QString MainWindow::gen_config_file_path(bool isNewFormat) {
 }
 
 bool MainWindow::able_to_close() {
+  // Only commit UI settings to device when the device has no prior capture
+  // data. If the device has data, the settings were already committed during
+  // capture setup. Calling commit_settings() unconditionally would overwrite
+  // device values (e.g., sample limit loaded from .pxc) with UI dropdown
+  // values, which may not have the exact same option (e.g., 200M vs 1G).
   if (_device_agent->is_hardware() && _session->have_hardware_data() == false) {
     _sampling_bar->commit_settings();
   }
@@ -1341,10 +1373,6 @@ bool MainWindow::load_config_from_file(QString file) {
 bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
   AppConfig &app = AppConfig::Instance();
 
-  GVariant *gvar_opts;
-  GVariant *gvar;
-  gsize num_opts;
-
   QString title = QApplication::applicationName() + " v" +
                   QApplication::applicationVersion();
 
@@ -1359,19 +1387,26 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
     sessionVar["CollectMode"] = _session->get_collect_mode();
   }
 
-  gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_SESSIONS);
-  if (gvar_opts == NULL) {
-    /* Driver supports no device instance sessions — skip the per-device
-     * config loop but still save channel/trigger/decoder/measure sections.
-     * Mirrors load_config_from_json() which also tolerates NULL here. */
-    pxv_detail("No SR_CONF_DEVICE_SESSIONS for this device, skipping per-device config section.");
-  } else {
+  // --- Device instance session config (sample rate, limit_samples, operation_mode, etc.) ---
+  GVariant *gvar_opts =
+      _device_agent->get_config_list(NULL, SR_CONF_DEVICE_SESSIONS);
+  GVariant *gvar;
+  gsize num_opts;
+
+  pxv_info("gen_config_json: querying SR_CONF_DEVICE_SESSIONS, gvar_opts=%p", gvar_opts);
+
+  if (gvar_opts != NULL) {
+    /* Driver implements SR_CONF_DEVICE_SESSIONS with an int32[] array
+     * (e.g., fork's std::opts_config_list). The array contains bare keys like
+     * SR_CONF_SAMPLERATE, NOT packed with flags. */
     const int *const options = (const int32_t *)g_variant_get_fixed_array(
         gvar_opts, &num_opts, sizeof(int32_t));
 
     for (unsigned int i = 0; i < num_opts; i++) {
       const struct sr_config_info *const info =
           _device_agent->get_config_info(options[i]);
+      if (!info || !info->name)
+        continue;
       gvar = _device_agent->get_config(info->key);
       if (gvar != NULL) {
         if (info->datatype == SR_T_BOOL)
@@ -1386,12 +1421,18 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
         else if (info->datatype == SR_T_INT16)
           sessionVar[info->name] =
               QJsonValue::fromVariant(g_variant_get_int16(gvar));
-        else if (info->datatype == SR_T_FLOAT) // save as string format
+        else if (info->datatype == SR_T_FLOAT)
           sessionVar[info->name] = QJsonValue::fromVariant(
               QString::number(g_variant_get_double(gvar)));
-        else if (info->datatype == SR_T_CHAR)
+        else if (info->datatype == SR_T_CHAR || info->datatype == SR_T_STRING)
           sessionVar[info->name] =
               QJsonValue::fromVariant(g_variant_get_string(gvar, NULL));
+        else if (info->datatype == SR_T_INT32)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant(g_variant_get_int32(gvar));
+        else if (info->datatype == SR_T_UINT32)
+          sessionVar[info->name] =
+              QJsonValue::fromVariant((uint32_t)g_variant_get_uint32(gvar));
         else if (info->datatype == SR_T_LIST)
           sessionVar[info->name] =
               QJsonValue::fromVariant(g_variant_get_int16(gvar));
@@ -1401,6 +1442,67 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
         }
         g_variant_unref(gvar);
       }
+    }
+    g_variant_unref(gvar_opts);
+  } else if (_device_agent->is_hardware()) {
+    /* Driver does not implement SR_CONF_DEVICE_SESSIONS. Use SR_CONF_DEVICE_OPTIONS (uint32_t
+     * packed entries with capability flags like SR_CONF_SAMPLERATE | SR_CONF_GET).
+     * DeviceAgent::get_config_list(NULL, SR_CONF_DEVICE_OPTIONS) returns a uint32_t array
+     * (see pxlogic.h devopts[] declaration), each element is key|flags.
+     * We mask with 0x1fffffff to extract the bare key for sr_key_info_get(),
+     * and iterate the list to save ALL device options, not just a hardcoded subset. */
+    pxv_info("gen_config_json: falling back to SR_CONF_DEVICE_OPTIONS");
+    gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+
+    if (!gvar_opts) {
+      pxv_warn("No SR_CONF_DEVICE_OPTIONS available, skipping per-device config section.");
+    } else {
+      const uint32_t *const options = (const uint32_t *)g_variant_get_fixed_array(
+          gvar_opts, &num_opts, sizeof(uint32_t));
+
+      for (unsigned int i = 0; i < num_opts; i++) {
+        /* Mask off capability bits (SR_CONF_GET/SET/LIST, top 3 bits)
+         * to get the bare config key. sr_key_info_get only recognizes bare keys.
+         * SR_CONF_MASK = 0x1fffffff (libsigrok-internal.h, not public). */
+        const int key = (int)(options[i] & 0x1fffffff);
+
+        const struct sr_config_info *const info =
+            _device_agent->get_config_info(key);
+        if (!info || !info->name)
+          continue;
+
+        gvar = _device_agent->get_config(info->key);
+        if (gvar != NULL) {
+          if (info->datatype == SR_T_BOOL)
+            sessionVar[info->name] =
+                QJsonValue::fromVariant(g_variant_get_boolean(gvar));
+          else if (info->datatype == SR_T_UINT64)
+            sessionVar[info->name] = QJsonValue::fromVariant(
+                QString::number(g_variant_get_uint64(gvar)));
+          else if (info->datatype == SR_T_UINT8)
+            sessionVar[info->name] = QJsonValue::fromVariant(g_variant_get_byte(gvar));
+          else if (info->datatype == SR_T_INT16)
+            sessionVar[info->name] = QJsonValue::fromVariant(g_variant_get_int16(gvar));
+          else if (info->datatype == SR_T_FLOAT)
+            sessionVar[info->name] = QJsonValue::fromVariant(
+                QString::number(g_variant_get_double(gvar)));
+          else if (info->datatype == SR_T_CHAR || info->datatype == SR_T_STRING)
+            sessionVar[info->name] =
+                QJsonValue::fromVariant(g_variant_get_string(gvar, NULL));
+          else if (info->datatype == SR_T_INT32)
+            sessionVar[info->name] = QJsonValue::fromVariant(g_variant_get_int32(gvar));
+          else if (info->datatype == SR_T_UINT32)
+            sessionVar[info->name] = QJsonValue::fromVariant((uint32_t)g_variant_get_uint32(gvar));
+          else if (info->datatype == SR_T_LIST)
+            sessionVar[info->name] = QJsonValue::fromVariant(g_variant_get_int16(gvar));
+          else {
+            pxv_err("Unkown config info type:%d", info->datatype);
+            assert(false);
+          }
+          g_variant_unref(gvar);
+        }
+      }
+      g_variant_unref(gvar_opts);
     }
   }
 
@@ -1440,9 +1542,6 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
   if (_device_agent->get_work_mode() == DSO) {
     sessionVar["measure"] = current_view()->get_viewstatus()->get_session();
   }
-
-  if (gvar_opts != NULL)
-    g_variant_unref(gvar_opts);
 
   return true;
 }
@@ -1502,12 +1601,18 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   gsize num_opts;
 
   if (gvar_opts != NULL) {
+    /* Driver implements SR_CONF_DEVICE_SESSIONS with an int32[] array
+     * (e.g., fork's std::opts_config_list). The array contains bare keys like
+     * SR_CONF_SAMPLERATE, NOT packed with flags. */
     const int *const options = (const int32_t *)g_variant_get_fixed_array(
         gvar_opts, &num_opts, sizeof(int32_t));
 
     for (unsigned int i = 0; i < num_opts; i++) {
       const struct sr_config_info *info =
           _device_agent->get_config_info(options[i]);
+
+      if (!info || !info->name)
+        continue;
 
       if (!sessionObj.contains(info->name))
         continue;
@@ -1534,9 +1639,13 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
               sessionObj[info->name].toString().toDouble());
         else
           gvar = g_variant_new_double(sessionObj[info->name].toDouble());
-      } else if (info->datatype == SR_T_CHAR) {
+      } else if (info->datatype == SR_T_CHAR || info->datatype == SR_T_STRING) {
         gvar = g_variant_new_string(
             sessionObj[info->name].toString().toLocal8Bit().data());
+      } else if (info->datatype == SR_T_INT32) {
+        gvar = g_variant_new_int32(sessionObj[info->name].toInt());
+      } else if (info->datatype == SR_T_UINT32) {
+        gvar = g_variant_new_uint32(sessionObj[info->name].toInt());
       } else if (info->datatype == SR_T_LIST) {
         id = 0;
 
@@ -1569,6 +1678,95 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
         pxv_err("Set device config option failed, id:%d, code:%d", info->key,
                 id);
       }
+    }
+    g_variant_unref(gvar_opts);
+  } else if (_device_agent->is_hardware()) {
+    /* Driver does not implement SR_CONF_DEVICE_SESSIONS. Fall back to SR_CONF_DEVICE_OPTIONS
+     * (uint32_t packed entries with capability flags). Mirrors the save-side fallback
+     * in gen_config_json(). */
+    gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+
+    if (!gvar_opts) {
+      pxv_warn("No SR_CONF_DEVICE_OPTIONS available, skipping per-device config load.");
+    } else {
+      const uint32_t *const options = (const uint32_t *)g_variant_get_fixed_array(
+          gvar_opts, &num_opts, sizeof(uint32_t));
+
+      for (unsigned int i = 0; i < num_opts; i++) {
+        /* Mask off capability bits — see gen_config_json() for details. */
+        const int key = (int)(options[i] & 0x1fffffff);
+        const struct sr_config_info *info =
+            _device_agent->get_config_info(key);
+
+        if (!info || !info->name)
+          continue;
+
+        if (!sessionObj.contains(info->name))
+          continue;
+
+        GVariant *gvar = NULL;
+        int id = 0;
+
+        if (info->datatype == SR_T_BOOL) {
+          gvar = g_variant_new_boolean(sessionObj[info->name].toInt());
+        } else if (info->datatype == SR_T_UINT64) {
+          // from string text.
+          gvar = g_variant_new_uint64(
+              sessionObj[info->name].toString().toULongLong());
+        } else if (info->datatype == SR_T_UINT8) {
+          if (sessionObj[info->name].toString() != "")
+            gvar = g_variant_new_byte(sessionObj[info->name].toString().toUInt());
+          else
+            gvar = g_variant_new_byte(sessionObj[info->name].toInt());
+        } else if (info->datatype == SR_T_INT16) {
+          gvar = g_variant_new_int16(sessionObj[info->name].toInt());
+        } else if (info->datatype == SR_T_FLOAT) {
+          if (sessionObj[info->name].toString() != "")
+            gvar = g_variant_new_double(
+                sessionObj[info->name].toString().toDouble());
+          else
+            gvar = g_variant_new_double(sessionObj[info->name].toDouble());
+        } else if (info->datatype == SR_T_CHAR || info->datatype == SR_T_STRING) {
+          gvar = g_variant_new_string(
+              sessionObj[info->name].toString().toLocal8Bit().data());
+        } else if (info->datatype == SR_T_INT32) {
+          gvar = g_variant_new_int32(sessionObj[info->name].toInt());
+        } else if (info->datatype == SR_T_UINT32) {
+          gvar = g_variant_new_uint32(sessionObj[info->name].toInt());
+        } else if (info->datatype == SR_T_LIST) {
+          id = 0;
+
+          if (format_ver > 2) {
+            // Is new version format.
+            id = sessionObj[info->name].toInt();
+          } else {
+            const char *fd_key =
+                sessionObj[info->name].toString().toLocal8Bit().data();
+            id = _device_agent->option_value_to_code(conf_dev_mode, info->key, fd_key);
+            if (id == -1) {
+              pxv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
+                      fd_key);
+              id = 0; // set default value.
+            } else {
+              pxv_info("Convert success, key:\"%s\", value:\"%s\", get code:%d",
+                       info->name, fd_key, id);
+            }
+          }
+          gvar = g_variant_new_int16(id);
+        }
+
+        if (gvar == NULL) {
+          pxv_warn("Warning: Profile failed to parse key:'%s'", info->name);
+          continue;
+        }
+
+        bool bFlag = _device_agent->set_config(info->key, gvar);
+        if (!bFlag) {
+          pxv_err("Set device config option failed, id:%d, code:%d", info->key,
+                  id);
+        }
+      }
+      g_variant_unref(gvar_opts);
     }
   }
 
@@ -1737,9 +1935,6 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
     auto *bottom_bar = current_view()->get_viewstatus();
     bottom_bar->load_session(sessionObj["measure"].toArray(), format_ver);
   }
-
-  if (gvar_opts != NULL)
-    g_variant_unref(gvar_opts);
 
   return true;
 }
@@ -2834,6 +3029,15 @@ void MainWindow::on_event(const pv::interface::CurrentDeviceChanged &) {
   update_title_bar_text();
   _sampling_bar->update_device_list();
 
+  // After load_device_config() restored device settings (including
+  // operation_mode / stream mode), reload the SamplingBar and DeviceOptions
+  // panel so the stream mode button, sample count list, loop mode toggle,
+  // and all device option controls reflect the persisted configuration.
+  // Without this, the UI shows the auto-detected defaults (Buffer mode)
+  // instead of the restored Stream mode.
+  _sampling_bar->reload();
+  _device_options_widget->update_view();
+
   _logo_bar->dsl_connected(_session->get_device()->is_hardware());
   update_toolbar_view_status();
   _session->device_event_object()->device_updated();
@@ -3048,6 +3252,7 @@ void MainWindow::on_event(const pv::interface::DeviceModeChanged &) {
 
   update_toolbar_view_status();
   _sampling_bar->update_sample_rate_list();
+  _sampling_bar->reload();
 
   // Save signal config for current tab and rebuild signals
   {

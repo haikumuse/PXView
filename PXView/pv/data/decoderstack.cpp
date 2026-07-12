@@ -916,7 +916,13 @@ void DecoderStack::frame_ended() {
         start = 0;
       }
 
-      if (end == 0 || end > last_samples) {
+      // end == 0 is a sentinel meaning "decode to the actual data end".
+      // Do NOT replace it with last_samples (ring buffer capacity) here,
+      // because that would permanently overwrite the sentinel in the
+      // decoder's stored config. execute_decode_stack() resolves 0 to the
+      // real _sample_count at decode time, adapting to varying capture
+      // lengths. Only clamp non-zero values that exceed the buffer.
+      if (end != 0 && end > last_samples) {
         end = last_samples;
       }
 

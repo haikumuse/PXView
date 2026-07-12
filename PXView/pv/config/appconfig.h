@@ -141,6 +141,18 @@ struct FontOptions
   FontParam other;
 };
 
+// App-layer device settings that need to persist across application restarts.
+// These are global preferences (not per-device), stored in QSettings "Device" group.
+struct DeviceOptions
+{
+    double  streamMemBuff = 16.0;       // GB, in-memory ring buffer size
+    double  streamBuff = 16.0;          // GB, disk cache total depth
+    bool    diskCacheEnable = false;    // enable disk cache for stream mode
+    QString diskCachePath;              // disk cache storage path
+    QString lastDeviceDriver;           // driver name of last used device
+    QString lastDeviceConnId;           // connection ID of last used device (stable across reboots)
+};
+
 struct ShortcutItem {
     int     actionId;
     QString keySequence;
@@ -175,7 +187,8 @@ public:
   void SaveFrame();
   void SaveShortcuts();
   void SaveStyle();
-  
+  void SaveDevice();
+
   void flushPendingSaves();
   
   void SetProtocolFormat(const std::string &protocolName, const std::string &value);
@@ -201,6 +214,9 @@ public:
   uint64_t default_sample_limit() const { return default_sample_limit_; }
   void set_default_sample_limit(uint64_t v) { default_sample_limit_ = v; }
 
+  // App-layer device settings (stream buffer sizes, disk cache, last device)
+  DeviceOptions deviceOptions;
+
 public:
   AppOptions    appOptions;
   UserHistory   userHistory;
@@ -218,10 +234,12 @@ private:
   QTimer *_saveHistoryTimer;
   QTimer *_saveShortcutsTimer;
   QTimer *_saveStyleTimer;
+  QTimer *_saveDeviceTimer;
 
   void doSaveFrame();
   void doSaveApp();
   void doSaveHistory();
   void doSaveShortcuts();
   void doSaveStyle();
+  void doSaveDevice();
 };

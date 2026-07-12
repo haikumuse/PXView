@@ -282,9 +282,12 @@ public:
     // --- Config info ---
     const struct sr_key_info* get_config_info(int key);
 
+    // Find sdi by handle — needed by SigSession::set_default_device() to
+    // match last-used device by driver name + connection ID.
+    struct sr_dev_inst* find_sdi_by_handle(ds_device_handle handle);
+
 private:
     void config_changed();
-    struct sr_dev_inst* find_sdi_by_handle(ds_device_handle handle);
     void stop_session_thread(); // join _session_thread if joinable
 
     ds_device_handle _dev_handle = NULL_HANDLE;

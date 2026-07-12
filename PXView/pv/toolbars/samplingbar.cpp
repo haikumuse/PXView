@@ -840,9 +840,15 @@ void SamplingBar::update_sample_count_selector() {
   // update_sample_count_selector_value() below early-returns while the flag is
   // true; that is intentional and safe — the combo index was just set above by
   // set_sample_count_index, so no device re-sync is needed at this point.
+  // Clear the re-entry guard BEFORE calling update_sample_count_selector_value()
+  // so it actually executes and syncs the dropdown with the device's actual
+  // sample limit (loaded from .pxc). Without this, the dropdown stays at
+  // pre_duration (default 1s) and on_samplecount_sel() commits 1s to the
+  // device, overwriting the restored sample limit.
+  // The signal is still disconnected (reconnected below), so no recursion.
+  _updating_sample_count = false;
   update_sample_count_selector_value();
   on_samplecount_sel(_sample_count->currentIndex());
-  _updating_sample_count = false;
 
   connect(_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SamplingBar::on_samplecount_sel);

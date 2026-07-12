@@ -249,6 +249,14 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
 
     _is_new_device = true;
 
+    // Restore app-layer device settings from AppConfig (persisted across restarts).
+    // These are global preferences stored in QSettings "Device" group.
+    auto &devOpt = AppConfig::Instance().deviceOptions;
+    _app_disk_cache_enable = devOpt.diskCacheEnable;
+    _app_disk_cache_path = devOpt.diskCachePath;
+    _app_stream_buff = devOpt.streamBuff;
+    _app_stream_mem_buff = devOpt.streamMemBuff;
+
     // Reset app-layer stream mode cache — new device may have different
     // SR_CONF_CONTINUOUS / OPERATION_MODE capability. Will be re-detected
     // on first is_stream_mode() call.
@@ -1111,15 +1119,23 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         switch (key) {
         case SR_CONF_DISK_CACHE_ENABLE:
             _app_disk_cache_enable = g_variant_get_boolean(data);
+            AppConfig::Instance().deviceOptions.diskCacheEnable = _app_disk_cache_enable;
+            AppConfig::Instance().SaveDevice();
             break;
         case SR_CONF_DISK_CACHE_PATH:
             _app_disk_cache_path = QString::fromUtf8(g_variant_get_string(data, NULL));
+            AppConfig::Instance().deviceOptions.diskCachePath = _app_disk_cache_path;
+            AppConfig::Instance().SaveDevice();
             break;
         case SR_CONF_STREAM_BUFF:
             _app_stream_buff = g_variant_get_double(data);
+            AppConfig::Instance().deviceOptions.streamBuff = _app_stream_buff;
+            AppConfig::Instance().SaveDevice();
             break;
         case SR_CONF_STREAM_MEM_BUFF:
             _app_stream_mem_buff = g_variant_get_double(data);
+            AppConfig::Instance().deviceOptions.streamMemBuff = _app_stream_mem_buff;
+            AppConfig::Instance().SaveDevice();
             break;
         case SR_CONF_STREAM:
             _app_stream_mode = g_variant_get_boolean(data);
