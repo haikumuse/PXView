@@ -510,20 +510,35 @@ uint64_t DeviceAgent::get_ring_sample_count()
                                 : AppConfig::Instance().default_sample_limit();
     }
 
-    // Stream 模式：基于 _app_stream_mem_buff(GB) 计算
+    // Stream 模式：基于 _app_stream_mem_buff(GB) 或 _app_stream_buff(GB) 计算
     uint64_t samplerate = get_sample_rate();
-    double mem_buff_gb = _app_stream_mem_buff;
-    // 1 byte/sample for logic (8 channels packed)
-    uint64_t mem_buff_samples = (uint64_t)(mem_buff_gb * 1e9);
+    
+    // 如果启用了磁盘缓存，使用设置的磁盘容量，否则使用内存容量
+    double buff_gb = _app_disk_cache_enable ? _app_stream_buff : _app_stream_mem_buff;
+
+    // 对于逻辑分析仪，通道数据是按 bit-plane 存储的（实际上 allocate_block 分配时，
+    // 每个通道独立分配 LeafBlockSpace 字节，等于每 8 个样本占 ch_num bytes）。
+    // 所以总样本数上限需要乘以 8 / ch_num。
+    int ch_num = 0;
+    for (GSList *l = get_channels(); l; l = l->next) {
+        struct sr_channel *ch = (struct sr_channel *)l->data;
+        if (ch->type == SR_CHANNEL_LOGIC) {
+            ch_num++;
+        }
+    }
+    if (ch_num <= 0) ch_num = 1;
+
+    uint64_t mem_buff_samples = (uint64_t)(buff_gb * 1000000000ULL) * 8 / ch_num;
+
     uint64_t one_sec_samples = samplerate;
     uint64_t v = (mem_buff_samples > one_sec_samples) ? mem_buff_samples
                                                       : one_sec_samples;
     if (v == 0)
         v = AppConfig::Instance().default_sample_limit();
     pxv_info("get_ring_sample_count: stream mode, ring_buffer=%llu "
-             "(samplerate=%llu, mem_buff_gb=%.1f)",
+             "(samplerate=%llu, buff_gb=%.1f, ch_num=%d)",
              (unsigned long long)v,
-             (unsigned long long)samplerate, mem_buff_gb);
+             (unsigned long long)samplerate, buff_gb, ch_num);
     return v;
 }
 

@@ -6,7 +6,6 @@ install.dir/
 install-qt6.dir/
 package/
 PXView-build/
-
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
@@ -107,6 +106,7 @@ Thumbs.db
 # 私有内容(开发仓库独有,不推送到开源仓库)
 # 文件保留在工作区原位置,仅从 git 跟踪移除
 # =============================================================================
+Reference/
 
 # 开发规范文档
 AGENTS.md
@@ -148,3 +148,10 @@ window/
 # 私有文档(doc/ 和 docs/ 下的私有文件,精确排除)
 doc/PXLogic使用文档v1.5.0.pdf
 docs/研究报告-pxlogic-dslogic数据格式转换分析.md
+
+# 逆向工程参考目录(指向旧包软链接)
+BFA_Reference/
+
+# 私有逆向解码器源码与文档
+libsigrokdecode/c_decoders_private/
+doc/private_protocols/
