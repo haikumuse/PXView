@@ -2409,7 +2409,6 @@ void MainWindow::on_frame_ended() {
     // causing wait_capture_complete to time out forever.
     ctx->document()->save_signal_config(
         _session->get_signal_models(), build_channel_layout(current_view()));
-    ctx->activate();
   }
   current_view()->receive_end();
 }
@@ -3265,14 +3264,10 @@ void MainWindow::on_event(const pv::interface::TriggerConfigChanged &) {
 }
 
 // --- Empty-body / pre-broadcast overrides ---
-void MainWindow::on_event(const pv::interface::CaptureOwnerChanged &ev) {
-  // capture owner 变化，刷新当前 tab 状态（docks/signals 重新绑定）。
-  // 采集进行中（new_owner 非空）时不调 activate()——会导致正在显示的
-  // 波形轨道被重建消失。 owner 清除时 new_owner 为 null，activate() 正常刷新。
-  if (ev.new_owner)
-    return;
-  if (current_context())
-    current_context()->activate();
+void MainWindow::on_event(const pv::interface::CaptureOwnerChanged &) {
+  // Capture owner 改变。原本在此处调用了 activate() 导致采集结束瞬间
+  // 误触 reload()，从而把后台刚刚启动的离线解码任务强制杀掉。
+  // 现在将其移除，仅在必要时（如 Tab 切换）才去调 activate()。
 }
 void MainWindow::on_event(const pv::interface::CopyToDocDone &) {
   // After background copy_data_to_document completes, rebind signal data
@@ -3282,7 +3277,12 @@ void MainWindow::on_event(const pv::interface::CopyToDocDone &) {
     current_view()->set_data_document(ctx->document());
   }
 }
-void MainWindow::on_event(const pv::interface::DecodeDone &) {}
+void MainWindow::on_event(const pv::interface::DecodeDone &) {
+  // 离线解码完成（或所有解码任务结束）时，主动通知 View 刷新界面，
+  // 将刚刚生成的 Annotation 渲染出来，并更新右侧协议列表。
+  data_updated();
+  on_decode_done();
+}
 void MainWindow::on_event(const pv::interface::SignalsChanged &) {}
 void MainWindow::on_event(const pv::interface::DataUpdated &) {
   // modernize-core-layer-radical Task 13: DataUpdated is now emitted by

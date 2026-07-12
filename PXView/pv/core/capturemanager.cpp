@@ -414,9 +414,13 @@ bool CaptureManager::exec_capture() {
   if (mode == LOGIC) {
     for (auto de : _state->decode_traces()) {
       if (bAddDecoder) {
-        de->set_capture_end_flag(false);
-        de->frame_ended();
-        _state->add_decode_task(de);
+        // 彻底禁止 Stream 模式下“边采边解”（会导致严重的内存锁竞争和 GUI 渲染卡死）。
+        // 采集结束时（收到 RevEndPacket 后），底层的 start_all_decode_tasks() 会自动启动离线解码。
+        if (!_is_stream_mode) {
+          de->set_capture_end_flag(false);
+          de->frame_ended();
+          _state->add_decode_task(de);
+        }
       }
     }
   }

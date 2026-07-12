@@ -597,10 +597,12 @@ void DecoderStack::decode_data(const uint64_t decode_start,
       if (!bCheckEnd) {
         bCheckEnd = true;
 
-        uint64_t align_sample_count = _snapshot->get_ring_sample_count();
+        uint64_t align_sample_count = _snapshot->get_sample_count();
+        pxv_info("DecoderStack debug: bCheckEnd triggered. get_sample_count() = %llu, end_index = %llu",
+                 (unsigned long long)align_sample_count, (unsigned long long)end_index);
 
         if (end_index >= align_sample_count) {
-          end_index = align_sample_count - 1;
+          end_index = align_sample_count > 0 ? align_sample_count - 1 : 0;
           pxv_info("Reset the decode end sample, new:%llu, old:%llu",
                    (u64_t)end_index, (u64_t)decode_end);
         }
@@ -610,13 +612,13 @@ void DecoderStack::decode_data(const uint64_t decode_start,
           break;
         }
       }
-    } else if (i >= _snapshot->get_ring_sample_count()) {
+    } else if (i >= _snapshot->get_sample_count()) {
       // Wait the data is ready.
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       continue;
     }
 
-    if (_is_capture_end && i == _snapshot->get_ring_sample_count()) {
+    if (_is_capture_end && i >= _snapshot->get_sample_count()) {
       break;
     }
 
@@ -707,6 +709,10 @@ void DecoderStack::decode_data(const uint64_t decode_start,
     }
   }
 
+  pxv_info("decode_data loop ended! i=%llu, end_index=%llu, _no_memory=%d, _bStop=%d, bError=%d, bEndTime=%d",
+           (unsigned long long)i, (unsigned long long)end_index,
+           (int)_no_memory, (int)status->_bStop, (int)bError, (int)bEndTime);
+           
   pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
 
   if (error != NULL)
@@ -739,7 +745,7 @@ void DecoderStack::execute_decode_stack() {
   }
 
   // Get the intial sample count
-  _sample_count = _snapshot->get_ring_sample_count();
+  _sample_count = _snapshot->get_sample_count();
 
   // Create the decoders
   for (auto dec : _stack) {

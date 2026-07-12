@@ -426,7 +426,7 @@ void DecoderOptionsDlg::update_decode_range()
     }
 
     if (index2 == 0) {
-        decode_end = last_samples;
+        decode_end = 0; // 0 is a special value meaning "to the end"
         _cursor2 = 0;
 
     } else {
@@ -436,17 +436,17 @@ void DecoderOptionsDlg::update_decode_range()
             decode_end = view->get_cursor_samples(cusrsor_index);
         }
         else{
-            decode_end = last_samples;
+            decode_end = 0;
             _cursor2 = 0;
         }       
     }
 
     if (decode_start > last_samples)
         decode_start = 0;
-    if (decode_end > last_samples)
+    if (decode_end != 0 && decode_end > last_samples)
         decode_end = last_samples;
 
-    if (decode_start > decode_end) {
+    if (decode_end != 0 && decode_start > decode_end) {
         uint64_t tmp = decode_start;
         decode_start = decode_end;
         decode_end = tmp;
