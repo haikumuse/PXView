@@ -42,6 +42,19 @@ using namespace pv::data::decode;
 using namespace std;
 using namespace boost;
 
+namespace {
+// Static error message constants for decode worker thread.
+// These avoid accessing LangResource (which may trigger page loading)
+// from non-main threads. C++11 magic statics guarantee thread-safe
+// initialization on first access.
+const std::string s_kRequiredChannelsMissing =
+    "One or more required channels have not been specified";
+const std::string s_kChannelsNotEnabled =
+    "At least one of selected channels are not enabled.";
+const std::string s_kCreateDecoderInstanceFailed =
+    "Failed to create decoder instance";
+}  // namespace
+
 namespace pv {
 namespace data {
 
@@ -456,8 +469,7 @@ void DecoderStack::do_decode_work() {
 
   if (!check_required_probes()) {
     _error_message =
-        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
-            "One or more required channels have not been specified");
+        QString::fromStdString(s_kRequiredChannelsMissing);
     pxv_err("ERROR:%s", _error_message.toStdString().c_str());
     // Diagnostic: log which decoder has missing required probes
     for (auto dec : _stack) {
@@ -502,8 +514,7 @@ void DecoderStack::do_decode_work() {
 
   if (_snapshot == NULL) {
     _error_message =
-        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
-            "One or more required channels have not been specified");
+        QString::fromStdString(s_kRequiredChannelsMissing);
     pxv_err("ERROR:%s", _error_message.toStdString().c_str());
     pxv_err("ERROR:Failed to find matching LogicSnapshot for any decoder probe");
     return;
@@ -647,8 +658,7 @@ void DecoderStack::decode_data(const uint64_t decode_start,
           }
         } else {
           _error_message =
-              L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_DATA_ERROR),
-                  "At least one of selected channels are not enabled.");
+              QString::fromStdString(s_kChannelsNotEnabled);
           return;
         }
       }
@@ -761,8 +771,7 @@ void DecoderStack::execute_decode_stack() {
 
     if (!di) {
       _error_message =
-          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_STACK_ERROR),
-              "Failed to create decoder instance");
+          QString::fromStdString(s_kCreateDecoderInstanceFailed);
       srd_session_destroy(session);
       return;
     }

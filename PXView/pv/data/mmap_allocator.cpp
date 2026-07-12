@@ -1,8 +1,12 @@
 #include "mmap_allocator.h"
-#include <QDir>
 #include <QDebug>
-#include <QDateTime>
 #include <thread>
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include "../log.h"
 
 #ifdef _WIN32
@@ -14,6 +18,35 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
+
+namespace {
+// 在 worker 线程路径上避免使用 QDir/QDateTime，改用 std::filesystem + std::chrono
+// 生成磁盘缓存文件路径，并保证目录存在。
+std::string make_cache_file_path(const QString& disk_dir) {
+    namespace fs = std::filesystem;
+    fs::path dir_path(disk_dir.toStdString());
+    std::error_code ec;
+    fs::create_directories(dir_path, ec);  // 不抛异常，已存在则忽略
+
+    // 生成时间戳 yyyyMMddHHmmsszzz
+    auto now = std::chrono::system_clock::now();
+    auto now_c = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  now.time_since_epoch()) % 1000;
+    std::tm tm_buf;
+#ifdef _WIN32
+    localtime_s(&tm_buf, &now_c);
+#else
+    localtime_r(&now_c, &tm_buf);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buf, "%Y%m%d%H%M%S");
+    oss << std::setfill('0') << std::setw(3) << ms.count();
+
+    fs::path file_path = dir_path / ("pxview_mmap_cache_" + oss.str() + ".dat");
+    return file_path.string();
+}
+} // anonymous namespace
 
 namespace pv {
 namespace data {
@@ -42,14 +75,8 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
 
 #ifdef _WIN32
     if (use_disk_file && !disk_dir.isEmpty()) {
-        QDir dir(disk_dir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-        const QString file_name = QString("pxview_mmap_cache_%1.dat")
-            .arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmsszzz"));
-        _file_path = dir.absoluteFilePath(file_name);
-        
+        _file_path = QString::fromStdString(make_cache_file_path(disk_dir));
+
         _hFile = CreateFileA(_file_path.toUtf8().constData(),
                              GENERIC_READ | GENERIC_WRITE,
                              0, // No sharing
@@ -57,7 +84,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
                              CREATE_ALWAYS,
                              FILE_ATTRIBUTE_NORMAL,
                              NULL);
-                             
+
         if (_hFile == INVALID_HANDLE_VALUE) {
             pxv_err("MmapAllocator: Failed to create disk cache file %s, error %lu",
                     _file_path.toUtf8().constData(), GetLastError());
@@ -104,13 +131,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
     }
 #else
     if (use_disk_file && !disk_dir.isEmpty()) {
-        QDir dir(disk_dir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-        const QString file_name = QString("pxview_mmap_cache_%1.dat")
-            .arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmsszzz"));
-        _file_path = dir.absoluteFilePath(file_name);
+        _file_path = QString::fromStdString(make_cache_file_path(disk_dir));
         _fd = open(_file_path.toUtf8().constData(), O_RDWR | O_CREAT | O_TRUNC, 0666);
         if (_fd < 0) {
             pxv_err("MmapAllocator: Failed to open disk cache file");
@@ -262,16 +283,21 @@ void MmapAllocator::clear() {
     // threads. The handles above are already closed synchronously (fast),
     // so the detached thread only needs to remove the file by path.
     if (!file_to_delete.isEmpty()) {
-        std::thread([file_to_delete]() {
-            if (!QFile::exists(file_to_delete)) {
+        // 在主线程把 QString 转换为 std::string，避免 detached 线程触碰任何 Qt API。
+        const std::string path_to_delete = file_to_delete.toStdString();
+        std::thread([path_to_delete]() {
+            namespace fs = std::filesystem;
+            std::error_code ec;
+            // 用带 error_code 的重载避免抛异常。
+            if (!fs::exists(path_to_delete, ec)) {
                 return;
             }
-            if (QFile::remove(file_to_delete)) {
+            if (fs::remove(path_to_delete, ec)) {
                 pxv_info("MmapAllocator: Background-deleted cache file %s",
-                         file_to_delete.toUtf8().constData());
+                         path_to_delete.c_str());
             } else {
-                pxv_err("MmapAllocator: Failed to background-delete cache file %s",
-                        file_to_delete.toUtf8().constData());
+                pxv_err("MmapAllocator: Failed to background-delete cache file %s (ec=%d: %s)",
+                        path_to_delete.c_str(), ec.value(), ec.message().c_str());
             }
         }).detach();
     }
