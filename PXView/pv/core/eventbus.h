@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QCoreApplication>
+#include <QThread>
 #include <QEvent>
 #include <vector>
 #include <functional>
@@ -119,12 +120,39 @@ public:
     }
 
     // ---- Sync dispatch to specific callback interface ----
-    // Used by helper methods (data_updated, frame_began, etc.) that are
-    // already called from the correct thread.
+    // Used by helper methods (data_updated, frame_began, etc.).
+    //
+    // CRITICAL: If called from a worker thread (e.g. libsigrok data-feed
+    // thread calling set_receive_data_len → dispatch_to<IDataCallback>),
+    // the callbacks (MainWindow::receive_data_len emit signal with
+    // AutoConnection, SessionService::receive_data_len → broadcast_event →
+    // transport QThread::currentThread()/QMetaObject::invokeMethod) would
+    // create a QThreadData on the worker thread. When the worker thread
+    // exits, LdrShutdownThread destroys QThreadData → SIGSEGV in Qt6Core.dll.
+    // See broadcast_async comment above for the full crash scenario.
+    //
+    // Fix: on the main thread, dispatch synchronously (preserves existing
+    // semantics). On a worker thread, post to the main thread via
+    // postEvent (same technique as broadcast_async) to avoid creating
+    // QThreadData on the worker thread.
     template <typename Iface, typename F> void dispatch_to(F fn) {
-        for (auto *cb : _callbacks) {
-            if (auto *iface = dynamic_cast<Iface *>(cb))
-                fn(iface);
+        if (QThread::currentThread() == qApp->thread()) {
+            for (auto *cb : _callbacks) {
+                if (auto *iface = dynamic_cast<Iface *>(cb))
+                    fn(iface);
+            }
+        } else {
+            // Copy the callback pointer vector — safe because add_callback/
+            // remove_callback only run at startup/shutdown, not during
+            // capture. All callback objects (MainWindow, SessionService)
+            // outlive worker threads.
+            auto callbacks = _callbacks;
+            post_async_dispatch([fn, callbacks]() {
+                for (auto *cb : callbacks) {
+                    if (auto *iface = dynamic_cast<Iface *>(cb))
+                        fn(iface);
+                }
+            });
         }
     }
 

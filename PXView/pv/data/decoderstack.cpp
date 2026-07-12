@@ -688,7 +688,13 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
     if ((i - last_cnt) > notify_cnt) {
       last_cnt = i;
-      new_decode_data();
+      // CRITICAL: Must NOT emit new_decode_data() signal directly here — this
+      // runs on the decode worker thread. Qt AutoConnection cross-thread
+      // signal emission calls QThread::currentThread() → creates QThreadData
+      // on the worker thread → SIGSEGV on thread exit (LdrShutdownThread).
+      // Post the emit to the main thread via postEvent so AutoConnection
+      // resolves to DirectConnection (same thread) — no QThreadData created.
+      _session->event_bus_post([this]() { new_decode_data(); });
     }
 
     entry_cnt++;
@@ -697,7 +703,8 @@ void DecoderStack::decode_data(const uint64_t decode_start,
   _progress = 100;
   _is_decoding = false;
 
-  new_decode_data();
+  // Final progress notification via postEvent (not direct signal emit) — see above.
+  _session->event_bus_post([this]() { new_decode_data(); });
 
   // the task is normal ends,so all samples was processed;
   if (!bError && bEndTime) {
@@ -719,7 +726,8 @@ void DecoderStack::decode_data(const uint64_t decode_start,
     g_free(error);
 
   if (!_session->is_closed())
-    decode_done();
+    // Post to main thread — see new_decode_data comment above.
+    _session->event_bus_post([this]() { decode_done(); });
 }
 
 void DecoderStack::execute_decode_stack() {

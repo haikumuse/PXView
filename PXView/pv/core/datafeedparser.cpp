@@ -288,7 +288,16 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
       if (_state->capture_manager()->is_single_mode()) {
         _state->capture_manager()->data_unlock();
-        _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
+        // CRITICAL: Worker thread MUST NOT call broadcast_sync<EndCollectWorkPrev>.
+        // broadcast_sync executes listeners synchronously on the calling thread.
+        // SessionService::on_event(EndCollectWorkPrev) → broadcast_event →
+        // McpTransport/WsTransport::on_service_event detects non-main thread →
+        // calls QMetaObject::invokeMethod(qApp, lambda, QueuedConnection) →
+        // QThread::currentThread() creates QThreadData on the worker thread.
+        // When the worker thread exits, LdrShutdownThread destroys QThreadData
+        // → SIGSEGV in Qt6Core.dll (see eventbus.h:100-111 comment).
+        // Fix: use broadcast_async so listeners run on the main thread.
+        _event_bus->broadcast_async<interface::EndCollectWorkPrev>({});
         _state->document_registry()->release_capture_owner();
         pxv_info("SR_DF_END non-LOGIC: CaptureOwnerGuard released (single mode).");
         _event_bus->broadcast_async<interface::EndCollectWork>({});

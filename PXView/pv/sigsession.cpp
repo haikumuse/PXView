@@ -2260,13 +2260,15 @@ void SigSession::hotplug_cb_(int event, void *user_data, void *device_handle) {
   SigSession *self = static_cast<SigSession*>(user_data);
   if (!self)
     return;
-  // SigSession is NOT a QObject — use qApp (the QApplication singleton) as
-  // the receiver, mirroring EventBus::broadcast_async's pattern. `self` is
-  // safe to capture: SigSession outlives libusb hotplug thread (joined in
-  // uninit() before _state is destroyed).
-  QMetaObject::invokeMethod(qApp, [self, event, device_handle]() {
+  // SigSession is NOT a QObject — use EventBus::post_async_dispatch to
+  // forward to the main thread. This uses QCoreApplication::postEvent
+  // (not QMetaObject::invokeMethod) to avoid creating QThreadData on the
+  // hotplug thread, which would crash on thread exit (see eventbus.h:100-111).
+  // `self` is safe to capture: SigSession outlives libusb hotplug thread
+  // (joined in uninit() before _state is destroyed).
+  self->_event_bus->post_async_dispatch([self, event, device_handle]() {
     self->on_hotplug_event_(event, device_handle);
-  }, Qt::QueuedConnection);
+  });
 }
 
 void SigSession::on_hotplug_event_(int event, void *device_handle) {

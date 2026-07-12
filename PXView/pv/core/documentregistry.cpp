@@ -194,7 +194,19 @@ void DocumentRegistry::acquire_capture_owner(data::SessionDocument *doc) {
 }
 
 void DocumentRegistry::release_capture_owner() {
-  _capture_owner_guard.reset();
+  // Thread-safe reset: worker thread (SR_DF_END path in datafeedparser.cpp)
+  // and main thread (action_stop_capture) can both reach here. Without the
+  // lock, concurrent unique_ptr::reset() on the same guard is a data race
+  // (double-free → heap corruption). Move the guard out under the lock, then
+  // reset outside (guard destructor joins copy thread, which must not hold
+  // the mutex — see clear_capture_owner_document for the same pattern).
+  std::unique_ptr<CaptureOwnerGuard> guard_to_reset;
+  {
+    std::lock_guard<std::mutex> lock(_capture_state_mutex);
+    if (_capture_owner_guard)
+      guard_to_reset = std::move(_capture_owner_guard);
+  }
+  guard_to_reset.reset();
 }
 
 } // namespace core

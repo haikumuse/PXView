@@ -30,6 +30,7 @@
 #include <atomic>
 #include <list>
 #include <memory>
+#include <functional>
 #include <mutex>
 #include <stdint.h>
 #include <string>
@@ -248,6 +249,12 @@ public:
   template <typename EventType> void broadcast(const EventType &ev) { _event_bus->broadcast(ev); }
   template <typename EventType> void broadcast_sync(const EventType &ev) { _event_bus->broadcast_sync(ev); }
   template <typename EventType> void broadcast_async(const EventType &ev) { _event_bus->broadcast_async(ev); }
+  // Post an arbitrary callable to the main thread via postEvent (same
+  // technique as broadcast_async). Used by Core-layer objects (e.g.
+  // DecoderStack) that need to emit Qt signals from a worker thread —
+  // emitting the signal on the main thread avoids QThreadData creation on
+  // the worker thread (which crashes on thread exit, see eventbus.h:100-111).
+  void event_bus_post(std::function<void()> fn) { _event_bus->post_async_dispatch(std::move(fn)); }
   bool have_new_realtime_refresh(bool keep) { return _capture_manager->have_new_realtime_refresh(keep); }
   std::shared_ptr<data::DecoderStack> get_decoder_trace(int index, data::SessionDocument *doc = nullptr);
   std::shared_ptr<data::SignalModel> get_signal_by_index(int index);
