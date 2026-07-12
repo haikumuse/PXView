@@ -183,7 +183,7 @@ void DecodeTaskManager::decode_single_task(
       // through the legacy ISessionStateCallback::decode_done path (which is
       // currently invoked only from DecodeTrace::on_decode_done in the View
       // layer).
-      _event_bus->broadcast<interface::DecodeDone>({});
+      _event_bus->broadcast_async<interface::DecodeDone>({});
     }
   }
 

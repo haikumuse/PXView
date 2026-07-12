@@ -3280,7 +3280,11 @@ void MainWindow::on_event(const pv::interface::CopyToDocDone &) {
 void MainWindow::on_event(const pv::interface::DecodeDone &) {
   // 离线解码完成（或所有解码任务结束）时，主动通知 View 刷新界面，
   // 将刚刚生成的 Annotation 渲染出来，并更新右侧协议列表。
-  data_updated();
+  on_data_updated();
+  if (current_view()) {
+    current_view()->update();
+    current_view()->viewport_update();
+  }
   on_decode_done();
 }
 void MainWindow::on_event(const pv::interface::SignalsChanged &) {}

@@ -190,6 +190,7 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore,
   if (!_decoder_stack->stack().empty()) {
     d_start = _decoder_stack->stack().front()->decode_start();
     d_end = _decoder_stack->stack().front()->decode_end();
+    if (d_end == 0) d_end = INT64_MAX;
   }
 
   const double startX = d_start / samples_per_pixel - _view->offset();
@@ -265,7 +266,9 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
 
   for (auto dec : _decoder_stack->stack()) {
     start_sample = max(dec->decode_start(), start_sample);
-    end_sample = min(dec->decode_end(), end_sample);
+    uint64_t d_end = dec->decode_end();
+    if (d_end == 0) d_end = UINT64_MAX;
+    end_sample = min(d_end, end_sample);
     break;
   }
 
