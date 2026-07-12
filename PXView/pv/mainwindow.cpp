@@ -1045,6 +1045,7 @@ void MainWindow::on_session_error() {
 }
 
 void MainWindow::save_config() {
+  pxv_info("save_config: ENTER, have_instance=%d, is_hardware=%d", _device_agent->have_instance(), _device_agent->is_hardware());
   if (_device_agent->have_instance() == false) {
     pxv_info("There is no need to save the configuration");
     return;

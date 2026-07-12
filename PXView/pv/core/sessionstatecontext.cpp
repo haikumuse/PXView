@@ -323,16 +323,30 @@ void SessionStateContext::sync_trigger_to_libsigrok() {
     }
   }
 
-  if (any_triggered && _device_agent.sr_session()) {
-    sr_session_trigger_set(_device_agent.sr_session(), trig);
-    pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)",
-             stage->matches ? g_slist_length(stage->matches) : 0);
+  // sr_session_trigger_set does NOT copy the trigger — it stores the pointer
+  // directly (session->trigger = trig). The session reads this pointer during
+  // sr_session_start (verify_trigger) and drivers (e.g. PXLogic) read it via
+  // sr_session_trigger_get throughout acquisition. Freeing it here would leave
+  // session->trigger dangling → use-after-free → capture fails to start and
+  // repeated attempts crash from heap corruption. The session takes ownership;
+  // we only free the previous trigger to avoid leaking across captures.
+  if (_device_agent.sr_session()) {
+    struct sr_trigger *old = sr_session_trigger_get(_device_agent.sr_session());
+    if (old)
+      sr_trigger_free(old);
+    if (any_triggered) {
+      sr_session_trigger_set(_device_agent.sr_session(), trig);
+      pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)",
+               stage->matches ? g_slist_length(stage->matches) : 0);
+      // Session owns trig now; do NOT free it here.
+    } else {
+      sr_session_trigger_set(_device_agent.sr_session(), nullptr);
+      pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+      sr_trigger_free(trig);
+    }
   } else {
-    pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+    sr_trigger_free(trig);
   }
-
-  // sr_session_trigger_set copies the trigger; free our copy.
-  sr_trigger_free(trig);
 }
 
 void SessionStateContext::clear_glitch_filter_state_for_capture() {

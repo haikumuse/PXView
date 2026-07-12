@@ -2090,15 +2090,26 @@ void SigSession::sync_trigger_to_libsigrok() {
     }
   }
 
-  if (any_triggered && _state->device_agent().sr_session()) {
-    sr_session_trigger_set(_state->device_agent().sr_session(), trig);
-    pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)", stage->matches ? g_slist_length(stage->matches) : 0);
+  // sr_session_trigger_set does NOT copy the trigger — it stores the pointer
+  // directly (session->trigger = trig). Freeing it here would leave
+  // session->trigger dangling → use-after-free. The session takes ownership;
+  // we only free the previous trigger to avoid leaking across captures.
+  if (_state->device_agent().sr_session()) {
+    struct sr_trigger *old = sr_session_trigger_get(_state->device_agent().sr_session());
+    if (old)
+      sr_trigger_free(old);
+    if (any_triggered) {
+      sr_session_trigger_set(_state->device_agent().sr_session(), trig);
+      pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)", stage->matches ? g_slist_length(stage->matches) : 0);
+      // Session owns trig now; do NOT free it here.
+    } else {
+      sr_session_trigger_set(_state->device_agent().sr_session(), nullptr);
+      pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+      sr_trigger_free(trig);
+    }
   } else {
-    pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+    sr_trigger_free(trig);
   }
-
-  // sr_session_trigger_set copies the trigger; free our copy.
-  sr_trigger_free(trig);
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QCoreApplication>
+#include <QEvent>
 #include <vector>
 #include <functional>
 
@@ -97,20 +98,24 @@ public:
     }
 
     // ---- Async typed event broadcast (worker-thread → main-thread) ----
-    // modernize-core-layer-radical Task 13: queues a typed event onto the qApp
-    // event loop via Qt::QueuedConnection, so worker threads (e.g. libsigrok
-    // data-feed callbacks invoking DataFeedParser::feed_in_*) can emit typed
-    // events without touching QWidget from a non-GUI thread. The event is
-    // captured BY VALUE (copy) so it survives the caller's stack frame. Empty
-    // event structs (e.g. DataUpdated) incur no copy cost. Once dispatched on
-    // the main thread, on_event handlers run inside _broadcast_depth guard.
+    // CRITICAL FIX: Previously used QMetaObject::invokeMethod(qApp, lambda,
+    // Qt::QueuedConnection) which internally calls QThread::currentThread(),
+    // creating a QThreadData for the calling (worker) thread. When that thread
+    // exits, Qt's DLL_THREAD_DETACH cleanup (LdrShutdownThread on Windows)
+    // destroys the QThreadData, which can crash (SIGSEGV in Qt6Core.dll) due
+    // to heap state accumulated during the capture session.
+    //
+    // The fix uses QCoreApplication::postEvent with a custom QEvent subclass
+    // instead. postEvent() only accesses the *receiver's* QThreadData (qApp's,
+    // which is the main thread), NOT the calling thread's QThreadData. This
+    // avoids creating QThreadData on worker threads entirely.
     template <typename EventType> void broadcast_async(const EventType &ev) {
         // Capture event by value to avoid dangling references.
         // `this` is safe — EventBus outlives all worker threads (owned by
         // SigSession unique_ptr, destroyed after device threads join).
-        QMetaObject::invokeMethod(qApp, [this, ev]() {
+        post_async_dispatch([this, ev]() {
             broadcast(ev);
-        }, Qt::QueuedConnection);
+        });
     }
 
     // ---- Sync dispatch to specific callback interface ----
@@ -123,10 +128,20 @@ public:
         }
     }
 
+    // ---- Internal: post a functor to the main thread via QCoreApplication::postEvent ----
+    // This avoids creating QThreadData on the calling thread (unlike
+    // QMetaObject::invokeMethod), preventing Windows thread-exit crashes.
+    void post_async_dispatch(std::function<void()> fn);
+
 private:
     std::vector<ISessionCallbackBase *> _callbacks;
     std::vector<interface::IEventListener *> _event_listeners;
     static thread_local int _broadcast_depth;
+
+    // Event filter installed on qApp to process custom async-dispatch events.
+    // Forward-declared to avoid exposing Qt internals in the header.
+    class AsyncEventFilter;
+    AsyncEventFilter *_async_filter = nullptr;
 };
 
 } // namespace core
