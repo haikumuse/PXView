@@ -353,16 +353,14 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
 
         auto start = std::chrono::steady_clock::now();
 
-        {
-            // _mutex stays on Snapshot (base) — friend access through _owner.
-            // append_payload_impl / append_cross_payload are private on
-            // LogicSnapshot — friend access.
-            std::lock_guard<std::mutex> lock(_owner->_mutex);
-            if (logic.format == LA_CROSS_DATA)
-                _owner->append_cross_payload(logic);
-            else
-                _owner->append_payload_impl(logic);
-        }
+        // _mutex is now managed INSIDE append_payload_impl/append_cross_payload
+        // (segmented locking: metadata ops hold _mutex, mmap data writes don't).
+        // This prevents the async writer from holding _mutex during page faults
+        // (which block UI's get_samples).
+        if (logic.format == LA_CROSS_DATA)
+            _owner->append_cross_payload(logic);
+        else
+            _owner->append_payload_impl(logic);
 
         auto end = std::chrono::steady_clock::now();
         _async_bytes_written += payload.data.size();

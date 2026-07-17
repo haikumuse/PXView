@@ -24,6 +24,7 @@
 #include "pulsehistogramwidget.h"
 
 #include "../config/appconfig.h"
+#include "../ui/langresource.h"
 #include <QBrush>
 #include <QColor>
 #include <QFont>
@@ -159,10 +160,12 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
         }
     }
 
-    // 4) 阈值线 X 坐标辅助
+    // 4) 阈值线 X 坐标辅助 — 必须与柱子绘制公式对齐(第 t 个柱子的中心),
+    // 否则 nBars 较大时等距插值 (t-1)/(nBars-1)*width 与实际柱位 (t-1)*(barW+gap)
+    // 累积偏差会导致红线/标签超前于红柱。
     auto thresholdX = [&](int t) -> double {
         int tt = std::clamp(t, 1, nBars);
-        return barsArea.left() + (double)(tt - 1) / (nBars - 1) * barsArea.width();
+        return barsArea.left() + (tt - 1) * (barW + gap) + barW / 2.0;
     };
 
     // 5) 绘制柱子 (颜色:width <= currentThreshold → 红 #ff5252,否则 #4a5060)
@@ -198,8 +201,10 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
     bool has_cur = (_current_threshold >= 1 && _current_threshold <= (uint32_t)nBars);
     double recX = has_rec ? thresholdX((int)_recommended_threshold) : 0;
     double curX = has_cur ? thresholdX((int)_current_threshold) : 0;
-    int recTextW = fm.horizontalAdvance(QStringLiteral("推荐")) + 8;
-    int curTextW = fm.horizontalAdvance(QStringLiteral("当前")) + 8;
+    QString recLabel = QString::fromUtf8(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_RECOMMENDED", "Rec"));
+    QString curLabel = QString::fromUtf8(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_CURRENT", "Cur"));
+    int recTextW = fm.horizontalAdvance(recLabel) + 8;
+    int curTextW = fm.horizontalAdvance(curLabel) + 8;
 
     if (has_rec) {
         p.setPen(QPen(kRecommendLine, 2));
@@ -208,11 +213,10 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
         p.setPen(Qt::NoPen);
         p.setBrush(kRecommendLine);
         p.setFont(lblFont);
-        QString recText = QStringLiteral("推荐");
         QRectF recTag(recX - recTextW / 2.0, barsArea.top() - 16, recTextW, 12);
         p.drawRoundedRect(recTag, 2, 2);
         p.setPen(QColor("#000"));
-        p.drawText(recTag, Qt::AlignCenter, recText);
+        p.drawText(recTag, Qt::AlignCenter, recLabel);
     }
 
     // 7) 当前阈值线 (蓝 #42a5f5, 2px, 带"当前"标签)
@@ -223,12 +227,11 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
 
         p.setPen(Qt::NoPen);
         p.setBrush(kCurrentLine);
-        QString curText = QStringLiteral("当前");
         // 标签始终在顶部 (barsArea.top() - 16),重叠时后画覆盖推荐
         QRectF curTag(curX - curTextW / 2.0, barsArea.top() - 16, curTextW, 12);
         p.drawRoundedRect(curTag, 2, 2);
         p.setPen(QColor("#fff"));
-        p.drawText(curTag, Qt::AlignCenter, curText);
+        p.drawText(curTag, Qt::AlignCenter, curLabel);
     }
 
     // 8) X 轴标签:1 和每 5(或 nBars/4)一标

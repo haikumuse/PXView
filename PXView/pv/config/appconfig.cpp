@@ -430,6 +430,8 @@ void AppConfig::LoadAll()
     deviceOptions.diskCachePath = st.value("diskCachePath", "").toString();
     deviceOptions.lastDeviceDriver = st.value("lastDeviceDriver", "").toString();
     deviceOptions.lastDeviceConnId = st.value("lastDeviceConnId", "").toString();
+    deviceOptions.glitchAutoApply = st.value("glitchAutoApply", false).toBool();
+    deviceOptions.glitchDefaultThreshold = st.value("glitchDefaultThreshold", 3).toInt();
     st.endGroup();
 
     //pxv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
@@ -475,6 +477,8 @@ void AppConfig::doSaveDevice()
     st.setValue("diskCachePath", deviceOptions.diskCachePath);
     st.setValue("lastDeviceDriver", deviceOptions.lastDeviceDriver);
     st.setValue("lastDeviceConnId", deviceOptions.lastDeviceConnId);
+    st.setValue("glitchAutoApply", deviceOptions.glitchAutoApply);
+    st.setValue("glitchDefaultThreshold", deviceOptions.glitchDefaultThreshold);
     st.endGroup();
 }
 

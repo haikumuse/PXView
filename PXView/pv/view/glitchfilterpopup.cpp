@@ -26,6 +26,7 @@
 #include <algorithm>
 
 #include "../config/appconfig.h"
+#include "../ui/langresource.h"
 #include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -72,6 +73,13 @@ GlitchFilterPopup::GlitchFilterPopup(View& view, QWidget* parent)
 
     build_ui();
     apply_qss();
+    retranslateUi();
+    ADD_UI(this);
+}
+
+GlitchFilterPopup::~GlitchFilterPopup()
+{
+    REMOVE_UI(this);
 }
 
 uint32_t GlitchFilterPopup::current_threshold() const
@@ -98,7 +106,7 @@ void GlitchFilterPopup::build_ui()
         header->setFixedHeight(44);
         auto* hLay = new QHBoxLayout(header);
         hLay->setContentsMargins(16, 8, 12, 8);
-        _title_label = new QLabel(QStringLiteral("毛刺滤波"), header);
+        _title_label = new QLabel(header);
         _title_label->setObjectName(QStringLiteral("title"));
         _close_btn = new QPushButton(QStringLiteral("×"), header);
         _close_btn->setObjectName(QStringLiteral("close"));
@@ -120,9 +128,9 @@ void GlitchFilterPopup::build_ui()
 
     // 2a. "脉冲宽度分布" section title
     {
-        auto* section = new QLabel(QStringLiteral("脉冲宽度分布"), body);
-        section->setObjectName(QStringLiteral("sectionTitle"));
-        bLay->addWidget(section);
+        _section_dist_label = new QLabel(body);
+        _section_dist_label->setObjectName(QStringLiteral("sectionTitle"));
+        bLay->addWidget(_section_dist_label);
     }
 
     // 2b. 直方图
@@ -139,21 +147,21 @@ void GlitchFilterPopup::build_ui()
         statsBox->setObjectName(QStringLiteral("statsBox"));
         auto* sLay = new QHBoxLayout(statsBox);
         sLay->setContentsMargins(12, 10, 12, 10);
-        auto* leftStat = new QLabel(QStringLiteral("将滤除: "), statsBox);
-        leftStat->setObjectName(QStringLiteral("statsLabel"));
+        _will_remove_label = new QLabel(statsBox);
+        _will_remove_label->setObjectName(QStringLiteral("statsLabel"));
         _filter_count_lbl = new QLabel(QStringLiteral("0"), statsBox);
         _filter_count_lbl->setObjectName(QStringLiteral("filterCount"));
-        auto* leftUnit = new QLabel(QStringLiteral(" 个脉冲"), statsBox);
-        leftUnit->setObjectName(QStringLiteral("statsLabel"));
-        auto* rightStat = new QLabel(QStringLiteral("剩余有效脉冲: "), statsBox);
-        rightStat->setObjectName(QStringLiteral("statsLabel"));
+        _pulses_unit_label = new QLabel(statsBox);
+        _pulses_unit_label->setObjectName(QStringLiteral("statsLabel"));
+        _remain_label = new QLabel(statsBox);
+        _remain_label->setObjectName(QStringLiteral("statsLabel"));
         _remain_count_lbl = new QLabel(QStringLiteral("0"), statsBox);
         _remain_count_lbl->setObjectName(QStringLiteral("remainCount"));
-        sLay->addWidget(leftStat);
+        sLay->addWidget(_will_remove_label);
         sLay->addWidget(_filter_count_lbl);
-        sLay->addWidget(leftUnit);
+        sLay->addWidget(_pulses_unit_label);
         sLay->addStretch();
-        sLay->addWidget(rightStat);
+        sLay->addWidget(_remain_label);
         sLay->addWidget(_remain_count_lbl);
         bLay->addWidget(statsBox);
     }
@@ -162,14 +170,14 @@ void GlitchFilterPopup::build_ui()
     {
         auto* modeRow = new QHBoxLayout();
         modeRow->setSpacing(12);
-        auto* modeLbl = new QLabel(QStringLiteral("类型"), body);
-        modeLbl->setObjectName(QStringLiteral("controlLabel"));
-        modeLbl->setFixedWidth(50);
+        _type_label = new QLabel(body);
+        _type_label->setObjectName(QStringLiteral("controlLabel"));
+        _type_label->setFixedWidth(50);
         _mode_combo = new QComboBox(body);
-        _mode_combo->addItem(QStringLiteral("Both (双向毛刺)"));
-        _mode_combo->addItem(QStringLiteral("High (仅高电平上的低毛刺)"));
-        _mode_combo->addItem(QStringLiteral("Low (仅低电平上的高毛刺)"));
-        modeRow->addWidget(modeLbl);
+        _mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_BOTH", "Both (glitches both directions)"));
+        _mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_HIGH", "High (low glitches on high level)"));
+        _mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_LOW", "Low (high glitches on low level)"));
+        modeRow->addWidget(_type_label);
         modeRow->addWidget(_mode_combo, 1);
         bLay->addLayout(modeRow);
         connect(_mode_combo, SIGNAL(currentIndexChanged(int)),
@@ -180,9 +188,9 @@ void GlitchFilterPopup::build_ui()
     {
         auto* thrRow = new QHBoxLayout();
         thrRow->setSpacing(12);
-        auto* thrLbl = new QLabel(QStringLiteral("阈值"), body);
-        thrLbl->setObjectName(QStringLiteral("controlLabel"));
-        thrLbl->setFixedWidth(50);
+        _threshold_label = new QLabel(body);
+        _threshold_label->setObjectName(QStringLiteral("controlLabel"));
+        _threshold_label->setFixedWidth(50);
         _threshold_slider = new QSlider(Qt::Horizontal, body);
         _threshold_slider->setMinimum(1);
         _threshold_slider->setMaximum(30);
@@ -191,12 +199,12 @@ void GlitchFilterPopup::build_ui()
         _threshold_value_lbl->setObjectName(QStringLiteral("thresholdValue"));
         _threshold_value_lbl->setAlignment(Qt::AlignCenter);
         _threshold_value_lbl->setMinimumWidth(50);
-        auto* thrUnit = new QLabel(QStringLiteral("cycles"), body);
-        thrUnit->setObjectName(QStringLiteral("thresholdUnit"));
-        thrRow->addWidget(thrLbl);
+        _cycles_label = new QLabel(body);
+        _cycles_label->setObjectName(QStringLiteral("thresholdUnit"));
+        thrRow->addWidget(_threshold_label);
         thrRow->addWidget(_threshold_slider, 1);
         thrRow->addWidget(_threshold_value_lbl);
-        thrRow->addWidget(thrUnit);
+        thrRow->addWidget(_cycles_label);
         bLay->addLayout(thrRow);
         connect(_threshold_slider, &QSlider::valueChanged,
                 this, &GlitchFilterPopup::on_slider_moved);
@@ -206,19 +214,19 @@ void GlitchFilterPopup::build_ui()
     {
         auto* maxRow = new QHBoxLayout();
         maxRow->setSpacing(12);
-        auto* maxLbl = new QLabel(QStringLiteral("上限"), body);
-        maxLbl->setObjectName(QStringLiteral("controlLabel"));
-        maxLbl->setFixedWidth(50);
+        _max_label = new QLabel(body);
+        _max_label->setObjectName(QStringLiteral("controlLabel"));
+        _max_label->setFixedWidth(50);
         _max_spinbox = new QSpinBox(body);
         _max_spinbox->setRange(10, 500);
         _max_spinbox->setValue(30);
         _max_spinbox->setFixedWidth(70);
         _max_spinbox->setSuffix(QStringLiteral(" cyc"));
-        auto* maxHint = new QLabel(QStringLiteral("(统计范围,超出不计入)"), body);
-        maxHint->setObjectName(QStringLiteral("thresholdUnit"));
-        maxRow->addWidget(maxLbl);
+        _max_hint_label = new QLabel(body);
+        _max_hint_label->setObjectName(QStringLiteral("thresholdUnit"));
+        maxRow->addWidget(_max_label);
         maxRow->addWidget(_max_spinbox);
-        maxRow->addWidget(maxHint);
+        maxRow->addWidget(_max_hint_label);
         maxRow->addStretch();
         bLay->addLayout(maxRow);
         connect(_max_spinbox, QOverload<int>::of(&QSpinBox::valueChanged),
@@ -239,8 +247,7 @@ void GlitchFilterPopup::build_ui()
     {
         auto* row = new QHBoxLayout();
         row->setSpacing(12);
-        _auto_apply_chk = new QCheckBox(
-            QStringLiteral("采集后自动应用滤波"), body);
+        _auto_apply_chk = new QCheckBox(body);
         _auto_apply_chk->setObjectName(QStringLiteral("autoApply"));
         row->addStretch();
         row->addWidget(_auto_apply_chk);
@@ -253,10 +260,10 @@ void GlitchFilterPopup::build_ui()
     {
         auto* btnRow = new QHBoxLayout();
         btnRow->setSpacing(8);
-        _apply_one_btn = new QPushButton(QStringLiteral("应用到本通道"), body);
-        _apply_all_btn = new QPushButton(QStringLiteral("应用到所有逻辑通道 →"), body);
+        _apply_one_btn = new QPushButton(body);
+        _apply_all_btn = new QPushButton(body);
         _apply_all_btn->setObjectName(QStringLiteral("primary"));
-        _cancel_btn = new QPushButton(QStringLiteral("取消"), body);
+        _cancel_btn = new QPushButton(body);
         btnRow->addWidget(_apply_one_btn);
         btnRow->addWidget(_apply_all_btn);
         btnRow->addStretch();
@@ -465,10 +472,9 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
 
     // 设置标题:使用 Trace::get_name() 作为通道显示名
     QString display_name = sig->get_name();
-    if (display_name.isEmpty()) {
-        display_name = QStringLiteral("通道");
-    }
-    _title_label->setText(display_name + QStringLiteral(" 毛刺滤波"));
+    _has_open_display_name = !display_name.isEmpty();
+    _open_display_name = _has_open_display_name ? display_name : QString();
+    retranslate_title_and_buttons();
 
     // 直方图数据 + 阈值线
     _histogram->setData(_cached_hist);
@@ -479,31 +485,31 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
     // (FilterProcessor 写入 _glitch_filter_thresholds/_modes,与 SignalModel
     //  的 glitch_filter_width 不一定同步)。仅当滤波处于激活态且向量长度
     // 足够时才取该通道的值;否则回退到推荐阈值 + BOTH 模式。
+    // 架构修复：也检查 thresholds 非空但 active=false 的情况
+    // （从 .pxl 文件恢复配置后 active=false 但 thresholds 已恢复）
     uint32_t initial_threshold = _recommended_threshold;
     GlitchFilterMode initial_mode = GLITCH_FILTER_BOTH;
     auto &sess = _view.session();
-    if (sess.is_glitch_filter_active()) {
-        // 构建 logic_sigs(与 view_glitch_filter.cpp 一致的索引顺序)
-        std::vector<LogicSignal*> logic_sigs;
-        for (auto s : _view.get_own_signals()) {
-            if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-                logic_sigs.push_back(static_cast<LogicSignal*>(s));
-        }
-        auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
-        if (it != logic_sigs.end()) {
-            int idx = (int)std::distance(logic_sigs.begin(), it);
-            const auto &th = sess.glitch_filter_thresholds();
-            const auto &md = sess.glitch_filter_modes();
-            if (idx < (int)th.size() && th[idx] > 0) {
+    const auto &saved_th = sess.glitch_filter_thresholds();
+    const auto &saved_md = sess.glitch_filter_modes();
+    bool has_restored_config = !saved_th.empty();
+
+    if (sess.is_glitch_filter_active() || has_restored_config) {
+        // 架构修复：直接用 channel_index 查找，无需构建 logic_sigs 向量
+        int ch_idx = sig->model() ? sig->model()->index() : -1;
+        if (ch_idx >= 0) {
+            auto tit = saved_th.find(ch_idx);
+            if (tit != saved_th.end() && tit->second > 0) {
                 // clamp 到当前滑块范围 [1, cap]
                 int cap = _max_spinbox ? _max_spinbox->value() : 30;
-                int v = (int)th[idx];
+                int v = (int)tit->second;
                 if (v < 1) v = 1;
                 if (v > cap) v = cap;
                 initial_threshold = (uint32_t)v;
             }
-            if (idx < (int)md.size()) {
-                initial_mode = md[idx];
+            auto mit = saved_md.find(ch_idx);
+            if (mit != saved_md.end()) {
+                initial_mode = mit->second;
             }
         }
     } else if (sig->model()) {
@@ -571,8 +577,9 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
             title += QStringLiteral(" +%1").arg(sigs.size() - 3);
         }
     }
-    if (title.isEmpty()) title = QStringLiteral("批量");
-    _title_label->setText(title + QStringLiteral(" 批量毛刺滤波"));
+    _has_open_display_name = !title.isEmpty();
+    _open_display_name = _has_open_display_name ? title : QString();
+    retranslate_title_and_buttons();
 
     // 直方图数据 + 阈值线
     _histogram->setData(_cached_hist);
@@ -581,17 +588,15 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
 
     // 批量模式参数恢复:若所有子通道在 SessionData 中已应用的 threshold/mode
     // 一致,则恢复该共同值;否则回退到推荐阈值 + BOTH 模式(避免误用某通道值)。
+    // 架构修复：也检查 thresholds 非空但 active=false（从 .pxl 恢复配置）
     uint32_t initial_threshold = _recommended_threshold;
     GlitchFilterMode initial_mode = GLITCH_FILTER_BOTH;
     auto &sess = _view.session();
-    if (sess.is_glitch_filter_active()) {
-        std::vector<LogicSignal*> logic_sigs;
-        for (auto s : _view.get_own_signals()) {
-            if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-                logic_sigs.push_back(static_cast<LogicSignal*>(s));
-        }
-        const auto &th = sess.glitch_filter_thresholds();
-        const auto &md = sess.glitch_filter_modes();
+    const auto &th = sess.glitch_filter_thresholds();
+    const auto &md = sess.glitch_filter_modes();
+    bool has_restored_config = !th.empty();
+
+    if (sess.is_glitch_filter_active() || has_restored_config) {
         int cap = _max_spinbox ? _max_spinbox->value() : 30;
 
         bool first = true;
@@ -599,11 +604,12 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
         uint32_t common_th = 0;
         GlitchFilterMode common_md = GLITCH_FILTER_BOTH;
         for (auto *s : sigs) {
-            auto it = std::find(logic_sigs.begin(), logic_sigs.end(), s);
-            if (it == logic_sigs.end()) continue;
-            int idx = (int)std::distance(logic_sigs.begin(), it);
-            uint32_t t = (idx < (int)th.size()) ? th[idx] : 0;
-            GlitchFilterMode m = (idx < (int)md.size()) ? md[idx] : GLITCH_FILTER_BOTH;
+            int ch_idx = s->model() ? s->model()->index() : -1;
+            if (ch_idx < 0) continue;
+            auto tit = th.find(ch_idx);
+            auto mit = md.find(ch_idx);
+            uint32_t t = (tit != th.end()) ? tit->second : 0;
+            GlitchFilterMode m = (mit != md.end()) ? mit->second : GLITCH_FILTER_BOTH;
             if (first) {
                 first = false;
                 // clamp 到滑块范围
@@ -653,7 +659,7 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
         _apply_all_btn->setVisible(false);
     }
     if (_apply_one_btn) {
-        _apply_one_btn->setText(QStringLiteral("应用到子通道"));
+        _apply_one_btn->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_APPLY_BATCH", "Apply to sub-channels"));
     }
 
     show_and_position(anchor_pos);
@@ -780,6 +786,10 @@ void GlitchFilterPopup::on_auto_apply_toggled(bool checked)
     // RevEndPacket handler 中执行:检测到 _glitch_filter_auto_apply
     // 且 thresholds/modes 非空时调用 _filter_processor->set_glitch_filter()。
     _view.session().set_glitch_filter_auto_apply(checked);
+
+    // 架构修复：同步到 AppConfig，跨会话持久化 auto_apply 勾选状态
+    AppConfig::Instance().deviceOptions.glitchAutoApply = checked;
+    AppConfig::Instance().SaveApp();
 }
 
 void GlitchFilterPopup::update_histogram_coloring()
@@ -822,9 +832,7 @@ void GlitchFilterPopup::closeEvent(QCloseEvent* event)
         if (_apply_all_btn) {
             _apply_all_btn->setVisible(true);
         }
-        if (_apply_one_btn) {
-            _apply_one_btn->setText(QStringLiteral("应用到本通道"));
-        }
+        retranslate_title_and_buttons();
     }
     emit closed();
     QWidget::closeEvent(event);
@@ -834,6 +842,62 @@ void GlitchFilterPopup::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
 }
+
+void GlitchFilterPopup::retranslateUi()
+{
+    _section_dist_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_PULSE_DIST", "Pulse Width Distribution"));
+    _will_remove_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_WILL_REMOVE", "Will filter: "));
+    _pulses_unit_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_PULSES_UNIT", " pulses"));
+    _remain_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_REMAINING", "Remaining valid pulses: "));
+    _type_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_TYPE", "Type"));
+    _threshold_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_THRESHOLD", "Threshold"));
+    _cycles_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_CYCLES", "cycles"));
+    _max_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MAX", "Max"));
+    _max_hint_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MAX_HINT", "(Stats range, beyond excluded, max 999)"));
+    _auto_apply_chk->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_AUTO_APPLY", "Auto apply after capture"));
+
+    // 模式下拉重译:保留当前选择
+    int mode_idx = _mode_combo ? _mode_combo->currentIndex() : 0;
+    _mode_combo->blockSignals(true);
+    _mode_combo->setItemText(0, L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_BOTH", "Both (glitches both directions)"));
+    _mode_combo->setItemText(1, L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_HIGH", "High (low glitches on high level)"));
+    _mode_combo->setItemText(2, L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MODE_LOW", "Low (high glitches on low level)"));
+    _mode_combo->blockSignals(false);
+    if (_mode_combo) _mode_combo->setCurrentIndex(mode_idx);
+
+    retranslate_title_and_buttons();
+}
+
+void GlitchFilterPopup::retranslate_title_and_buttons()
+{
+    // 标题(根据当前打开模式 + 缓存的 display_name)
+    QString name = _has_open_display_name
+        ? _open_display_name
+        : QString::fromUtf8(L_S(STR_PAGE_SIGNAL_PROC,
+              _is_batch_mode ? "IDS_GLITCH_POPUP_BATCH_FALLBACK" : "IDS_GLITCH_POPUP_CHANNEL_FALLBACK",
+              _is_batch_mode ? "Batch" : "Channel"));
+    QString suffix = QString::fromUtf8(L_S(STR_PAGE_SIGNAL_PROC,
+        _is_batch_mode ? "IDS_GLITCH_POPUP_BATCH_TITLE_SUFFIX" : "IDS_GLITCH_POPUP_TITLE_SUFFIX",
+        _is_batch_mode ? " Batch Glitch Filter" : " Glitch Filter"));
+    _title_label->setText(name + suffix);
+
+    // 按钮文案(批量模式用"应用到子通道",单通道用"应用到本通道")
+    if (_apply_one_btn) {
+        _apply_one_btn->setText(L_S(STR_PAGE_SIGNAL_PROC,
+            _is_batch_mode ? "IDS_GLITCH_POPUP_APPLY_BATCH" : "IDS_GLITCH_POPUP_APPLY_ONE",
+            _is_batch_mode ? "Apply to sub-channels" : "Apply to this channel"));
+    }
+    if (_apply_all_btn) {
+        _apply_all_btn->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_APPLY_ALL", "Apply to all logic channels ->"));
+    }
+    if (_cancel_btn) {
+        _cancel_btn->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_CANCEL", "Cancel"));
+    }
+}
+
+void GlitchFilterPopup::UpdateLanguage() { retranslateUi(); }
+void GlitchFilterPopup::UpdateTheme() {}
+void GlitchFilterPopup::UpdateFont() {}
 
 } // namespace view
 } // namespace pv

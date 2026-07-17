@@ -59,6 +59,10 @@
         "id": "IDS_DLG_MCP_COPY_SYSTEM_PROMPT",
         "text": "Copy System Prompt"
     },
+    {
+        "id": "IDS_DLG_MCP_COPY",
+        "text": "Copy"
+    },
 
     {
         "id": "IDS_DLG_LOG_NO_FILE",

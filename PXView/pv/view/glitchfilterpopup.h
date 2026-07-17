@@ -30,6 +30,7 @@
 
 #include "../data/logicsnapshot.h"  // GlitchFilterMode
 #include "../data/pulse_analyzer.h"
+#include "../ui/uimanager.h"
 
 class QSlider;
 class QComboBox;
@@ -67,10 +68,11 @@ class View;
  * 不直接调用 Core 的 set_glitch_filter 或 ds_* libsigrok API。
  * 不持有 LogicSnapshot 指针,每次 open_for_signal 重新获取,避免悬垂。
  */
-class GlitchFilterPopup : public QWidget {
+class GlitchFilterPopup : public QWidget, public IUiWindow {
     Q_OBJECT
 public:
     explicit GlitchFilterPopup(View& view, QWidget* parent = nullptr);
+    ~GlitchFilterPopup() override;
 
     void open_for_signal(LogicSignal* sig, const QPoint& anchor_pos);
     // 批量模式:对多个逻辑通道统一滤波(如 DecodeTrace 绑定的子通道)。
@@ -125,9 +127,16 @@ private:
     void refresh_from_signal();  // 重新计算直方图与默认值
     void rebuild_histogram();    // 用当前 _max_spinbox 值作为 cap 重建直方图+滑块范围
     void show_and_position(const QPoint& anchor_pos);  // 定位 + 淡入显示
+    void retranslateUi();
+    void retranslate_title_and_buttons();  // 标题/按钮文案(依赖 _is_batch_mode + _open_display_name)
 
     uint32_t current_threshold() const;
     GlitchFilterMode current_mode() const;
+
+    // IUiWindow
+    void UpdateLanguage() override;
+    void UpdateTheme() override;
+    void UpdateFont() override;
 
     View& _view;
     LogicSignal* _target_sig = nullptr;  // 单通道模式主信号(batch 模式 = _target_sigs[0])
@@ -153,6 +162,19 @@ private:
     QPushButton* _apply_one_btn = nullptr;
     QPushButton* _apply_all_btn = nullptr;
     QPushButton* _cancel_btn = nullptr;
+    // 仅用于 retranslateUi 重设文本的 label(构造时一次性加入布局)
+    QLabel* _section_dist_label = nullptr;
+    QLabel* _will_remove_label = nullptr;
+    QLabel* _pulses_unit_label = nullptr;
+    QLabel* _remain_label = nullptr;
+    QLabel* _type_label = nullptr;
+    QLabel* _threshold_label = nullptr;
+    QLabel* _cycles_label = nullptr;
+    QLabel* _max_label = nullptr;
+    QLabel* _max_hint_label = nullptr;
+    // 当前打开模式缓存(用于 retranslateUi 重建动态标题)
+    QString _open_display_name;       // 单通道模式:通道显示名
+    bool _has_open_display_name = false;
 };
 
 } // namespace view

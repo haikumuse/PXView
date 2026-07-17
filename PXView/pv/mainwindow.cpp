@@ -971,7 +971,19 @@ void MainWindow::on_load_file(QString file_name) {
       save_config();
     }
 
-    _session->set_file(file_name);
+    // 架构修复：检查 set_file 返回值，失败时不创建空白 tab
+    if (!_session->set_file(file_name)) {
+      QString strMsg(
+          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
+      strMsg += file_name;
+      MsgBox::Show(strMsg);
+      // 回滚已创建的 tab
+      int idx = _tab_contexts.indexOf(ctx);
+      if (idx >= 0)
+        remove_tab(idx);
+      _session->set_default_device();
+      return;
+    }
     ctx->make_live();
     ctx->activate();
     update_tab_style(_tab_contexts.indexOf(ctx));
@@ -1535,6 +1547,34 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
     sessionVar["trigger"] = _session->trigger_config().to_json();
   }
 
+  // 毛刺滤波配置持久化：保存阈值/模式/auto_apply 到 .pxl/.pxc 文件，
+  // 重新打开时恢复，避免面板关闭后配置丢失导致光标位置改变。
+  if (_session->is_glitch_filter_active() ||
+      _session->glitch_filter_auto_apply()) {
+    QJsonObject glitchObj;
+    glitchObj["auto_apply"] = _session->glitch_filter_auto_apply();
+    glitchObj["active"] = _session->is_glitch_filter_active();
+    QJsonArray thrArray;
+    QJsonArray modeArray;
+    const auto &thresholds = _session->glitch_filter_thresholds();
+    const auto &modes = _session->glitch_filter_modes();
+    for (const auto &kv : thresholds) {
+      QJsonObject entry;
+      entry["ch"] = kv.first;
+      entry["threshold"] = (int)kv.second;
+      thrArray.append(entry);
+    }
+    for (const auto &kv : modes) {
+      QJsonObject entry;
+      entry["ch"] = kv.first;
+      entry["mode"] = (int)kv.second;
+      modeArray.append(entry);
+    }
+    glitchObj["thresholds"] = thrArray;
+    glitchObj["modes"] = modeArray;
+    sessionVar["glitch_filter"] = glitchObj;
+  }
+
   StoreSession ss(_session);
   QJsonArray decodeJson;
   ss.gen_decoders_json(decodeJson);
@@ -1811,6 +1851,34 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   // set_config_* triggers a synchronous nested broadcast that deletes this
   // DsoSignal mid-method, the local copy keeps the SignalModel alive.
   _session->reload();
+
+  // 毛刺滤波配置恢复：从 .pxl/.pxc 文件恢复阈值/模式/auto_apply。
+  // 在 reload() 之后恢复，因为 reload 重建了 SignalModel，但滤波配置
+  // 存储在 SessionData 中（不受 reload 影响）。
+  // 实际滤波应用延迟到采集完成（auto_apply 路径）或用户打开面板时。
+  if (sessionObj.contains("glitch_filter")) {
+    QJsonObject glitchObj = sessionObj["glitch_filter"].toObject();
+    _session->set_glitch_filter_auto_apply(glitchObj["auto_apply"].toBool(false));
+
+    // 恢复阈值/模式到 SessionData（不立即应用，等采集后 auto-apply 或用户手动应用）
+    if (glitchObj["active"].toBool(false)) {
+      std::map<int, uint32_t> thresholds;
+      std::map<int, GlitchFilterMode> modes;
+      QJsonArray thrArray = glitchObj["thresholds"].toArray();
+      QJsonArray modeArray = glitchObj["modes"].toArray();
+      for (const QJsonValue &v : thrArray) {
+        QJsonObject e = v.toObject();
+        thresholds[e["ch"].toInt()] = (uint32_t)e["threshold"].toInt();
+      }
+      for (const QJsonValue &v : modeArray) {
+        QJsonObject e = v.toObject();
+        modes[e["ch"].toInt()] = (GlitchFilterMode)e["mode"].toInt();
+      }
+      // 写入 SessionData 但不触发实际滤波（数据可能还没加载）
+      // FilterProcessor 会读取这些值在 auto-apply 时使用
+      _session->restore_glitch_filter_config(thresholds, modes);
+    }
+  }
 
   // load signal setting
   // Task 3: set_colour/set_trig(set_trig_type)/set_zero_ratio/set_trig_ratio

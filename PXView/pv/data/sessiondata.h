@@ -25,6 +25,7 @@
  */
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 #include "analogsnapshot.h"
@@ -60,8 +61,9 @@ public:
   data::LogicSnapshot *_logic_backup;
   bool _glitch_filter_active, _signal_invert_active;
   bool _glitch_filter_auto_apply = false;  // 采集后自动重新应用滤波
-  std::vector<uint32_t> _glitch_filter_thresholds;
-  std::vector<GlitchFilterMode> _glitch_filter_modes;
+  // 架构修复：用 channel_index 作 key（消除 View/Core 位置序号错位）
+  std::map<int, uint32_t> _glitch_filter_thresholds;
+  std::map<int, GlitchFilterMode> _glitch_filter_modes;
   std::vector<bool> _signal_invert_channels;
 
 private:

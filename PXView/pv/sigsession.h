@@ -29,6 +29,7 @@
 #include <QString>
 #include <atomic>
 #include <list>
+#include <map>
 #include <memory>
 #include <functional>
 #include <mutex>
@@ -81,8 +82,9 @@ public:
   data::LogicSnapshot *_logic_backup;
   bool _glitch_filter_active, _signal_invert_active;
   bool _glitch_filter_auto_apply = false;  // 采集后自动重新应用滤波
-  std::vector<uint32_t> _glitch_filter_thresholds;
-  std::vector<GlitchFilterMode> _glitch_filter_modes;
+  // 架构修复：用 channel_index 作 key（消除 View/Core 位置序号错位）
+  std::map<int, uint32_t> _glitch_filter_thresholds;
+  std::map<int, GlitchFilterMode> _glitch_filter_modes;
   std::vector<bool> _signal_invert_channels;
 private:
   data::LogicSnapshot logic; data::AnalogSnapshot analog; data::DsoSnapshot dso;
@@ -293,19 +295,29 @@ public:
   void update_lang_text();
   bool have_decoded_result();
   void apply_samplerate();
-  void set_glitch_filter(const std::vector<uint32_t> &thresholds, const std::vector<GlitchFilterMode> &filter_modes = {});
+  // 架构修复：thresholds/modes 用 channel_index 作 key，消除 View/Core 位置序号错位
+  void set_glitch_filter(const std::map<int, uint32_t> &thresholds, const std::map<int, GlitchFilterMode> &filter_modes = {});
   void clear_glitch_filter();
   bool is_glitch_filter_active();
   // Per-channel glitch filter state (Task 9 / I4): public read accessors for
   // the current thresholds/modes so the View layer can snapshot prior state
   // before applying a new filter, then restore it via set_glitch_filter() on
-  // undo_filter(). Returns references to the view-data vectors; callers must
+  // undo_filter(). Returns references to the view-data maps; callers must
   // copy if they need a stable snapshot. Safe to call from the GUI thread.
-  const std::vector<uint32_t>& glitch_filter_thresholds() const { return _state->view_data()->_glitch_filter_thresholds; }
-  const std::vector<GlitchFilterMode>& glitch_filter_modes() const { return _state->view_data()->_glitch_filter_modes; }
+  const std::map<int, uint32_t>& glitch_filter_thresholds() const { return _state->view_data()->_glitch_filter_thresholds; }
+  const std::map<int, GlitchFilterMode>& glitch_filter_modes() const { return _state->view_data()->_glitch_filter_modes; }
   // 采集后自动重新应用滤波(保留上次阈值/模式)
   void set_glitch_filter_auto_apply(bool en) { _state->view_data()->_glitch_filter_auto_apply = en; }
   bool glitch_filter_auto_apply() const { return _state->view_data()->_glitch_filter_auto_apply; }
+  // 恢复持久化的滤波配置（从 .pxl/.pxc 加载），不触发实际滤波。
+  // 实际滤波在采集完成后由 auto-apply 路径或用户手动应用时执行。
+  void restore_glitch_filter_config(const std::map<int, uint32_t> &thresholds,
+                                     const std::map<int, GlitchFilterMode> &modes) {
+    _state->view_data()->_glitch_filter_thresholds = thresholds;
+    _state->view_data()->_glitch_filter_modes = modes;
+    // 标记为非 active —— 实际滤波未应用，但配置已恢复供 auto-apply 使用
+    _state->view_data()->_glitch_filter_active = false;
+  }
   // 新采集开始时清除滤波状态(不恢复数据,因为数据已被 clear)
   void clear_glitch_filter_state_for_capture();
   void set_signal_invert(const std::vector<bool> &channels);

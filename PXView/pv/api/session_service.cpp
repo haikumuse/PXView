@@ -868,14 +868,13 @@ Result<int> SessionService::configure_and_start(
 
     // 5. Configure glitch filters
     if (!glitch_filters.empty()) {
-        std::vector<uint32_t> thresholds;
-        std::vector<::GlitchFilterMode> modes;
-        thresholds.reserve(glitch_filters.size());
-        modes.reserve(glitch_filters.size());
+        // 架构修复：用 channel_index 作 key
+        std::map<int, uint32_t> thresholds;
+        std::map<int, ::GlitchFilterMode> modes;
 
         for (const auto &gf : glitch_filters) {
-            thresholds.push_back(static_cast<uint32_t>(gf.second));
-            modes.push_back(GLITCH_FILTER_BOTH);
+            thresholds[(int)gf.first] = static_cast<uint32_t>(gf.second);
+            modes[(int)gf.first] = GLITCH_FILTER_BOTH;
         }
 
         _session->set_glitch_filter(thresholds, modes);
@@ -3160,25 +3159,28 @@ Result<void> SessionService::set_glitch_filter(const GlitchFilterConfig &config)
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    std::vector<uint32_t> thresholds;
-    std::vector<::GlitchFilterMode> modes;
-
-    thresholds.reserve(config.channels.size());
-    modes.reserve(config.modes.size());
+    // 架构修复：用 channel_index 作 key，消除 View/Core 位置序号错位
+    std::map<int, uint32_t> thresholds;
+    std::map<int, ::GlitchFilterMode> modes;
 
     for (size_t i = 0; i < config.channels.size() && i < config.thresholds.size(); i++) {
-        thresholds.push_back(static_cast<uint32_t>(config.thresholds[i]));
+        int ch_idx = (int)config.channels[i];
+        thresholds[ch_idx] = static_cast<uint32_t>(config.thresholds[i]);
+        // 默认 BOTH 模式
+        modes[ch_idx] = GLITCH_FILTER_BOTH;
     }
-    for (size_t i = 0; i < config.modes.size(); i++) {
+    // 如果有 mode 信息，覆盖默认值
+    for (size_t i = 0; i < config.channels.size() && i < config.modes.size(); i++) {
+        int ch_idx = (int)config.channels[i];
         switch (config.modes[i]) {
         case GlitchFilterMode::Both:
-            modes.push_back(GLITCH_FILTER_BOTH);
+            modes[ch_idx] = GLITCH_FILTER_BOTH;
             break;
         case GlitchFilterMode::High:
-            modes.push_back(GLITCH_FILTER_HIGH);
+            modes[ch_idx] = GLITCH_FILTER_HIGH;
             break;
         case GlitchFilterMode::Low:
-            modes.push_back(GLITCH_FILTER_LOW);
+            modes[ch_idx] = GLITCH_FILTER_LOW;
             break;
         }
     }
@@ -3201,14 +3203,24 @@ GlitchFilterConfig SessionService::get_glitch_filter_config() const {
     if (!_session)
         return config;
 
-    // SigSession does not expose the thresholds/modes through a public
-    // getter. Return the active state only; detailed config requires
-    // extending SigSession's public API.
     if (_session->is_glitch_filter_active()) {
-        // Placeholder: indicate the filter is active but thresholds
-        // are not accessible through the current public API.
-        config.thresholds.push_back(0);
-        config.modes.push_back(GlitchFilterMode::Both);
+        // 架构修复：从 map 读取当前配置，用 channel_index 作 key
+        const auto &th = _session->glitch_filter_thresholds();
+        const auto &md = _session->glitch_filter_modes();
+        for (const auto &kv : th) {
+            config.channels.push_back(kv.first);
+            config.thresholds.push_back(static_cast<int32_t>(kv.second));
+            GlitchFilterMode m = GlitchFilterMode::Both;
+            auto mit = md.find(kv.first);
+            if (mit != md.end()) {
+                switch (mit->second) {
+                case GLITCH_FILTER_BOTH: m = GlitchFilterMode::Both; break;
+                case GLITCH_FILTER_HIGH: m = GlitchFilterMode::High; break;
+                case GLITCH_FILTER_LOW:  m = GlitchFilterMode::Low;  break;
+                }
+            }
+            config.modes.push_back(m);
+        }
     }
 
     return config;

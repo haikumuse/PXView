@@ -86,7 +86,7 @@ public:
     const std::vector<struct sr_dev_inst*> &scanned_sdi() const { return _scanned_sdi; }
 
     // Called by SigSession::set_file(). Registers a file-loaded SDI.
-    void set_file_device(struct sr_dev_inst *sdi, const QString &name);
+    ds_device_handle set_file_device(struct sr_dev_inst *sdi, const QString &name);
 
     // Called by SigSession::close_file(). Removes a device by handle.
     void remove_device(ds_device_handle handle);

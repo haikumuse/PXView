@@ -114,8 +114,8 @@ private:
 
     // Backpressure watermarks for the async write queue (hysteresis):
     // feed thread blocks above HIGH, unblocks below LOW.
-    static constexpr uint64_t ASYNC_HIGH_WATERMARK = 256ULL * 1024 * 1024;
-    static constexpr uint64_t ASYNC_LOW_WATERMARK  = 64ULL * 1024 * 1024;
+    static constexpr uint64_t ASYNC_HIGH_WATERMARK = 1024ULL * 1024 * 1024;
+    static constexpr uint64_t ASYNC_LOW_WATERMARK  = 256ULL * 1024 * 1024;
 
     std::queue<AsyncPayload> _async_queue;
     std::mutex _async_mutex;

@@ -552,6 +552,12 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   _state->capture_data()->clear();
   _state->set_capture_data(_state->view_data());
 
+  // 架构修复：从 AppConfig 恢复 auto_apply 默认值。
+  // 这样即使没有打开 .pxl 文件（如新建采集），auto_apply 勾选状态
+  // 也能跨会话保留。per-channel 阈值随 .pxl 文件保存/恢复。
+  _state->view_data()->_glitch_filter_auto_apply =
+      AppConfig::Instance().deviceOptions.glitchAutoApply;
+
   init_signals();
 
   set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
@@ -570,24 +576,47 @@ bool SigSession::set_file(QString name) {
   std::string file_name = pv::path::ToUnicodePath(name);
   pxv_info("Load file: \"%s\"", file_name.c_str());
 
-  // Use upstream sr_input API to load session files.
-  const struct sr_input *in = nullptr;
-  if (sr_input_scan_file(file_name.c_str(), &in) != SR_OK) {
-    pxv_err("Load file error!");
-    return false;
-  }
-
-  // Get the device instance from the input and register it via DeviceAgent.
-  struct sr_dev_inst *sdi = sr_input_dev_inst_get(in);
+  // 架构修复：使用 sr_session_load_file_device 替代 sr_input_scan_file。
+  // sr_input_scan_file 遍历 input_module_list，没有任何模块支持 zip 格式，
+  // 导致 .pxl 文件加载必然失败（静默返回 false → 空白 tab）。
+  // sr_session_load_file_device 内部调用 sr_session_load，通过 session_file.c
+  // 解析 metadata/header 元数据，通过 session_driver.c 回放数据块。
+  // libsigrok 同时支持两种格式：
+  //   - upstream sigrok: version/metadata + data-N (打包格式)
+  //   - PXView v3: header + L-<ch>/<n> (按通道分块, session_driver 自动交织)
+  struct sr_dev_inst *sdi = sr_session_load_file_device(_sr_ctx, file_name.c_str());
   if (!sdi) {
-    pxv_err("Load file error: no device instance!");
+    pxv_err("Load file error: sr_session_load_file_device failed for \"%s\"",
+            file_name.c_str());
     return false;
   }
 
-  // Register the file-loaded device with DeviceAgent.
-  _state->device_agent().set_file_device(sdi, name);
+  // Register the file-loaded device with DeviceAgent and get its handle.
+  ds_device_handle dev_handle =
+      _state->device_agent().set_file_device(sdi, name);
+  if (dev_handle == NULL_HANDLE) {
+    pxv_err("Load file error: set_file_device returned NULL_HANDLE");
+    return false;
+  }
 
-  return set_default_device();
+  // 架构修复：直接选中文件设备，不调用 set_default_device()。
+  // set_default_device() 会匹配 lastDeviceDriver（通常是 demo），
+  // 导致文件设备被忽略，选中了 demo 设备而非 virtual-session。
+  if (!set_device(dev_handle)) {
+    pxv_err("Load file error: set_device failed for file device");
+    return false;
+  }
+
+  // 文件设备选中后，触发采集来回放数据。
+  // exec_capture() -> device_agent.start() -> sr_session_start/run()
+  // -> dev_acquisition_start -> stream_session_data/stream_pxv_session_data
+  // 数据通过 datafeed 回调进入 DataFeedParser::feed_in_logic -> LogicSnapshot。
+  if (!start_capture(false, _state->document_registry()->get_active_document())) {
+    pxv_err("Load file error: start_capture failed for file device");
+    return false;
+  }
+
+  return true;
 }
 
 void SigSession::close_file(unsigned long long dev_handle) {
@@ -2131,8 +2160,8 @@ void SigSession::attach_data_to_signal(SessionData *data) {
 
 // --- FilterProcessor forwarding wrappers ----------------------------------
 void SigSession::set_glitch_filter(
-    const std::vector<uint32_t> &thresholds,
-    const std::vector<GlitchFilterMode> &filter_modes) {
+    const std::map<int, uint32_t> &thresholds,
+    const std::map<int, GlitchFilterMode> &filter_modes) {
   _filter_processor->set_glitch_filter(thresholds, filter_modes);
 }
 void SigSession::clear_glitch_filter() {

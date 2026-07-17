@@ -66,12 +66,17 @@ void DeviceAgent::set_scanned_devices(const std::vector<struct sr_dev_inst*> &sd
     _scanned_sdi = sdis;
 }
 
-void DeviceAgent::set_file_device(struct sr_dev_inst *sdi, const QString &name)
+ds_device_handle DeviceAgent::set_file_device(struct sr_dev_inst *sdi, const QString &name)
 {
     if (!sdi)
-        return;
+        return NULL_HANDLE;
     _file_sdi.push_back(sdi);
     (void)name;  // name is derived from sdi in update()
+
+    // Compute handle: scanned_count + file_index + 1
+    int scanned_count = (int)_scanned_sdi.size();
+    int file_idx = (int)_file_sdi.size() - 1;
+    return (ds_device_handle)(scanned_count + file_idx + 1);
 }
 
 void DeviceAgent::remove_device(ds_device_handle handle)
@@ -134,7 +139,25 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
     // caller-visible failure is unmistakable in the log.
     struct sr_dev_driver *open_drv = sr_dev_inst_driver_get(sdi);
     const char *drv_name = (open_drv && open_drv->name) ? open_drv->name : "?";
-    int open_ret = sr_dev_open(sdi);
+
+    // 架构修复：virtual-session 文件设备不需要调用 sr_dev_open。
+    // sr_dev_open 会调用驱动 dev_open 回调，virtual-session 驱动的
+    // dev_open 不存在或会失败（它是虚拟设备，没有硬件可打开）。
+    // 文件设备的 sdi 已经由 sr_session_load_file_device 创建并配置好，
+    // 只需要添加到 sr_session 即可。
+    bool is_virtual_session = false;
+    if (open_drv && open_drv->name) {
+        QString name = QString::fromLocal8Bit(open_drv->name);
+        if (name == "virtual-session" || name.contains("file"))
+            is_virtual_session = true;
+    }
+
+    int open_ret = SR_OK;
+    if (!is_virtual_session) {
+        open_ret = sr_dev_open(sdi);
+    } else {
+        pxv_info("open_by_handle: skipping sr_dev_open for virtual-session/file device");
+    }
 
     // PXLogic firmware upgrade path: hw_usb_open burns new firmware, then
     // "rst usb" resets the device. The device drops off the USB bus and

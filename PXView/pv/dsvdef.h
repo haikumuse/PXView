@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include "../config.h"
 #include <stdint.h>
 
 #define countof(x) (sizeof(x)/sizeof(x[0]))

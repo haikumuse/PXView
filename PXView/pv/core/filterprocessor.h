@@ -2,6 +2,7 @@
 #define PXVIEW_CORE_FILTERPROCESSOR_H
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -34,8 +35,9 @@ public:
   FilterProcessor(EventBus *bus, SessionStateContext *state);
   ~FilterProcessor();
 
-  void set_glitch_filter(const std::vector<uint32_t> &thresholds,
-                         const std::vector<GlitchFilterMode> &filter_modes);
+  // 架构修复：thresholds/modes 用 channel_index 作 key，消除 View/Core 位置序号错位
+  void set_glitch_filter(const std::map<int, uint32_t> &thresholds,
+                         const std::map<int, GlitchFilterMode> &filter_modes);
   void clear_glitch_filter();
   bool is_glitch_filter_active();
 
@@ -47,8 +49,8 @@ public:
   void stop();
 
 private:
-  void glitch_filter_task(const std::vector<uint32_t> thresholds,
-                          const std::vector<GlitchFilterMode> filter_modes);
+  void glitch_filter_task(const std::map<int, uint32_t> thresholds,
+                          const std::map<int, GlitchFilterMode> filter_modes);
   void signal_invert_task(const std::vector<bool> channels);
 
   EventBus *_event_bus;
@@ -63,6 +65,10 @@ private:
   // `delete` calls remain in the .cpp.
   std::unique_ptr<std::thread> _glitch_filter_thread;
   std::atomic<bool> _glitch_filter_running;
+  // 架构修复：滤波运行中排队最近一次请求，不再静默丢弃
+  bool _has_pending_glitch = false;
+  std::map<int, uint32_t> _pending_glitch_thresholds;
+  std::map<int, GlitchFilterMode> _pending_glitch_modes;
   std::unique_ptr<std::thread> _signal_invert_thread;
   std::atomic<bool> _signal_invert_running;
 };

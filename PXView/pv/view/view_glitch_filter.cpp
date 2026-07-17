@@ -186,32 +186,27 @@ void ViewGlitchFilter::on_glitch_apply_requested(
   if (_view->_filter_undo_stack.size() > 20)
     _view->_filter_undo_stack.erase(_view->_filter_undo_stack.begin());
 
-  // Build thresholds/modes indexed by enabled-logic-channel ordinal (matches
-  // LogicSnapshot::_ch_index order, which is what apply_glitch_filter_all
-  // iterates).
-  std::vector<LogicSignal *> logic_sigs;
-  for (auto s : _view->_own_signals) {
-    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-      logic_sigs.push_back(static_cast<LogicSignal *>(s));
-  }
-  int n = (int)logic_sigs.size();
-  if (n == 0)
-    return;
+  // 架构修复：用 channel_index 作 key，与 _ch_index 中的位置无关。
+  // 即使 View 层包含禁用通道，Core 层也只处理 _ch_index 中的通道。
+  std::map<int, uint32_t> thresholds;
+  std::map<int, GlitchFilterMode> modes;
 
-  std::vector<uint32_t> thresholds(n, 0);
-  std::vector<GlitchFilterMode> modes(n, GLITCH_FILTER_BOTH);
   if (all_channels) {
-    for (int i = 0; i < n; i++) {
-      thresholds[i] = threshold;
-      modes[i] = mode;
+    for (auto s : _view->_own_signals) {
+      if (s && s->signal_type() == SR_CHANNEL_LOGIC) {
+        int ch_idx = s->model() ? s->model()->index() : -1;
+        if (ch_idx >= 0) {
+          thresholds[ch_idx] = threshold;
+          modes[ch_idx] = mode;
+        }
+      }
     }
   } else {
-    auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
-    if (it == logic_sigs.end())
-      return;
-    int target_idx = (int)std::distance(logic_sigs.begin(), it);
-    thresholds[target_idx] = threshold;
-    modes[target_idx] = mode;
+    int ch_idx = sig->model() ? sig->model()->index() : -1;
+    if (ch_idx >= 0) {
+      thresholds[ch_idx] = threshold;
+      modes[ch_idx] = mode;
+    }
   }
 
   sess.set_glitch_filter(thresholds, modes);
@@ -259,31 +254,19 @@ void ViewGlitchFilter::on_apply_batch_requested(
   if (_view->_filter_undo_stack.size() > 20)
     _view->_filter_undo_stack.erase(_view->_filter_undo_stack.begin());
 
-  // 构建 thresholds/modes 向量(按 enabled-logic-channel 序号索引,
-  // 与 LogicSnapshot::_ch_index 顺序一致)
-  std::vector<LogicSignal *> logic_sigs;
-  for (auto s : _view->_own_signals) {
-    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-      logic_sigs.push_back(static_cast<LogicSignal *>(s));
-  }
-  int n = (int)logic_sigs.size();
-  if (n == 0)
-    return;
+  // 架构修复：用 channel_index 作 key，与 _ch_index 中的位置无关
+  std::map<int, uint32_t> thresholds;
+  std::map<int, GlitchFilterMode> modes;
 
-  std::vector<uint32_t> thresholds(n, 0);
-  std::vector<GlitchFilterMode> modes(n, GLITCH_FILTER_BOTH);
-
-  // 对 batch 中每个 sig 设置对应序号的 threshold/mode
-  // (不在 logic_sigs 中的 sig 被忽略,避免越界)
+  // 对 batch 中每个 sig 设置对应 channel_index 的 threshold/mode
   for (auto *sig : sigs) {
     if (!sig)
       continue;
-    auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
-    if (it == logic_sigs.end())
-      continue;
-    int idx = (int)std::distance(logic_sigs.begin(), it);
-    thresholds[idx] = threshold;
-    modes[idx] = mode;
+    int ch_idx = sig->model() ? sig->model()->index() : -1;
+    if (ch_idx >= 0) {
+      thresholds[ch_idx] = threshold;
+      modes[ch_idx] = mode;
+    }
   }
 
   sess.set_glitch_filter(thresholds, modes);

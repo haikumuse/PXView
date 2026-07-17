@@ -427,19 +427,22 @@ void LogicSnapshotGlitchFilter::apply_glitch_filter(
 }
 
 void LogicSnapshotGlitchFilter::apply_glitch_filter_all(
-    const std::vector<uint32_t> &thresholds,
+    const std::map<int, uint32_t> &thresholds,
     std::function<void(int)> progress_callback,
-    const std::vector<GlitchFilterMode> &filter_modes) {
-  for (int i = 0; i < (int)_host->_ch_index.size(); i++) {
-    if (i < (int)thresholds.size() && thresholds[i] > 0) {
+    const std::map<int, GlitchFilterMode> &filter_modes) {
+  // 架构修复：按 channel_index 查找阈值，与 _ch_index 中的位置无关
+  for (size_t i = 0; i < _host->_ch_index.size(); i++) {
+    int ch_idx = _host->_ch_index[i];
+    auto it = thresholds.find(ch_idx);
+    if (it != thresholds.end() && it->second > 0) {
       GlitchFilterMode mode = GLITCH_FILTER_BOTH;
-      if (i < (int)filter_modes.size()) {
-        mode = filter_modes[i];
-      }
-      apply_glitch_filter(_host->_ch_index[i], thresholds[i], nullptr, mode);
+      auto mit = filter_modes.find(ch_idx);
+      if (mit != filter_modes.end())
+        mode = mit->second;
+      apply_glitch_filter(ch_idx, it->second, nullptr, mode);
     }
     if (progress_callback) {
-      int progress = (i + 1) * 100 / _host->_ch_index.size();
+      int progress = (int)((i + 1) * 100 / _host->_ch_index.size());
       progress_callback(progress);
     }
   }

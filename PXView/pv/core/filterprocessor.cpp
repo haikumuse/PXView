@@ -42,17 +42,22 @@ void FilterProcessor::stop() {
 }
 
 void FilterProcessor::set_glitch_filter(
-    const std::vector<uint32_t> &thresholds,
-    const std::vector<GlitchFilterMode> &filter_modes) {
-  if (_glitch_filter_running)
+    const std::map<int, uint32_t> &thresholds,
+    const std::map<int, GlitchFilterMode> &filter_modes) {
+  if (_glitch_filter_running) {
+    // 架构修复：不再静默丢弃，排队最近一次请求，滤波完成后自动执行
+    _pending_glitch_thresholds = thresholds;
+    _pending_glitch_modes = filter_modes;
+    _has_pending_glitch = true;
     return;
+  }
 
   if (_state->view_data()->get_logic()->empty())
     return;
 
   bool has_filter = false;
-  for (auto t : thresholds) {
-    if (t > 0) {
+  for (auto &kv : thresholds) {
+    if (kv.second > 0) {
       has_filter = true;
       break;
     }
@@ -73,8 +78,8 @@ void FilterProcessor::set_glitch_filter(
 }
 
 void FilterProcessor::glitch_filter_task(
-    const std::vector<uint32_t> thresholds,
-    const std::vector<GlitchFilterMode> filter_modes) {
+    const std::map<int, uint32_t> thresholds,
+    const std::map<int, GlitchFilterMode> filter_modes) {
   if (!_state->view_data()->_logic_backup) {
     _state->view_data()->_logic_backup = new data::LogicSnapshot();
     _state->view_data()->_logic_backup->copy_from(
@@ -126,6 +131,16 @@ void FilterProcessor::glitch_filter_task(
 
   _event_bus->broadcast_async<interface::GlitchFilterCompleted>({});
   _state->data_updated();
+
+  // 架构修复：如果有排队的 pending 请求，立即执行
+  if (_has_pending_glitch) {
+    _has_pending_glitch = false;
+    auto pend_th = std::move(_pending_glitch_thresholds);
+    auto pend_md = std::move(_pending_glitch_modes);
+    _pending_glitch_thresholds.clear();
+    _pending_glitch_modes.clear();
+    set_glitch_filter(pend_th, pend_md);
+  }
 }
 
 void FilterProcessor::clear_glitch_filter() {

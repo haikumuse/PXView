@@ -334,7 +334,8 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     bool use_disk = _disk_cache_writer->disk_cache_config().enabled;
     QString disk_dir = QString::fromStdString(_disk_cache_writer->disk_cache_config().cache_path);
     auto _mmap_t0 = std::chrono::steady_clock::now();
-    bool mmap_ok = _mmap_alloc->configure(use_disk, disk_dir, total_bytes);
+    bool mmap_ok = _mmap_alloc->configure(use_disk, disk_dir, total_bytes,
+                                          LeafBlockSpace, _max_blocks_per_channel, _channel_num);
     auto _mmap_t1 = std::chrono::steady_clock::now();
     pxv_info("first_payload TIMING: MmapAllocator::configure=%lldms (total_bytes=%llu, ok=%d)",
       (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_mmap_t1 - _mmap_t0).count(),
@@ -347,6 +348,15 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
         // dereferencing an unconfigured (NULL _base_ptr) allocator.
         _disk_cache_writer->clear_all_mmap_slots();
         _mmap_alloc.reset();
+    } else {
+        // 设置 loop mode（loop mode 禁用 trailing decommit，保留所有数据在 RAM）
+        _mmap_alloc->set_loop_mode(_is_loop);
+        // 等待 prefault 线程完成初始 4 blocks 超前（4 * 16ch * 2MB = 128MB）
+        auto _pf_t0 = std::chrono::steady_clock::now();
+        _mmap_alloc->wait_prefault_initial_blocks(4);
+        auto _pf_t1 = std::chrono::steady_clock::now();
+        pxv_info("first_payload TIMING: wait_prefault_initial_blocks(4)=%lldms",
+          (long long)std::chrono::duration_cast<std::chrono::milliseconds>(_pf_t1 - _pf_t0).count());
     }
   }
 
@@ -405,6 +415,10 @@ void* LogicSnapshot::allocate_block(uint16_t channel, uint64_t index0, uint64_t 
         global_block_seq = index0 * RootScale + index1;
         lbp = _mmap_alloc->get_block_data(channel, global_block_seq, _max_blocks_per_channel, LeafBlockSpace);
         from_mmap = (lbp != NULL);
+        if (from_mmap) {
+            // 通知 prefault 线程 writer 进度（block_seq，所有 channel 同步写入同一 block_seq）
+            _mmap_alloc->notify_writer_block_seq(global_block_seq);
+        }
     }
     if (lbp == NULL) {
         lbp = LeafBlockPool::instance().acquire(LeafBlockSpace);
@@ -446,6 +460,13 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   uint64_t num_samples = logic.length / unitsize;
 
   if (num_samples == 0) return;
+
+  // Segmented locking: metadata ops (allocate_block, _sample_count/
+  // _ring_sample_count updates, calc_mipmap, loop housekeeping) hold _mutex;
+  // mmap data writes (page-fault-prone) release it so UI's get_samples can
+  // proceed. _dest_ptr/_ch_fraction/_byte_fraction are async-writer-private
+  // and safe to touch without the lock during write loops.
+  std::unique_lock<std::mutex> lock(_mutex);
 
   // Update _sample_count (cap at _total_sample_count)
   if (_sample_count + num_samples < _total_sample_count) {
@@ -561,6 +582,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
     const uint8_t need = static_cast<uint8_t>(8 - _byte_fraction);
     const uint64_t have = std::min(samples_left, static_cast<uint64_t>(need));
 
+    // mmap data write — release _mutex to avoid blocking UI during page faults
+    lock.unlock();
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
       auto [byte_pos, bit_mask] = ch_ctx[ch];
       uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
@@ -569,6 +592,7 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
           *dest_byte |= static_cast<uint8_t>(1u << (_byte_fraction + k));
       }
     }
+    lock.lock();  // re-acquire for metadata (advance_leaf_block)
 
     src += have * unitsize;
     samples_left -= have;
@@ -591,6 +615,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   // bytes until offset % Scale == 0, so Phase 3's alignment assumption becomes
   // a guaranteed invariant rather than an unchecked hypothesis.
   while (samples_left >= 8 && (offset % Scale) != 0) {
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
       auto [byte_pos, bit_mask] = ch_ctx[ch];
       uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
@@ -601,6 +627,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
       }
       *dest_byte = byte;
     }
+    lock.lock();  // re-acquire for metadata (advance_leaf_block)
+
     src += 8 * unitsize;
     samples_left -= 8;
     offset += 8;
@@ -612,6 +640,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   // INVARIANT: offset % Scale == 0, guaranteed by Phase 2. write_ptr bit 0
   // correctly maps to sample offset. No integer-division misalignment.
   while (samples_left >= Scale && _byte_fraction == 0) {
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
       auto [byte_pos, bit_mask] = ch_ctx[ch];
       uint64_t *write_ptr =
@@ -627,6 +657,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
       }
       *write_ptr = value;
     }
+    lock.lock();  // re-acquire for metadata (advance_leaf_block)
+
     src += Scale * unitsize;
     samples_left -= Scale;
     offset += Scale;
@@ -636,6 +668,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
 
   // ---- Phase 4: process remaining 8-sample bytes ----
   while (samples_left >= 8 && _byte_fraction == 0) {
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
       auto [byte_pos, bit_mask] = ch_ctx[ch];
       uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
@@ -646,6 +680,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
       }
       *dest_byte = byte;
     }
+    lock.lock();  // re-acquire for metadata (advance_leaf_block)
+
     src += 8 * unitsize;
     samples_left -= 8;
     offset += 8;
@@ -655,6 +691,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
 
   // ---- Phase 5: residual 1-7 samples (bit-level, persist _byte_fraction) ----
   if (samples_left > 0 && _byte_fraction == 0) {
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     for (unsigned int ch = 0; ch < _channel_num; ch++) {
       auto [byte_pos, bit_mask] = ch_ctx[ch];
       uint8_t *dest_byte = static_cast<uint8_t *>(ch_lbp[ch]) + offset / 8;
@@ -663,6 +701,8 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
           *dest_byte |= static_cast<uint8_t>(1u << k);
       }
     }
+    lock.lock();  // re-acquire for mipmap calc & finalize
+
     _byte_fraction = static_cast<uint8_t>(samples_left);
     offset += samples_left;
     samples_left = 0;
@@ -737,6 +777,13 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   // samples = total samples per channel in this packet
   uint64_t samples = (logic.length * 8) / _channel_num;
 
+  // Segmented locking: metadata ops (allocate_block, _sample_count/
+  // _ring_sample_count updates, calc_mipmap, loop housekeeping) hold _mutex;
+  // mmap data writes (page-fault-prone) release it so UI's get_samples can
+  // proceed. _dest_ptr/_ch_fraction/_byte_fraction are async-writer-private
+  // and safe to touch without the lock during write loops.
+  std::unique_lock<std::mutex> lock(_mutex);
+
   // Update _sample_count (cap at _total_sample_count)
   if (_sample_count + samples < _total_sample_count) {
     _sample_count += samples;
@@ -771,11 +818,14 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
       return;
     }
 
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     do {
       *_dest_ptr++ = *data_src_ptr++;
       _byte_fraction = (_byte_fraction + 1) % 8;
       len--;
     } while (_byte_fraction != 0 && len > 0);
+    lock.lock();  // re-acquire for metadata (allocate_block/calc_mipmap)
 
     if (_byte_fraction == 0) {
       index0 = _ring_sample_count / LeafBlockSamples / RootScale;
@@ -855,6 +905,8 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
 
   while (len >= 8) {
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     *write_ptr++ = *read_ptr;
     read_ptr += _channel_num;
     len -= 8;
@@ -864,6 +916,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
     if (last_chan == _channel_num) {
       last_chan = 0;
     }
+    lock.lock();  // re-acquire for metadata (calc_mipmap/allocate_block)
 
     if (filled_sample == LeafBlockSamples) {
       // Completed one leaf block for fill_chan → calc mipmap
@@ -957,10 +1010,13 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
     uint8_t *src_ptr = (uint8_t *)end_read_ptr - len;
     _byte_fraction += (uint8_t)len;
 
+    // mmap data write — release _mutex during page faults
+    lock.unlock();
     while (len > 0) {
       *_dest_ptr++ = *src_ptr++;
       len--;
     }
+    lock.lock();  // re-acquire before method exit (destructor releases)
   }
 }
 
@@ -1061,7 +1117,8 @@ void LogicSnapshot::copy_from(const LogicSnapshot &src) {
 
   if (src._mmap_alloc) {
       _mmap_alloc = std::make_shared<MmapAllocator>();
-      _mmap_alloc->configure(false, "", src._mmap_alloc->get_total_bytes());
+      _mmap_alloc->configure(false, "", src._mmap_alloc->get_total_bytes(),
+                             LeafBlockSpace, _max_blocks_per_channel, _channel_num);
   } else {
       _disk_cache_writer->clear_all_mmap_slots();
       _mmap_alloc = nullptr;
@@ -2309,9 +2366,9 @@ void LogicSnapshot::apply_glitch_filter(
 }
 
 void LogicSnapshot::apply_glitch_filter_all(
-    const std::vector<uint32_t> &thresholds,
+    const std::map<int, uint32_t> &thresholds,
     std::function<void(int)> progress_callback,
-    const std::vector<GlitchFilterMode> &filter_modes) {
+    const std::map<int, GlitchFilterMode> &filter_modes) {
   _glitch_filter->apply_glitch_filter_all(thresholds,
                                           std::move(progress_callback),
                                           filter_modes);

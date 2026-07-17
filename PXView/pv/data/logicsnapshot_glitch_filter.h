@@ -55,9 +55,10 @@ public:
     void apply_glitch_filter(int sig_index, uint32_t threshold,
                              std::function<void(int)> progress_callback,
                              GlitchFilterMode filter_mode = GLITCH_FILTER_BOTH);
-    void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds,
+    // 架构修复：thresholds/modes 用 channel_index 作 key，消除 View/Core 位置序号错位
+    void apply_glitch_filter_all(const std::map<int, uint32_t> &thresholds,
                                  std::function<void(int)> progress_callback,
-                                 const std::vector<GlitchFilterMode> &filter_modes = {});
+                                 const std::map<int, GlitchFilterMode> &filter_modes = {});
     bool is_glitch_filtered() const;
     void set_glitch_filtered(bool filtered);
 

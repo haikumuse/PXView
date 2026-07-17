@@ -1,5 +1,6 @@
 #include "mmap_allocator.h"
 #include <QDebug>
+#include <algorithm>
 #include <thread>
 #include <chrono>
 #include <ctime>
@@ -59,6 +60,9 @@ MmapAllocator::MmapAllocator()
 #else
       , _fd(-1)
 #endif
+      , _prefault_running(false), _writer_block_seq(0), _prefault_block_seq(0),
+      _decommitted_block_seq(0), _is_loop_mode(false),
+      _block_size(0), _max_blocks_per_channel(0), _channel_num(0)
 {
 }
 
@@ -66,12 +70,16 @@ MmapAllocator::~MmapAllocator() {
     clear();
 }
 
-bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint64_t total_bytes) {
+bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint64_t total_bytes,
+                              uint64_t block_size, uint64_t max_blocks_per_channel, int channel_num) {
     std::lock_guard<std::mutex> lock(_mutex);
     clear();
 
     if (total_bytes == 0) return false;
     _total_bytes = total_bytes;
+    _block_size = block_size;
+    _max_blocks_per_channel = max_blocks_per_channel;
+    _channel_num = channel_num;
 
 #ifdef _WIN32
     if (use_disk_file && !disk_dir.isEmpty()) {
@@ -89,14 +97,6 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
             pxv_err("MmapAllocator: Failed to create disk cache file %s, error %lu",
                     _file_path.toUtf8().constData(), GetLastError());
             return false;
-        }
-
-        // 将缓存文件标记为稀疏，使零区间不占磁盘空间（配合 LogicSnapshot 跳过 memset + decommit）。
-        DWORD bytes_returned = 0;
-        if (!DeviceIoControl(_hFile, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &bytes_returned, NULL)) {
-            pxv_warn("MmapAllocator: FSCTL_SET_SPARSE failed (file will be non-sparse), error %lu",
-                     GetLastError());
-            // 非致命：退化为非稀疏文件，功能正常但磁盘占用更高。
         }
     } else {
         _hFile = INVALID_HANDLE_VALUE; // Page file backed
@@ -159,8 +159,9 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
     }
 #endif
 
-    pxv_info("MmapAllocator: Configured successfully, %llu bytes mapped at %p", 
+    pxv_info("MmapAllocator: Configured successfully, %llu bytes mapped at %p",
              (unsigned long long)_total_bytes, _base_ptr);
+    start_prefault();
     return true;
 }
 
@@ -184,55 +185,14 @@ bool MmapAllocator::decommit_block(void* ptr, uint64_t size) {
     if (!ptr || !_base_ptr || !is_mmap_address(ptr)) return false;
 
 #ifdef _WIN32
-    // RAM 页：DiscardVirtualMemory 从工作集移除页（不写回脏页），后续读返回零。
-    // 适用于 mapped view（VirtualFree MEM_DECOMMIT 对 mapped view 无效）。
-    DWORD discard_res = DiscardVirtualMemory(ptr, size);
-    if (discard_res != ERROR_SUCCESS) {
-        pxv_warn("MmapAllocator: DiscardVirtualMemory failed, error %lu (non-fatal)",
-                 discard_res);
-    }
-
-    // 磁盘页：对文件区间 punch sparse zero hole，回收磁盘空间。
-    if (_hFile != INVALID_HANDLE_VALUE) {
-        LARGE_INTEGER file_offset;
-        file_offset.QuadPart = (LONGLONG)((uint8_t*)ptr - (uint8_t*)_base_ptr);
-        FILE_ZERO_DATA_INFORMATION fzdi;
-        fzdi.FileOffset = file_offset;
-        fzdi.BeyondFinalZero.QuadPart = file_offset.QuadPart + (LONGLONG)size;
-        DWORD bytes_returned = 0;
-        if (!DeviceIoControl(_hFile, FSCTL_SET_ZERO_DATA,
-                             &fzdi, sizeof(fzdi),
-                             NULL, 0, &bytes_returned, NULL)) {
-            pxv_warn("MmapAllocator: FSCTL_SET_ZERO_DATA failed, error %lu (non-fatal)",
-                     GetLastError());
-        }
-    }
+    // VirtualUnlock 对 file-mapped memory 触发 decommit：dirty page 写回文件后回收 RAM 页。
+    // 失败非致命（如页未 commit），直接忽略。
+    (void)VirtualUnlock(ptr, size);
     return true;
 #else
     // RAM 页：madvise MADV_DONTNEED 释放页，后续读返回零（匿名映射）。
     if (madvise(ptr, size, MADV_DONTNEED) != 0) {
         pxv_warn("MmapAllocator: madvise MADV_DONTNEED failed, errno %d (non-fatal)", errno);
-    }
-
-    // 磁盘页：在文件中打洞回收磁盘空间。
-    // Linux: fallocate PUNCH_HOLE；macOS: fcntl F_PUNCHHOLE；其他平台跳过
-    // (punch hole 仅是磁盘空间回收优化，缺失不影响功能正确性)
-    if (_fd >= 0) {
-        off_t offset = (off_t)((uint8_t*)ptr - (uint8_t*)_base_ptr);
-#ifdef __linux__
-        if (fallocate(_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-                      offset, (off_t)size) != 0) {
-            pxv_warn("MmapAllocator: fallocate PUNCH_HOLE failed, errno %d (non-fatal)", errno);
-        }
-#elif defined(__APPLE__)
-        struct fpunchhole fpunch;
-        fpunch.fp_flags = 0;
-        fpunch.fp_offset = offset;
-        fpunch.fp_length = (off_t)size;
-        if (fcntl(_fd, F_PUNCHHOLE, &fpunch) != 0) {
-            pxv_warn("MmapAllocator: fcntl F_PUNCHHOLE failed, errno %d (non-fatal)", errno);
-        }
-#endif
     }
     return true;
 #endif
@@ -246,6 +206,10 @@ bool MmapAllocator::block_absolute_slot(void* ptr, uint64_t block_size, uint64_t
 }
 
 void MmapAllocator::clear() {
+    // Stop the background prefault thread BEFORE touching _base_ptr —
+    // prefault_worker writes to _base_ptr and must not race with unmap.
+    stop_prefault();
+
     // Take the file path into a local variable before clearing the member,
     // so the background delete thread never touches object state.
     const QString file_to_delete = _file_path;
@@ -300,6 +264,145 @@ void MmapAllocator::clear() {
                         path_to_delete.c_str(), ec.value(), ec.message().c_str());
             }
         }).detach();
+    }
+}
+
+void MmapAllocator::prefault_worker() {
+    pxv_info("MmapAllocator: prefault thread started, total_blocks=%llu, channels=%d, ahead=%llu blocks",
+             (unsigned long long)_max_blocks_per_channel, _channel_num,
+             (unsigned long long)PREFAULT_AHEAD_BLOCKS);
+
+    uint64_t block_seq = 0;
+    while (_prefault_running.load() && block_seq < _max_blocks_per_channel) {
+        // 检查超前量：如果已超前 writer 足够，sleep 让出 CPU
+        uint64_t writer_seq = _writer_block_seq.load();
+        if (block_seq >= writer_seq && (block_seq - writer_seq) >= PREFAULT_AHEAD_BLOCKS) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
+        // prefault 所有 channel 的 block_seq 对应 block
+        for (int ch = 0; ch < _channel_num; ch++) {
+            uint64_t byte_offset = ((uint64_t)ch * _max_blocks_per_channel + block_seq) * _block_size;
+            if (byte_offset + _block_size > _total_bytes) break;
+
+            // 遍历 block 内所有页写零触发 prefault
+            for (uint64_t off = 0; off < _block_size; off += PREFAULT_PAGE_SIZE) {
+                *(volatile uint8_t*)((uint8_t*)_base_ptr + byte_offset + off) = 0;
+            }
+        }
+
+        block_seq++;
+        _prefault_block_seq.store(block_seq);
+
+        // trailing decommit：落后 writer 16 blocks 回收旧页，控制工作集
+        if (!_is_loop_mode.load()) {
+            uint64_t writer_seq = _writer_block_seq.load();
+            if (writer_seq > TRAILING_DECHECK_BEHIND_BLOCKS) {
+                uint64_t target_decommit_seq = writer_seq - TRAILING_DECHECK_BEHIND_BLOCKS;
+                if (_decommitted_block_seq.load() < target_decommit_seq) {
+                    uint64_t decommit_seq = _decommitted_block_seq.load();
+                    // 每轮最多 decommit 1 个 block_seq（遍历所有 channel）
+                    decommit_block_seq_all_channels(decommit_seq);
+                    _decommitted_block_seq.store(decommit_seq + 1);
+                }
+            }
+        }
+    }
+
+    // 末尾 decommit：prefault 到顶后，继续 decommit 直到全部回收
+    if (!_is_loop_mode.load()) {
+        while (_prefault_running.load() && _decommitted_block_seq.load() < _max_blocks_per_channel) {
+            uint64_t decommit_seq = _decommitted_block_seq.load();
+            if (decommit_seq >= _max_blocks_per_channel) break;
+            decommit_block_seq_all_channels(decommit_seq);
+            _decommitted_block_seq.store(decommit_seq + 1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    _prefault_running.store(false);
+    pxv_info("MmapAllocator: prefault thread finished, prefaulted %llu blocks",
+             (unsigned long long)_prefault_block_seq.load());
+}
+
+void MmapAllocator::decommit_block_seq_all_channels(uint64_t block_seq) {
+    for (int ch = 0; ch < _channel_num; ch++) {
+        uint64_t byte_offset = ((uint64_t)ch * _max_blocks_per_channel + block_seq) * _block_size;
+        if (byte_offset + _block_size > _total_bytes) break;
+        decommit_range(byte_offset, byte_offset + _block_size);
+    }
+}
+
+void MmapAllocator::start_prefault() {
+    _prefault_running.store(true);
+    _writer_block_seq.store(0);
+    _prefault_block_seq.store(0);
+    _decommitted_block_seq.store(0);
+    _prefault_thread = std::thread(&MmapAllocator::prefault_worker, this);
+}
+
+void MmapAllocator::stop_prefault() {
+    _prefault_running.store(false);
+    if (_prefault_thread.joinable()) {
+        _prefault_thread.join();
+    }
+}
+
+void MmapAllocator::wait_prefault_initial_blocks(uint64_t block_count) {
+    auto t0 = std::chrono::steady_clock::now();
+    while (true) {
+        if (_prefault_block_seq.load() >= block_count) {
+            break;
+        }
+        if (!_prefault_running.load()) {
+            break;
+        }
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - t0).count();
+        if (elapsed > 2000) {
+            pxv_warn("MmapAllocator: wait_prefault_initial_blocks(%llu) timeout after 2s, "
+                     "prefaulted only %llu blocks",
+                     (unsigned long long)block_count,
+                     (unsigned long long)_prefault_block_seq.load());
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    auto t1 = std::chrono::steady_clock::now();
+    pxv_info("MmapAllocator: wait_prefault_initial_blocks(%llu) done in %lldms, "
+             "prefaulted %llu blocks",
+             (unsigned long long)block_count,
+             (long long)std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count(),
+             (unsigned long long)_prefault_block_seq.load());
+}
+
+void MmapAllocator::notify_writer_block_seq(uint64_t block_seq) {
+    _writer_block_seq.store(block_seq);
+}
+
+void MmapAllocator::set_loop_mode(bool is_loop) {
+    _is_loop_mode.store(is_loop);
+}
+
+void MmapAllocator::decommit_range(uint64_t start_bytes, uint64_t end_bytes) {
+    if (!_base_ptr || start_bytes >= end_bytes || end_bytes > _total_bytes) return;
+
+    // 对齐到页边界
+    uint64_t start = (start_bytes + PREFAULT_PAGE_SIZE - 1) & ~(PREFAULT_PAGE_SIZE - 1);
+    uint64_t end = end_bytes & ~(PREFAULT_PAGE_SIZE - 1);
+
+    for (uint64_t off = start; off < end; off += PREFAULT_PAGE_SIZE) {
+        void* page = (uint8_t*)_base_ptr + off;
+#ifdef _WIN32
+        // VirtualUnlock 对 file-mapped memory 触发 decommit：dirty page 写回文件后回收 RAM 页。
+        // 失败非致命（如页未 commit），直接忽略。
+        (void)VirtualUnlock(page, PREFAULT_PAGE_SIZE);
+#else
+        if (madvise(page, PREFAULT_PAGE_SIZE, MADV_DONTNEED) != 0) {
+            // 非致命：madvise 失败忽略
+        }
+#endif
     }
 }
 

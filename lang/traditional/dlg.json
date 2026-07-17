@@ -59,6 +59,10 @@
         "id": "IDS_DLG_MCP_COPY_SYSTEM_PROMPT",
         "text": "複製系統提示詞"
     },
+    {
+        "id": "IDS_DLG_MCP_COPY",
+        "text": "複製"
+    },
 
     {
         "id": "IDS_DLG_LOG_NO_FILE",

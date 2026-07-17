@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QDir>
 #include <QCoreApplication>
+#include "PXView/config.h"
 
 namespace pv::api {
 
@@ -607,7 +608,7 @@ JsonRpcResponse RpcDispatcher::on_initialize(int id) {
         }},
         {"serverInfo", {
             {"name", "pxview"},
-            {"version", "1.5.0"}
+            {"version", DS_VERSION_STRING}
         }}
     };
     JsonRpcResponse resp;

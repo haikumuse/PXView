@@ -157,11 +157,12 @@ bool StoreSession::save_start()
     }
 
     if (type_set.size() > 1) {
-        _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR1),
-                "PXView does not currently support\nfile saving for multiple data types.");
-        return false;
+        // 架构修复：MSO 模式（混合 LOGIC + ANALOG）现在支持保存。
+        // 不再拒绝混合类型，save_proc 会分别保存 logic 和 analog 数据块。
+        pxv_info("MSO mode: saving mixed data types (%d types).", (int)type_set.size());
+    }
 
-    } else if (type_set.size() == 0) {
+    if (type_set.size() == 0) {
         _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
         return false;
     }
@@ -171,15 +172,18 @@ bool StoreSession::save_start()
         return false;
     }
 
-    const auto snapshot = _session->get_snapshot(*type_set.begin());
-	assert(snapshot);
-    if (!snapshot) {
-        pxv_warn("StoreSession::save_start: get_snapshot returned NULL.");
-        _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
-        return false;
+    // 架构修复：MSO 模式下，从所有可用类型中找到第一个有数据的 snapshot。
+    // 不再只检查 type_set 的第一个类型（可能是空的 logic），而是遍历所有类型。
+    data::Snapshot *snapshot = nullptr;
+    for (auto t : type_set) {
+        auto snap = _session->get_snapshot(t);
+        if (snap && !snap->empty()) {
+            snapshot = snap;
+            break;
+        }
     }
-    // Check we have data
-    if (snapshot->empty()) {
+    if (!snapshot) {
+        pxv_warn("StoreSession::save_start: no snapshot with data found.");
         _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
         return false;
     }
@@ -537,14 +541,20 @@ void StoreSession::save_proc(data::Snapshot *snapshot)
         return;
     }
 
-    data::LogicSnapshot *logic_snapshot = NULL;
-    data::AnalogSnapshot *analog_snapshot = NULL;
-    data::DsoSnapshot *dso_snapshot = NULL;
-
     _is_busy = true;
 
     pxv_info("save task start.");
 
+    // 架构修复：MSO 模式支持。不再只保存单个 snapshot 类型，
+    // 而是分别检查并保存所有可用类型（logic + analog）。
+    data::LogicSnapshot *logic_snapshot = _session->get_snapshot(SR_CHANNEL_LOGIC) ?
+        dynamic_cast<data::LogicSnapshot*>(_session->get_snapshot(SR_CHANNEL_LOGIC)) : nullptr;
+    data::AnalogSnapshot *analog_snapshot = _session->get_snapshot(SR_CHANNEL_ANALOG) ?
+        dynamic_cast<data::AnalogSnapshot*>(_session->get_snapshot(SR_CHANNEL_ANALOG)) : nullptr;
+    data::DsoSnapshot *dso_snapshot = _session->get_snapshot(SR_CHANNEL_DSO) ?
+        dynamic_cast<data::DsoSnapshot*>(_session->get_snapshot(SR_CHANNEL_DSO)) : nullptr;
+
+    // 保存传入的 snapshot 对应类型的数据（保持向后兼容）
     if ((logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot))) {
         save_logic(logic_snapshot);
     }
@@ -553,6 +563,25 @@ void StoreSession::save_proc(data::Snapshot *snapshot)
     }
     else if ((dso_snapshot = dynamic_cast<data::DsoSnapshot*>(snapshot))) {
         save_dso(dso_snapshot);
+    }
+
+    // MSO 模式：如果传入的是 logic，但还有 analog 数据，也一并保存
+    if (dynamic_cast<data::LogicSnapshot*>(snapshot) && !_canceled && !_has_error) {
+        auto analog = _session->get_snapshot(SR_CHANNEL_ANALOG);
+        if (analog && !analog->empty()) {
+            auto analog_snap = dynamic_cast<data::AnalogSnapshot*>(analog);
+            if (analog_snap)
+                save_analog(analog_snap);
+        }
+    }
+    // MSO 模式：如果传入的是 analog，但还有 logic 数据，也一并保存
+    if (dynamic_cast<data::AnalogSnapshot*>(snapshot) && !_canceled && !_has_error) {
+        auto logic = _session->get_snapshot(SR_CHANNEL_LOGIC);
+        if (logic && !logic->empty()) {
+            auto logic_snap = dynamic_cast<data::LogicSnapshot*>(logic);
+            if (logic_snap)
+                save_logic(logic_snap);
+        }
     }
  
     pxv_info("save task end.");

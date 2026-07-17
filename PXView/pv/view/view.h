@@ -507,8 +507,8 @@ public:
    * modes) is called; if was_active==false, clear_glitch_filter() is called.
    */
   struct FilterSnapshot {
-    std::vector<uint32_t> thresholds;
-    std::vector<GlitchFilterMode> modes;
+    std::map<int, uint32_t> thresholds;
+    std::map<int, GlitchFilterMode> modes;
     bool was_active;
   };
 

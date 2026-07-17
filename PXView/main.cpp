@@ -35,7 +35,7 @@
 #include "pv/mainframe.h"
 #include "pv/mainwindow.h"
 #include "pv/config/appconfig.h"
-#include "config.h"
+#include "PXView/config.h"
 #include "pv/appcontrol.h"
 #include "pv/api/iapp_service.h"
 #include "pv/api/isession_service.h"

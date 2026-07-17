@@ -153,8 +153,8 @@ public:
     void invert_channel(int sig_index);
     void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback,
         GlitchFilterMode filter_mode = GLITCH_FILTER_BOTH);
-    void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback,
-        const std::vector<GlitchFilterMode> &filter_modes = {});
+    void apply_glitch_filter_all(const std::map<int, uint32_t> &thresholds, std::function<void(int)> progress_callback,
+        const std::map<int, GlitchFilterMode> &filter_modes = {});
     bool is_glitch_filtered();
     void set_glitch_filtered(bool filtered);
 
