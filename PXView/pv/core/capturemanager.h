@@ -9,12 +9,11 @@
 #include <vector>
 
 #include "../data/disk_cache_config.h"
+#include "../data/sessiondata.h"
 #include "../dstimer.h"
 #include "../dsvdef.h" // DEVICE_COLLECT_MODE / DEVICE_STATUS_TYPE
 
 namespace pv {
-
-class SessionData;
 
 namespace data {
 class SessionDocument;

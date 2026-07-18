@@ -4,6 +4,7 @@
 #include "decodetaskmanager.h"
 #include "documentregistry.h"
 #include "eventbus.h"
+#include "filterprocessor.h"
 #include "sessionstatecontext.h"
 #include "../sigsession.h"  // SessionData full definition
 #include "../data/analogsnapshot.h"
@@ -278,29 +279,30 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     } else {
       _state->frame_ended();
 
-      // CRITICAL FIX: 非 LOGIC 模式（DSO/ANALOG）采集正常完成时，启动解码器
-      // 并在 single 模式下释放 CaptureOwnerGuard，使 _is_working=false，让 MCP
-      // wait_capture_complete 能正确返回。LOGIC 模式由 RevEndPacket →
-      // CopyToDocDone 路径处理（需要等 copy 线程完成）。repeat/loop 模式
-      // 持续采集，由用户点击 stop_capture 释放。
-      // 注意: MainWindow::on_frame_ended 不再做 copy+decode，所以必须在此处理。
+      // 非 LOGIC 模式（DSO/ANALOG/MSO）采集正常完成时，启动解码器。
+      // CaptureOwnerGuard 的释放 + EndCollectWork 广播由 SessionStopped 事件
+      // 统一处理（在 DeviceAgent worker 线程的 sr_session_run() 返回后触发），
+      // 而不再在 SR_DF_END 时提前释放。SR_DF_END 触发时 libsigrok 的 main
+      // loop 可能仍在运行，提前释放 guard 会让第二次 sr_session_start() 与
+      // 上一次 session 的停止发生竞争。
+      // repeat/loop 模式下也由 SessionStopped 处理，但 SessionStopped 只在
+      // _is_working 为 true 时才释放 guard —— repeat 模式每帧的 guard 释放
+      // 由 TrigNextCollect / stop_capture 路径负责。
       _state->decode_task_manager()->start_all_decode_tasks();
 
-      if (_state->capture_manager()->is_single_mode()) {
-        _state->capture_manager()->data_unlock();
-        // CRITICAL: Worker thread MUST NOT call broadcast_sync<EndCollectWorkPrev>.
-        // broadcast_sync executes listeners synchronously on the calling thread.
-        // SessionService::on_event(EndCollectWorkPrev) → broadcast_event →
-        // McpTransport/WsTransport::on_service_event detects non-main thread →
-        // calls QMetaObject::invokeMethod(qApp, lambda, QueuedConnection) →
-        // QThread::currentThread() creates QThreadData on the worker thread.
-        // When the worker thread exits, LdrShutdownThread destroys QThreadData
-        // → SIGSEGV in Qt6Core.dll (see eventbus.h:100-111 comment).
-        // Fix: use broadcast_async so listeners run on the main thread.
-        _event_bus->broadcast_async<interface::EndCollectWorkPrev>({});
-        _state->document_registry()->release_capture_owner();
-        pxv_info("SR_DF_END non-LOGIC: CaptureOwnerGuard released (single mode).");
-        _event_bus->broadcast_async<interface::EndCollectWork>({});
+      // 架构修复：MSO 模式包含 LOGIC 通道，采集完成后若启用 auto-apply
+      // 且有保存的 thresholds，则自动重新应用毛刺滤波。
+      // LOGIC 模式走 RevEndPacket 路径已在 on_event(RevEndPacket) 中处理；
+      // MSO 模式走本 else 分支，原代码遗漏了 auto-apply。
+      if (mode == MSO &&
+          _state->view_data()->_glitch_filter_auto_apply &&
+          !_state->view_data()->_glitch_filter_thresholds.empty() &&
+          _state->view_data()->get_logic() &&
+          !_state->view_data()->get_logic()->empty() &&
+          _state->filter_processor()) {
+        _state->filter_processor()->set_glitch_filter(
+            _state->view_data()->_glitch_filter_thresholds,
+            _state->view_data()->_glitch_filter_modes);
       }
     }
 

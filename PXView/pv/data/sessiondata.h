@@ -61,6 +61,7 @@ public:
   data::LogicSnapshot *_logic_backup;
   bool _glitch_filter_active, _signal_invert_active;
   bool _glitch_filter_auto_apply = false;  // 采集后自动重新应用滤波
+  bool _show_glitch_filter_overlay = true; // 显示波形轨道红色滤波提示叠加层
   // 架构修复：用 channel_index 作 key（消除 View/Core 位置序号错位）
   std::map<int, uint32_t> _glitch_filter_thresholds;
   std::map<int, GlitchFilterMode> _glitch_filter_modes;

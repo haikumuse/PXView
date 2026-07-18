@@ -6,9 +6,9 @@
 #include <thread>
 #include <vector>
 
-namespace pv {
+#include "../data/sessiondata.h"
 
-class SessionData;
+namespace pv {
 
 namespace data {
 class DecoderStack;

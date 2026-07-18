@@ -74,31 +74,6 @@
 // All ds_* fork APIs are replaced by sr_* upstream APIs.
 
 namespace pv {
-SessionData::SessionData() {
-  _cur_snap_samplerate = 0;
-  _cur_samplelimits = 0;
-  _trig_pos = 0;
-  _logic_backup = nullptr;
-  _glitch_filter_active = false;
-  _glitch_filter_modes.clear();
-  _signal_invert_active = false;
-}
-
-void SessionData::clear() {
-  logic.clear();
-  analog.clear();
-  dso.clear();
-  _trig_pos = 0;
-  if (_logic_backup) {
-    delete _logic_backup;
-    _logic_backup = nullptr;
-  }
-  _glitch_filter_active = false;
-  _glitch_filter_thresholds.clear();
-  _glitch_filter_modes.clear();
-  _signal_invert_active = false;
-  _signal_invert_channels.clear();
-}
 
 // --- Dispatch helpers (forward to SessionStateContext) ---
 // These were migrated to SessionStateContext in modernize-core-layer-radical
@@ -557,6 +532,8 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   // 也能跨会话保留。per-channel 阈值随 .pxl 文件保存/恢复。
   _state->view_data()->_glitch_filter_auto_apply =
       AppConfig::Instance().deviceOptions.glitchAutoApply;
+  _state->view_data()->_show_glitch_filter_overlay =
+      AppConfig::Instance().deviceOptions.glitchShowOverlay;
 
   init_signals();
 
@@ -1716,24 +1693,17 @@ void SigSession::on_event(const interface::RevEndPacket &) {
       // start the decoders directly. The decoders read their snapshots
       // from _view_data via get_signal_models(), so they don't need a
       // SessionDocument to be set up.
-      pxv_info("RevEndPacket ELSE branch: starting decoders + guard release (single=%d)",
+      pxv_info("RevEndPacket ELSE branch: starting decoders (single=%d)",
                _capture_manager->is_single_mode());
       start_all_decode_tasks();
 
-      // CRITICAL FIX: single 模式下，LOGIC 采集正常完成（无 copy 线程）
-      // 时释放 CaptureOwnerGuard，使 _is_working=false，让 MCP
-      // wait_capture_complete 能正确返回。原代码只 set_capture_owner_index
-      // _locked(SIZE_MAX) 而不释放 guard，导致 _is_working 永远为 true。
-      // repeat/loop 模式持续采集，由 stop_capture 释放。
-      if (_capture_manager->is_single_mode()) {
-        _capture_manager->data_unlock();
-        _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
-        _document_registry->release_capture_owner();
-        pxv_info("RevEndPacket: CaptureOwnerGuard released (single mode). is_working=%d",
-                 _state->is_working());
-        _event_bus->broadcast_async<interface::EndCollectWork>({});
-      } else {
-        // repeat/loop 模式：保留原逻辑（仅清 index 不释放 guard）
+      // CaptureOwnerGuard 释放 + EndCollectWork 广播由 SessionStopped 事件统一
+      // 处理（在 DeviceAgent worker 线程的 sr_session_run() 返回后触发）。
+      // SR_DF_END / RevEndPacket 触发时 libsigrok 的 main loop 仍在运行，
+      // 提前释放 guard 会让第二次 sr_session_start() 与上一次 session 的停止
+      // 发生竞争（第二次采集不自动停止的根因）。
+      // repeat/loop 模式保留原 index 清理逻辑（仅清 index 不释放 guard）。
+      if (!_capture_manager->is_single_mode()) {
         std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
         _document_registry->set_capture_owner_index_locked(SIZE_MAX);
       }
@@ -1761,17 +1731,10 @@ void SigSession::on_event(const interface::CopyToDocDone &) {
   start_all_decode_tasks();
   pxv_info("Background copy_data_to_document completed. Decoders started.");
 
-  // CRITICAL FIX: single 模式下，LOGIC 采集经过 copy 线程完成后释放
-  // CaptureOwnerGuard，使 _is_working=false，让 MCP wait_capture_complete
-  // 能正确返回。repeat/loop 模式持续采集，由 stop_capture 释放。
-  if (_capture_manager && _capture_manager->is_single_mode()) {
-    _capture_manager->data_unlock();
-    _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
-    _document_registry->release_capture_owner();
-    pxv_info("CopyToDocDone: CaptureOwnerGuard released (single mode). is_working=%d",
-             _state->is_working());
-    _event_bus->broadcast_async<interface::EndCollectWork>({});
-  }
+  // CaptureOwnerGuard 释放 + EndCollectWork 广播由 SessionStopped 事件统一
+  // 处理（在 DeviceAgent worker 线程的 sr_session_run() 返回后触发）。
+  // 原代码在 CopyToDocDone 时释放 guard 会与 libsigrok main loop 的停止
+  // 发生竞争（第二次采集不自动停止的根因）。
 }
 
 void SigSession::on_event(const interface::DeviceSpeedNotMatch &) {
@@ -1790,6 +1753,43 @@ void SigSession::DeviceConfigChanged() {
   // so sampling duration can be recalculated from SR_CONF_HW_DEPTH
   _event_bus->broadcast_async<interface::SampleCountUpdated>(
       {(uint64_t)get_ring_sample_count()});
+}
+
+void SigSession::DeviceSessionStopped() {
+  // Called from DeviceAgent's worker thread AFTER sr_session_run() returned.
+  // Re-broadcast as a typed event via broadcast_async so listeners run on the
+  // main thread. CaptureManager listens for this and releases the
+  // CaptureOwnerGuard (which sets _is_working=false + broadcasts
+  // EndCollectWork). This is the upstream replacement for fork libsigrok's
+  // DS_EV_COLLECT_TASK_END.
+  pxv_info("DeviceSessionStopped: sr_session_run() returned, broadcasting SessionStopped.");
+  _event_bus->broadcast_async<interface::SessionStopped>({});
+}
+
+void SigSession::on_event(const interface::SessionStopped &) {
+  // Main-thread handler for the SessionStopped event re-broadcast by
+  // DeviceSessionStopped(). Releases the CaptureOwnerGuard (which sets
+  // _is_working=false + broadcasts EndCollectWork) — the part that
+  // SR_DF_END / RevEndPacket / CopyToDocDone used to do prematurely.
+  //
+  // Idempotency: action_stop_capture (manual stop) already calls
+  // set_is_working(false) + release_capture_owner() + EndCollectWork before
+  // the worker thread's DeviceSessionStopped callback is dispatched (the
+  // callback is broadcast_async, queued behind the current synchronous
+  // action_stop_capture call). is_working()==false here means the guard was
+  // already released — skip to avoid a redundant EndCollectWork broadcast.
+  if (!_state->is_working()) {
+    pxv_info("SigSession::on_event(SessionStopped): is_working already false, "
+             "guard already released (manual stop path). Skipping.");
+    return;
+  }
+  pxv_info("SigSession::on_event(SessionStopped): releasing CaptureOwnerGuard "
+           "(auto-stop path).");
+  _state->set_is_working(false);
+  _capture_manager->data_unlock();
+  _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
+  _document_registry->release_capture_owner();
+  _event_bus->broadcast_async<interface::EndCollectWork>({});
 }
 
 bool SigSession::switch_work_mode(int mode) {

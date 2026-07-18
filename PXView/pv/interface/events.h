@@ -208,6 +208,19 @@ struct CollectEnd {};
 // EndCollectWork — capture fully stopped.
 struct EndCollectWork {};
 
+// SessionStopped — libsigrok session has fully stopped (sr_session_run()
+// returned). Emitted from DeviceAgent's worker thread via
+// IDeviceAgentCallback::DeviceSessionStopped, then re-broadcast_async by
+// SigSession so listeners run on the main thread. This is the upstream
+// equivalent of fork libsigrok's DS_EV_COLLECT_TASK_END — the reliable
+// "session really stopped" signal that SR_DF_END cannot provide (at
+// SR_DF_END time the GLib main loop is still draining, so a subsequent
+// sr_session_start() can race on session->running / main_context state).
+// CaptureManager listens for this event to release the CaptureOwnerGuard
+// (which sets _is_working=false and broadcasts EndCollectWork) for both
+// auto-stop and manual-stop paths.
+struct SessionStopped {};
+
 // RevEndPacket — capture-end packet received from libsigrok; Core swaps the
 // capture/view buffer, kicks off copy-to-doc and starts decoders. Emitted from
 // the libsigrok data-feed worker thread (DataFeedParser).
@@ -336,6 +349,7 @@ public:
     virtual void on_event(const CollectStart &) {}
     virtual void on_event(const CollectEnd &) {}
     virtual void on_event(const EndCollectWork &) {}
+    virtual void on_event(const SessionStopped &) {}
     virtual void on_event(const RevEndPacket &) {}
     virtual void on_event(const EndDeviceOptions &) {}
     virtual void on_event(const DeviceConfigUpdated &) {}

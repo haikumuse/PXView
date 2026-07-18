@@ -432,6 +432,7 @@ void AppConfig::LoadAll()
     deviceOptions.lastDeviceConnId = st.value("lastDeviceConnId", "").toString();
     deviceOptions.glitchAutoApply = st.value("glitchAutoApply", false).toBool();
     deviceOptions.glitchDefaultThreshold = st.value("glitchDefaultThreshold", 3).toInt();
+    deviceOptions.glitchShowOverlay = st.value("glitchShowOverlay", true).toBool();
     st.endGroup();
 
     //pxv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
@@ -479,6 +480,7 @@ void AppConfig::doSaveDevice()
     st.setValue("lastDeviceConnId", deviceOptions.lastDeviceConnId);
     st.setValue("glitchAutoApply", deviceOptions.glitchAutoApply);
     st.setValue("glitchDefaultThreshold", deviceOptions.glitchDefaultThreshold);
+    st.setValue("glitchShowOverlay", deviceOptions.glitchShowOverlay);
     st.endGroup();
 }
 

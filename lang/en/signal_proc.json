@@ -144,6 +144,10 @@
         "text": "Auto apply after capture"
     },
     {
+        "id": "IDS_GLITCH_POPUP_SHOW_OVERLAY",
+        "text": "Show filter overlay"
+    },
+    {
         "id": "IDS_GLITCH_POPUP_APPLY_ONE",
         "text": "Apply to this channel"
     },

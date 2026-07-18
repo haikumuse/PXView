@@ -1550,9 +1550,11 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
   // 毛刺滤波配置持久化：保存阈值/模式/auto_apply 到 .pxl/.pxc 文件，
   // 重新打开时恢复，避免面板关闭后配置丢失导致光标位置改变。
   if (_session->is_glitch_filter_active() ||
-      _session->glitch_filter_auto_apply()) {
+      _session->glitch_filter_auto_apply() ||
+      !_session->glitch_filter_thresholds().empty()) {
     QJsonObject glitchObj;
     glitchObj["auto_apply"] = _session->glitch_filter_auto_apply();
+    glitchObj["show_overlay"] = _session->show_glitch_filter_overlay();
     glitchObj["active"] = _session->is_glitch_filter_active();
     QJsonArray thrArray;
     QJsonArray modeArray;
@@ -1859,6 +1861,7 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   if (sessionObj.contains("glitch_filter")) {
     QJsonObject glitchObj = sessionObj["glitch_filter"].toObject();
     _session->set_glitch_filter_auto_apply(glitchObj["auto_apply"].toBool(false));
+    _session->set_show_glitch_filter_overlay(glitchObj["show_overlay"].toBool(true));
 
     // 恢复阈值/模式到 SessionData（不立即应用，等采集后 auto-apply 或用户手动应用）
     if (glitchObj["active"].toBool(false)) {

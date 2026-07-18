@@ -233,8 +233,10 @@ void LogicSignal::paint_mid_align(QPainter &p, int left, int right, QColor fore,
   const int sig_idx = _model ? _model->index() : 0;
 
   // (1) Already-filtered ranges (red overlay). Drawn when the snapshot has
-  //     been glitch-filtered; takes precedence over the live preview.
-  if (_data && _data->is_glitch_filtered()) {
+  //     been glitch-filtered AND the user has enabled the overlay in the
+  //     glitch filter panel; takes precedence over the live preview.
+  if (_data && _data->is_glitch_filtered() &&
+      _view->session().show_glitch_filter_overlay()) {
     const auto &ranges = _data->get_filtered_ranges(sig_idx);
     if (!ranges.empty()) {
       p.setBrush(QColor(255, 82, 82, 90));

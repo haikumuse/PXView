@@ -144,6 +144,10 @@
         "text": "采集后自动应用滤波"
     },
     {
+        "id": "IDS_GLITCH_POPUP_SHOW_OVERLAY",
+        "text": "显示滤波提示"
+    },
+    {
         "id": "IDS_GLITCH_POPUP_APPLY_ONE",
         "text": "应用到本通道"
     },

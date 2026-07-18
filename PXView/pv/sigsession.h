@@ -41,6 +41,7 @@
 #include "data/dsosnapshot.h"
 #include "data/logicsnapshot.h"
 #include "data/mathstack.h"
+#include "data/sessiondata.h"
 #include "data/signalmodel.h"
 #include "data/triggerconfig.h"
 #include "deviceagent.h"
@@ -70,25 +71,6 @@ namespace core {
 class FilterProcessor; class DecodeTaskManager; class DataFeedParser;
 class DocumentRegistry; class CaptureManager;
 } // namespace core
-
-class SessionData {
-public:
-  SessionData();
-  data::LogicSnapshot *get_logic() { return &logic; }
-  data::AnalogSnapshot *get_analog() { return &analog; }
-  data::DsoSnapshot *get_dso() { return &dso; }
-  void clear();
-  uint64_t _cur_snap_samplerate, _cur_samplelimits, _trig_pos;
-  data::LogicSnapshot *_logic_backup;
-  bool _glitch_filter_active, _signal_invert_active;
-  bool _glitch_filter_auto_apply = false;  // 采集后自动重新应用滤波
-  // 架构修复：用 channel_index 作 key（消除 View/Core 位置序号错位）
-  std::map<int, uint32_t> _glitch_filter_thresholds;
-  std::map<int, GlitchFilterMode> _glitch_filter_modes;
-  std::vector<bool> _signal_invert_channels;
-private:
-  data::LogicSnapshot logic; data::AnalogSnapshot analog; data::DsoSnapshot dso;
-};
 
 using namespace pv::data;
 
@@ -309,6 +291,9 @@ public:
   // 采集后自动重新应用滤波(保留上次阈值/模式)
   void set_glitch_filter_auto_apply(bool en) { _state->view_data()->_glitch_filter_auto_apply = en; }
   bool glitch_filter_auto_apply() const { return _state->view_data()->_glitch_filter_auto_apply; }
+  // 显示波形轨道红色滤波提示叠加层
+  void set_show_glitch_filter_overlay(bool en) { _state->view_data()->_show_glitch_filter_overlay = en; }
+  bool show_glitch_filter_overlay() const { return _state->view_data()->_show_glitch_filter_overlay; }
   // 恢复持久化的滤波配置（从 .pxl/.pxc 加载），不触发实际滤波。
   // 实际滤波在采集完成后由 auto-apply 路径或用户手动应用时执行。
   void restore_glitch_filter_config(const std::map<int, uint32_t> &thresholds,
@@ -341,6 +326,13 @@ private:
   void clear_all_decode_task(int &runningDex); void clear_all_decode_task2();
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
   void DeviceConfigChanged() override;
+  // IDeviceAgentCallback — called from DeviceAgent's worker thread AFTER
+  // sr_session_run() returns (libsigrok session fully stopped). Re-broadcasts
+  // as the typed SessionStopped event via broadcast_async so listeners run on
+  // the main thread. This is the upstream replacement for fork libsigrok's
+  // DS_EV_COLLECT_TASK_END — the reliable "session really stopped" signal
+  // that SR_DF_END cannot provide.
+  void DeviceSessionStopped() override;
   // --- IEventListener overrides (Core-internal state-machine events) ---
   // These 5 events drive SigSession's own state machine and were previously
   // handled by the former OnMessage switch (now removed). The logic is copied
@@ -351,6 +343,7 @@ private:
   void on_event(const interface::RevEndPacket &) override;
   void on_event(const interface::CopyToDocDone &) override;
   void on_event(const interface::DeviceSpeedNotMatch &) override;
+  void on_event(const interface::SessionStopped &) override;
   static sr_input_format *determine_input_file_format(const std::string &filename);
   data::Snapshot *get_signal_snapshot(); void clear_signals();
   std::shared_ptr<data::SignalModel> get_channel_by_index(int orgIndex);

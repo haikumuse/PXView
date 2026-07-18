@@ -24,6 +24,7 @@ add_library(pxview-data STATIC
     dsosnapshot.cpp
     analogsnapshot.cpp
     sessionsnapshot.cpp
+    sessiondata.cpp
     sessiondocument.cpp
     signalconfigstore.cpp
     decoderstack.cpp

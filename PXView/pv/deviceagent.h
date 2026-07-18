@@ -37,6 +37,14 @@ class IDeviceAgentCallback
 {
     public:
         virtual void DeviceConfigChanged()=0;
+        // Called from the worker thread AFTER sr_session_run() returns,
+        // i.e. the libsigrok session has fully stopped. This is the upstream
+        // equivalent of fork libsigrok's DS_EV_COLLECT_TASK_END event — the
+        // reliable "session really stopped" signal that SR_DF_END cannot
+        // provide (at SR_DF_END time the main loop is still running).
+        // Implementations must marshal onto the main thread before touching
+        // UI state (use broadcast_async<TypedEvent>).
+        virtual void DeviceSessionStopped() {}
 };
 
 /**

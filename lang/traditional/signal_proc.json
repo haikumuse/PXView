@@ -132,6 +132,10 @@
         "text": "採集後自動應用濾波"
     },
     {
+        "id": "IDS_GLITCH_POPUP_SHOW_OVERLAY",
+        "text": "顯示濾波提示"
+    },
+    {
         "id": "IDS_GLITCH_POPUP_APPLY_ONE",
         "text": "應用到本通道"
     },

@@ -881,6 +881,19 @@ bool DeviceAgent::start()
 
         // Block until sr_session_stop() causes the main loop to quit.
         sr_session_run(_sr_session);
+
+        // sr_session_run() has returned → the libsigrok session is fully
+        // stopped (main loop quit, event sources removed, running=FALSE).
+        // This is the upstream equivalent of fork libsigrok's
+        // DS_EV_COLLECT_TASK_END — the reliable "session really stopped"
+        // signal. SR_DF_END fires earlier (while the main loop is still
+        // running), so it cannot be used to synchronise the next capture.
+        // Notify the application layer so it can release the CaptureOwnerGuard
+        // and broadcast EndCollectWork. Must be the last statement — the
+        // callback must not touch _session_thread (which is this thread).
+        if (_callback) {
+            _callback->DeviceSessionStopped();
+        }
     });
 
     // Wait for the worker thread to report sr_session_start() result.

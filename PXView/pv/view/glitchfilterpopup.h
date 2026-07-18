@@ -118,6 +118,7 @@ private slots:
     void on_cancel_clicked();
     void on_max_changed(int val);
     void on_auto_apply_toggled(bool checked);
+    void on_show_overlay_toggled(bool checked);
 
 private:
     void build_ui();
@@ -159,6 +160,7 @@ private:
     QLabel* _threshold_value_lbl = nullptr;
     QSpinBox* _max_spinbox = nullptr;  // 用户自定义统计上限(默认 30)
     QCheckBox* _auto_apply_chk = nullptr;  // 采集后自动重新应用
+    QCheckBox* _show_overlay_chk = nullptr; // 显示波形轨道红色滤波提示
     QPushButton* _apply_one_btn = nullptr;
     QPushButton* _apply_all_btn = nullptr;
     QPushButton* _cancel_btn = nullptr;

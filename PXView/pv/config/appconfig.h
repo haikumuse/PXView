@@ -154,6 +154,7 @@ struct DeviceOptions
     // 毛刺滤波面板配置持久化（跨会话默认值，per-channel 阈值随 .pxl 保存）
     bool    glitchAutoApply = false;    // 采集后自动重新应用滤波
     int     glitchDefaultThreshold = 3; // 默认滤波阈值（周期数）
+    bool    glitchShowOverlay = true;   // 显示波形轨道红色滤波提示叠加层
 };
 
 struct ShortcutItem {

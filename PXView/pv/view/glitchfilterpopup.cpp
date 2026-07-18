@@ -243,17 +243,27 @@ void GlitchFilterPopup::build_ui()
         bLay->addSpacing(2);
     }
 
-    // 2g2. 自动应用行
+    // 2g2. 自动应用行 + 显示红色提示开关
     {
         auto* row = new QHBoxLayout();
         row->setSpacing(12);
         _auto_apply_chk = new QCheckBox(body);
         _auto_apply_chk->setObjectName(QStringLiteral("autoApply"));
+
+        // 显示波形轨道红色滤波提示叠加层开关
+        _show_overlay_chk = new QCheckBox(body);
+        _show_overlay_chk->setObjectName(QStringLiteral("showOverlay"));
+        _show_overlay_chk->setToolTip(GlitchFilterPopup::tr(
+            "在波形轨道上显示红色滤波提示叠加层"));
+
         row->addStretch();
         row->addWidget(_auto_apply_chk);
+        row->addWidget(_show_overlay_chk);
         bLay->addLayout(row);
         connect(_auto_apply_chk, &QCheckBox::toggled,
                 this, &GlitchFilterPopup::on_auto_apply_toggled);
+        connect(_show_overlay_chk, &QCheckBox::toggled,
+                this, &GlitchFilterPopup::on_show_overlay_toggled);
     }
 
     // 2h. 底部按钮行
@@ -540,6 +550,13 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
         _auto_apply_chk->blockSignals(false);
     }
 
+    // 恢复"显示红色滤波提示"复选框状态
+    if (_show_overlay_chk) {
+        _show_overlay_chk->blockSignals(true);
+        _show_overlay_chk->setChecked(_view.session().show_glitch_filter_overlay());
+        _show_overlay_chk->blockSignals(false);
+    }
+
     // 初次着色与统计
     _histogram->setFilterThreshold(initial_threshold);
     _histogram->setThresholds(_recommended_threshold, initial_threshold);
@@ -792,6 +809,20 @@ void GlitchFilterPopup::on_auto_apply_toggled(bool checked)
     AppConfig::Instance().SaveApp();
 }
 
+void GlitchFilterPopup::on_show_overlay_toggled(bool checked)
+{
+    // 控制波形轨道上红色滤波提示叠加层的显示/隐藏。
+    // 实际绘制在 logicsignal.cpp 中检查 show_glitch_filter_overlay() 标志。
+    _view.session().set_show_glitch_filter_overlay(checked);
+
+    // 同步到 AppConfig，跨会话持久化
+    AppConfig::Instance().deviceOptions.glitchShowOverlay = checked;
+    AppConfig::Instance().SaveApp();
+
+    // 触发 View 重绘以立即应用叠加层显示/隐藏
+    _view.viewport()->update();
+}
+
 void GlitchFilterPopup::update_histogram_coloring()
 {
     // PulseHistogramWidget::setFilterThreshold 内部完成着色,
@@ -855,6 +886,9 @@ void GlitchFilterPopup::retranslateUi()
     _max_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MAX", "Max"));
     _max_hint_label->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_MAX_HINT", "(Stats range, beyond excluded, max 999)"));
     _auto_apply_chk->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_AUTO_APPLY", "Auto apply after capture"));
+    if (_show_overlay_chk) {
+        _show_overlay_chk->setText(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_POPUP_SHOW_OVERLAY", "Show filter overlay"));
+    }
 
     // 模式下拉重译:保留当前选择
     int mode_idx = _mode_combo ? _mode_combo->currentIndex() : 0;

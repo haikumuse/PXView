@@ -11,6 +11,7 @@
 
 #include "../data/datasource.h"
 #include "../data/mathstack.h"
+#include "../data/sessiondata.h"
 #include "../data/signalmodel.h"
 #include "../data/triggerconfig.h"
 #include "../deviceagent.h"
@@ -18,8 +19,6 @@
 #include <libsigrok/libsigrok.h>
 
 namespace pv {
-
-class SessionData;
 
 namespace data {
 class LissajousModel;
