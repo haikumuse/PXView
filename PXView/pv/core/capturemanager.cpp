@@ -74,6 +74,14 @@ void CaptureManager::capture_init() {
   _state->set_trigger_ch(0);
   _state->set_hw_replied(false);
   _rt_refresh_time_id = 0;
+
+  // CRITICAL FIX (fork 迁移遗漏): 旧版 fork libsigrok 在 DS_EV_DEVICE_RUNNING
+  // 事件中调用 set_receive_data_len(0) 重置 viewport 的 _sample_received 进度，
+  // 使进度条显示"等待触发"状态而非上一次采集的 100%。新版 upstream libsigrok
+  // 无此事件，capture_init() 是 exec_capture() 启动设备前最后的状态重置点，
+  // 必须在此重置进度，否则用户在等待触发时会看到残留的 100% 进度。
+  // set_receive_len(0) 内部会 start_trigger_timer(333) 并将 _transfer_started=false。
+  _state->set_receive_data_len(0);
   _rt_ck_refresh_time_id = 0;
   _noData_cnt = 0;
 
@@ -396,7 +404,11 @@ bool CaptureManager::exec_capture() {
 
   // Core→libsigrok 触发配置唯一同步点。在 ds_start_collect 前一次性同步，
   // 消除 TriggerDock/SessionService 各自调 ds_trigger_* 导致的互相覆盖。
-  _state->sync_trigger_to_libsigrok();
+  //
+  // instant 模式下禁用所有触发（硬件+软件），让 driver 立即采集数据，
+  // 恢复旧版 fork 的 instant 语义（"立即采集不等待触发"）。统一在
+  // sync_trigger_to_libsigrok 入口处理，避免每个 driver 单独判断 instant。
+  _state->sync_trigger_to_libsigrok(_is_instant);
 
   if (_state->device_agent().start() == false) {
     pxv_err("Start collect error!");
@@ -494,6 +506,24 @@ bool CaptureManager::action_stop_capture() {
     // old manual `_capture_owner_document = nullptr` (gated on !_copy_in_progress)
     // — the guard always joins the copy thread first, which is safer.
     _state->document_registry()->release_capture_owner();
+
+    // 架构修复: stop_capture 也广播 CaptureStateChanged，与 start_capture
+    // (capturemanager.cpp:209) 对称。原来只在 start_capture 广播，导致
+    // MainWindow::on_event(CaptureStateChanged) (mainwindow.cpp:3062-3065)
+    // 在停止路径永远不被调用 —— 该统一处理器同时刷新 sidebar 按钮状态
+    // (update_toolbar_view_status) 和 DeviceOptionsDock widget 状态
+    // (_device_options_widget->update_widgets_status)。
+    //
+    // 在 single 模式手动停止时:
+    //   - EndCollectWorkPrev 同步广播但 MainWindow 是 no-op
+    //   - EndCollectWork 只在 repeat 模式广播 (line 496-498)
+    //   - set_is_working(false) / set_device_status(ST_STOPPED) 是静默 setter
+    // 所以 DeviceOptionsDock 的 widget 保持禁用(灰色无法点击)。
+    //
+    // 此广播同时也是 MCP/WS 客户端收到"停止"通知的统一路径
+    // (SessionService::on_event(CaptureStateChanged) → broadcast_event)。
+    _event_bus->broadcast_async<interface::CaptureStateChanged>(
+        {_state->is_working(), _state->device_status()});
     return true;
   } else {
     pxv_info("Data is uploading from device data buffer, waiting for stop.");

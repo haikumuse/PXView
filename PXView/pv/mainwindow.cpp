@@ -2663,6 +2663,23 @@ void MainWindow::on_frame_ended() {
   _acq_count++;
   _side_bar->setItemRunning(SIDEBAR_RUNSTOP, false);
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
+
+  // CRITICAL FIX (fork 迁移遗漏): 采集结束时更新 toolbar/sidebar 按钮的 enabled
+  // 状态。is_working() 此时已为 false（action_stop_capture 或 SR_DF_END 路径设置），
+  // update_toolbar_view_status() 会据此启用 TRIGGER/DECODE/MEASURE/SEARCH/
+  // FUNCTION/OPTIONS 等按钮。
+  //
+  // 之前的问题：single 模式手动停止时，EndCollectWork 不被广播（只在 repeat
+  // 模式广播，见 capturemanager.cpp:496-498），而 on_event(EndCollectWorkPrev)
+  // 在 GUI 模式下是空操作。所以 update_toolbar_view_status() 永远不会被调用，
+  // 上述按钮保持禁用状态（灰色无法点击）。用户看到的现象是"停止后按钮仍然灰"。
+  //
+  // 在 on_frame_ended() 中调用 update_toolbar_view_status() 是幂等的：
+  // - single 模式正常结束：on_frame_ended() 调用 → 更新按钮
+  // - single 模式手动停止：on_frame_ended() 调用 → 更新按钮
+  // - repeat 模式：on_frame_ended() + EndCollectWork 都调用，幂等无副作用
+  update_toolbar_view_status();
+
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
     // CRITICAL FIX: copy_data_to_document + start_all_decode_tasks are now
@@ -3048,6 +3065,17 @@ void MainWindow::on_event(const pv::interface::CaptureStateChanged &) {
 }
 void MainWindow::on_event(const pv::interface::StartCollectWork &) {
   update_toolbar_view_status();
+  // CRITICAL FIX (fork 迁移遗漏): 旧版在 frame_began() 时设置 sidebar 按钮为
+  // running 状态,但 frame_began() 只在收到第一个 logic 数据包时才被调用。
+  // 等待触发时(无数据) frame_began() 不会被调用,sidebar 按钮保持 "Start",
+  // 用户无法直观看到"正在采集中"的状态。在 StartCollectWork 事件中立即设置
+  // sidebar 按钮为 running(Stop),让用户在采集开始的瞬间就看到状态变化。
+  // setItemRunning 是幂等的,后续 frame_began() 会再次设置(无副作用)。
+  if (_session->is_instant()) {
+    _side_bar->setItemRunning(SIDEBAR_INSTANT, true);
+  } else {
+    _side_bar->setItemRunning(SIDEBAR_RUNSTOP, true);
+  }
   current_view()->on_state_changed(false);
   _protocol_widget->update_view_status();
   _device_options_widget->update_widgets_status();

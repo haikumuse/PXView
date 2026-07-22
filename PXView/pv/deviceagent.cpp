@@ -760,6 +760,14 @@ bool DeviceAgent::detect_stream_mode()
     if (is_dsl_device())
         return get_hardware_operation_mode() == LO_OP_STREAM;
 
+    // demo devices: query SR_CONF_OPERATION_MODE (added in demo api.c).
+    // demo driver exports the same "Buffer Mode"/"Stream Mode" strings as
+    // pxlogic, so get_hardware_operation_mode() works unchanged. Default is
+    // "Buffer Mode" (DEMO_OP_BUFFER). User switches via the samplingbar
+    // OPERATION_MODE dropdown.
+    if (is_demo())
+        return get_hardware_operation_mode() == LO_OP_STREAM;
+
     // Upstream hardware drivers (fx2lafw, ...): check SR_CONF_CONTINUOUS
     // capability flag in the driver's devopts list. fx2lafw declares it
     // (api.c devopts[]), and the driver defaults to limit_samples=0 (stream)
@@ -788,7 +796,7 @@ bool DeviceAgent::detect_stream_mode()
         }
     }
 
-    // demo/file 设备不是流式设备：它们生成/加载有限数据，应由用户选定的
+    // file 设备不是流式设备：加载有限数据，应由用户选定的
     // LIMIT_SAMPLES 控制采集深度（buffer 模式）。若误归为 stream，会触发
     // get_sample_limit() 用 _app_stream_mem_buff(默认 16GB) 计算 ring_buffer，
     // 导致 AnalogSnapshot::first_payload 执行 malloc(16e9 * ch_num * unit_bytes)
@@ -1185,9 +1193,11 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     // App-layer OPERATION_MODE sync: when the user switches Buffer/Stream
     // mode, update the cached _app_stream_mode flag so is_stream_mode()
     // reflects the new choice immediately. Non-DSL devices handle it purely
-    // in-app (no driver key); DSL/PXLogic devices also forward to the driver
-    // via sr_config_set below.
-    if (key == SR_CONF_OPERATION_MODE && is_hardware()) {
+    // in-app (no driver key); DSL/PXLogic/demo devices also forward to the
+    // driver via sr_config_set below (demo driver implements the key since
+    // the OPERATION_MODE dropdown addition).
+    if (key == SR_CONF_OPERATION_MODE &&
+        (is_hardware() || is_demo())) {
         const gchar *mode_str = g_variant_get_string(data, NULL);
         if (mode_str) {
             // Accept both short ("Stream"/"Buffer") and full
@@ -1206,12 +1216,13 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
                      mode_str, _app_stream_mode,
                      _driver_name.toUtf8().constData());
         }
-        // Non-DSL devices: no driver key to set, sync cache and done.
-        if (!is_dsl_device()) {
+        // Non-DSL hardware devices (fx2lafw): no driver key to set, sync
+        // cache and done. DSL/PXLogic/demo: fall through to sr_config_set.
+        if (is_hardware() && !is_dsl_device()) {
             config_changed();
             return true;
         }
-        // DSL/PXLogic: fall through to sr_config_set below.
+        // DSL/PXLogic/demo: fall through to sr_config_set below.
     }
 
     if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())

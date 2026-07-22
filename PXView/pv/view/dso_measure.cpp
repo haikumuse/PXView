@@ -27,6 +27,7 @@
 #include <math.h>
 #include <libsigrok/libsigrok.h>
 
+#include "../api/types.h"        // Task C1.7: api::MeasurementValue
 #include "../data/dsosnapshot.h"
 #include "../data/signalmodel.h"
 #include "../dsvdef.h"
@@ -46,140 +47,93 @@ DsoMeasure::~DsoMeasure() {}
 
 QString DsoMeasure::get_measure(int type) {
   const QString mNone = "--";
-  QString mString;
 
   if (!_signal->_data || _signal->_data->empty()) {
     return mNone;
   }
 
-  if (_signal->_mValid) {
-    const int hw_offset = _signal->get_hw_offset();
+  // Task C1.7: computation moved to Core layer (core::MeasureCalculator,
+  // reached via DataSource::get_measurements). The View layer keeps only
+  // the display formatting logic below. Pass the actual view_rect_height
+  // so GUI-displayed voltages match the original DsoMeasure computation
+  // (the voltage formula divides by view_rect_height).
+  const int view_rect_height = _signal->get_view_rect().height();
+  auto measurements = _signal->_data_source->get_measurements(
+      _signal->get_index(), view_rect_height);
 
-    switch (type) {
-    case DSO_MS_AMPT:
-      if (_signal->_level_valid)
-        mString = get_voltage(_signal->_high - _signal->_low, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VHIG:
-      if (_signal->_level_valid)
-        mString = get_voltage(hw_offset - _signal->_low, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VLOW:
-      if (_signal->_level_valid)
-        mString = get_voltage(hw_offset - _signal->_high, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VP2P:
-      mString = get_voltage(_signal->_max - _signal->_min, 2);
-      break;
-    case DSO_MS_VMAX:
-      mString = get_voltage(hw_offset - _signal->_min, 2);
-      break;
-    case DSO_MS_VMIN:
-      mString = get_voltage(hw_offset - _signal->_max, 2);
-      break;
-    case DSO_MS_PERD:
-      mString = get_time(_signal->_period);
-      break;
-    case DSO_MS_FREQ:
-      if (_signal->_period == 0)
-        mString = mNone;
-      else if (abs(_signal->_period) > 1000000)
-        mString = QString::number(1000000000 / _signal->_period, 'f', 2) + "Hz";
-      else if (abs(_signal->_period) > 1000)
-        mString = QString::number(1000000 / _signal->_period, 'f', 2) + "kHz";
-      else
-        mString = QString::number(1000 / _signal->_period, 'f', 2) + "MHz";
-      break;
-    case DSO_MS_VRMS:
-      mString = get_voltage(_signal->_rms, 2);
-      break;
-    case DSO_MS_VMEA:
-      mString = get_voltage(_signal->_mean, 2);
-      break;
-    case DSO_MS_NOVR:
-      if (_signal->_level_valid && (_signal->_high - _signal->_low != 0))
-        mString =
-            QString::number((_signal->_max - _signal->_high) * 100.0 / (_signal->_high - _signal->_low), 'f', 2) +
-            "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_POVR:
-      if (_signal->_level_valid && (_signal->_high - _signal->_low != 0))
-        mString =
-            QString::number((_signal->_low - _signal->_min) * 100.0 / (_signal->_high - _signal->_low), 'f', 2) +
-            "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PDUT:
-      if (_signal->_level_valid && _signal->_period != 0)
-        mString = QString::number(_signal->_high_time / _signal->_period * 100, 'f', 2) + "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_NDUT:
-      if (_signal->_level_valid && _signal->_period != 0)
-        mString =
-            QString::number(100 - _signal->_high_time / _signal->_period * 100, 'f', 2) + "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PWDT:
-      if (_signal->_level_valid)
-        mString = get_time(_signal->_high_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_NWDT:
-      if (_signal->_level_valid)
-        mString = get_time(_signal->_period - _signal->_high_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_RISE:
-      if (_signal->_level_valid)
-        mString = get_time(_signal->_rise_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_FALL:
-      if (_signal->_level_valid)
-        mString = get_time(_signal->_fall_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_BRST:
-      if (_signal->_level_valid)
-        mString = get_time(_signal->_burst_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PCNT:
-      if (_signal->_level_valid)
-        mString =
-            (_signal->_pcount > 1000000
-                 ? QString::number((double)_signal->_pcount / 1000000.0, 'f', 6) + "M"
-             : _signal->_pcount > 1000
-                 ? QString::number((double)_signal->_pcount / 1000.0, 'f', 3) + "K"
-                 : QString::number((double)_signal->_pcount, 'f', 0));
-      else
-        mString = mNone;
-      break;
-    default:
-      mString = "Error";
+  const api::MeasurementValue *found = nullptr;
+  for (const auto &mv : measurements) {
+    if (mv.type == type) {
+      found = &mv;
       break;
     }
-  } else {
-    mString = mNone;
   }
-  return mString;
+
+  if (!found || !found->valid) {
+    return mNone;
+  }
+
+  // Format the value — matches the original DsoMeasure::get_measure switch.
+  // The Core returns values in the base unit (mV / ns / Hz / % / count);
+  // the View rescales for display exactly as the original code did.
+  switch (type) {
+  case DSO_MS_AMPT:
+  case DSO_MS_VHIG:
+  case DSO_MS_VLOW:
+  case DSO_MS_VP2P:
+  case DSO_MS_VMAX:
+  case DSO_MS_VMIN:
+  case DSO_MS_VRMS:
+  case DSO_MS_VMEA:
+    // value already in millivolts — format as V/mV (matches get_voltage)
+    return abs(found->value) >= 1000.0
+               ? QString::number(found->value / 1000.0, 'f', 2) + "V"
+               : QString::number(found->value, 'f', 2) + "mV";
+  case DSO_MS_PERD:
+  case DSO_MS_PWDT:
+  case DSO_MS_NWDT:
+  case DSO_MS_RISE:
+  case DSO_MS_FALL:
+  case DSO_MS_BRST:
+    // value in nanoseconds — format as S/mS/uS/nS (matches get_time)
+    return (abs(found->value) > 1000000000.0
+                ? QString::number(found->value / 1000000000.0, 'f', 2) + "S"
+            : abs(found->value) > 1000000.0
+                ? QString::number(found->value / 1000000.0, 'f', 2) + "mS"
+            : abs(found->value) > 1000.0
+                ? QString::number(found->value / 1000.0, 'f', 2) + "uS"
+                : QString::number(found->value, 'f', 2) + "nS");
+  case DSO_MS_FREQ: {
+    // value already in Hz — format as Hz/kHz/MHz.
+    // Original computed frequency from period:
+    //   period > 1e6 ns  → freq < 1e3 Hz  → "X.XXHz"
+    //   period > 1e3 ns  → freq < 1e6 Hz  → "X.XXkHz"
+    //   else             → freq >= 1e6 Hz → "X.XXMHz"
+    const double freq = found->value;
+    if (freq >= 1000000.0)
+      return QString::number(freq / 1000000.0, 'f', 2) + "MHz";
+    else if (freq >= 1000.0)
+      return QString::number(freq / 1000.0, 'f', 2) + "kHz";
+    else
+      return QString::number(freq, 'f', 2) + "Hz";
+  }
+  case DSO_MS_NOVR:
+  case DSO_MS_POVR:
+  case DSO_MS_PDUT:
+  case DSO_MS_NDUT:
+    return QString::number(found->value, 'f', 2) + "%";
+  case DSO_MS_PCNT: {
+    // Original: >1e6 → "X.XXXXXXM", >1e3 → "X.XXXK", else "X"
+    const double pcnt = found->value;
+    return (pcnt > 1000000.0
+                ? QString::number(pcnt / 1000000.0, 'f', 6) + "M"
+            : pcnt > 1000.0
+                ? QString::number(pcnt / 1000.0, 'f', 3) + "K"
+                : QString::number(pcnt, 'f', 0));
+  }
+  default:
+    return "Error";
+  }
 }
 
 bool DsoMeasure::measure(const QPointF &p) {

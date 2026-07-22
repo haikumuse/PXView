@@ -284,5 +284,65 @@ int ViewCursors::get_cursor_index_by_key(uint64_t key) {
   return -1;
 }
 
+// Task C2.7: write the dragged cursor's new position back to the Core-layer
+// CursorRegistry. The positional index of the cursor in the View's rendering
+// list is used as the Core registry index — these stay in sync as long as
+// cursors are added/removed through the same path (ViewCursors::add_cursor /
+// del_cursor, which the ruler invokes). If the index is out of range on the
+// Core side (e.g. the cursor was added before Core sync was wired up),
+// set_cursor_position returns false and we silently drop the write — this
+// matches the historical behaviour where cursor positions were View-only.
+void ViewCursors::sync_cursor_position_to_core(TimeMarker *marker) {
+  if (!marker || !_view->_data_source)
+    return;
+
+  // Find the positional index of the marker in the cursor list by pointer
+  // identity. This covers Cursor markers dragged via the ruler; trig/search
+  // cursors are not in the list and are silently skipped (they are not
+  // tracked in the Core CursorRegistry).
+  auto &lst = get_cursorList();
+  int idx = 0;
+  bool found = false;
+  for (auto c : lst) {
+    if (c == marker) { found = true; break; }
+    ++idx;
+  }
+  if (!found)
+    return;
+
+  _view->_data_source->set_cursor_position(idx, marker->index());
+}
+
+// Task C2.7: reconcile the View's rendering cursor list with the Core-layer
+// CursorRegistry. Creates view::Cursor rendering objects for any Core entries
+// that do not yet have a matching View cursor (by positional index). Called
+// on data-source binding so cursors added by MCP while headless appear once
+// the View is created. Existing View cursors that already match a Core entry
+// by index are left untouched (their position is not overwritten — the user
+// may have dragged them since).
+void ViewCursors::sync_cursors_from_core() {
+  if (!_view->_data_source)
+    return;
+
+  auto core_entries = _view->_data_source->get_cursors();
+  auto &view_cursors = get_cursorList();
+
+  int core_count = static_cast<int>(core_entries.size());
+  int view_count = static_cast<int>(view_cursors.size());
+
+  // If the View already has at least as many cursors as Core, assume they
+  // are in sync (positional index correspondence). This is the common case
+  // after the initial binding.
+  if (view_count >= core_count)
+    return;
+
+  // Create rendering objects for the trailing Core entries that have no
+  // matching View cursor. Use add_cursor(uint64_t) which assigns the next
+  // _order and triggers cursor_update().
+  for (int i = view_count; i < core_count; ++i) {
+    add_cursor(core_entries[i].sample_position);
+  }
+}
+
 } // namespace view
 } // namespace pv

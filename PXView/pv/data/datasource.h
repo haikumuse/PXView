@@ -29,6 +29,9 @@
 #include <memory>
 #include <list>
 
+#include "../api/types.h"  // api::MeasurementValue (for get_measurements return type)
+#include "../core/cursorregistry.h"  // core::CursorEntry (for get_cursors return type)
+
 struct srd_decoder;
 class DecoderStatus;
 class DeviceAgent;  // forward declaration (global namespace); defined in deviceagent.h
@@ -141,6 +144,48 @@ public:
     //      DecodeTrace::on_decode_done away from holding a SigSession*).
     //      Default no-op; SigSession overrides to dispatch to listeners.
     virtual void decode_done();
+
+    // ---- Measurements (Task C1: route DSO measurement computation through
+    //      DataSource so headless mode can read real values without a View).
+    //      Returns a flat list of api::MeasurementValue (one per DSO_MS_*
+    //      measurement type per DSO channel). channel_index == -1 returns
+    //      measurements for all enabled DSO channels; a specific channel
+    //      index returns only that channel's measurements. Default returns
+    //      an empty vector (SessionDocument/SessionSnapshot stubs inherit
+    //      this); only SigSession overrides with real computation via
+    //      core::MeasureCalculator::compute(view_data()).
+    //      view_rect_height is the pixel height of the DSO trace, used by
+    //      the voltage conversion formula (raw_adc * data_scale *
+    //      measure_vf * vfactor * DS_CONF_DSO_VDIVS / view_rect_height).
+    //      Pass 0 (or omit) to use the headless default (256 = 8 divs *
+    //      32 px/div); the View layer passes its actual get_view_rect().
+    //      height() so GUI-displayed voltages match the original DsoMeasure
+    //      computation exactly.
+    //      Non-const to match the pattern of other data accessors
+    //      (get_signal_models / get_decoder_stacks / get_dso_snapshot)
+    //      which read non-const SessionStateContext state.
+    virtual std::vector<api::MeasurementValue> get_measurements(
+        int channel_index = -1,
+        int view_rect_height = 0);
+
+    // ---- Cursors (Task C2: cursor position state moved to Core so
+    //      headless MCP clients can enumerate/mutate cursors without a
+    //      View). Returns the Core-layer CursorEntry list (positional
+    //      index + sample_position + visible). Default returns an empty
+    //      vector / -1 / false (SessionDocument/SessionSnapshot stubs
+    //      inherit these); only SigSession overrides with real state via
+    //      SessionStateContext::cursor_registry(). The View layer's
+    //      view::Cursor objects are pure rendering objects that read
+    //      their position through this interface, and write back via
+    //      set_cursor_position() when the user drags. add_cursor returns
+    //      the positional index of the new entry, or -1 on failure. ---
+    //      Non-const mutators match the pattern of start_capture /
+    //      switch_work_mode / etc. get_cursors is const (reads only).
+    virtual std::vector<core::CursorEntry> get_cursors() const;
+    virtual int add_cursor(uint64_t sample_position);
+    virtual bool remove_cursor(int index);
+    virtual bool set_cursor_position(int index, uint64_t sample_position);
+    virtual void clear_cursors();
 
     // ---- Decoder business calls (Task D6: route View's decoder mutation
     //      calls through DataSource so the View layer does not reach into

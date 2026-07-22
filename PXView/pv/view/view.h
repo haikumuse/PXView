@@ -302,6 +302,16 @@ public:
 
   Cursor *get_cursor_by_index(int index);
 
+  // Task C2.7: write a dragged cursor's new position back to the Core-layer
+  // CursorRegistry via DataSource::set_cursor_position. Called by the
+  // ruler / viewport drag handlers after TimeMarker::set_index.
+  void sync_cursor_position(Cursor *cursor);
+
+  // Task C2.7: reconcile the View's rendering cursor list with the Core
+  // CursorRegistry. Called on data-source binding so cursors added by MCP
+  // while headless appear once the View is created.
+  void sync_cursors_from_core();
+
   inline Cursor *get_search_cursor() { return _search_cursor; }
 
   inline bool get_search_hit() { return _search_hit; }

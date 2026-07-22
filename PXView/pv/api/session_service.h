@@ -119,6 +119,7 @@ public:
     DeviceInfo get_device_info() const override;
     WorkMode get_work_mode() const override;
     Result<std::vector<WorkMode>> get_supported_work_modes() const override;
+    Result<std::vector<DeviceInfo>> refresh_device_list() override;
 
     // ---- ISessionService: 4. Channel management ----
     std::vector<ChannelInfo> get_channels() const override;
@@ -135,6 +136,8 @@ public:
     Result<void> set_repeat_interval(double seconds) override;
     Result<uint64_t> get_actual_sample_rate() const override;
     Result<uint64_t> get_actual_sample_count() const override;
+    Result<void> set_save_range(uint64_t start_sample,
+                                uint64_t end_sample) override;
 
     // ---- ISessionService: 6. Trigger config ----
     LogicTriggerConfig get_logic_trigger_config() const override;
@@ -202,6 +205,12 @@ public:
         const std::string &stack_on_analyzer_id = "") override;
     Result<void> remove_decoder(const std::string &instance_id) override;
     Result<void> clear_all_decoders() override;
+    Result<void> reconfigure_decoder(
+        const std::string &instance_id,
+        const std::map<std::string, std::string> &options,
+        const std::map<std::string, int> &channel_map) override;
+    Result<std::vector<DecoderClassInfo>> get_decoder_class_names(
+        const std::string &decoder_id) override;
 
     // ---- ISessionService: 13. Decoder results ----
     Result<std::vector<DecoderAnnotation>> get_decoder_annotations(
@@ -209,6 +218,8 @@ public:
         uint64_t start_sample = 0,
         uint64_t end_sample = UINT64_MAX,
         int max_count = 1000) override;
+    Result<std::vector<uint8_t>> get_decoder_binary_output(
+        const std::string &instance_id, int output_id) override;
 
     // ---- ISessionService: 14. Measurements ----
     std::vector<MeasurementValue> get_measurements() const override;
@@ -270,10 +281,17 @@ public:
                                   double percent) override;
     Result<void> disable_lissajous() override;
     Result<void> enable_math(int16_t ch1, int16_t ch2, int math_type) override;
+    Result<MathResult> get_math_results() override;
+    Result<SpectrumResult> get_spectrum_results() override;
+    Result<LissajousResult> get_lissajous_results() override;
 
     // ---- ISessionService: 21. Event subscription ----
     void add_event_listener(IServiceEventListener *listener) override;
     void remove_event_listener(IServiceEventListener *listener) override;
+
+    // ---- ISessionService: 22. Error state (Batch B) ----
+    Result<ErrorState> get_error_state() override;
+    Result<void> clear_error_state() override;
 
     // ---- ISessionCallback ----
     void session_error() override;

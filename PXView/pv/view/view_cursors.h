@@ -81,6 +81,26 @@ public:
   QString get_cm_delta(int index1, int index2);
   int get_cursor_index_by_key(uint64_t key);
 
+  // -- Core sync (Task C2.7) --------------------------------------------
+  // Write the dragged cursor's new position back to the Core-layer
+  // CursorRegistry via DataSource::set_cursor_position. Called by the
+  // ruler / viewport drag handlers after TimeMarker::set_index. Accepts
+  // TimeMarker* (base of Cursor) since the ruler's _grabbed_marker is
+  // typed as TimeMarker*. No-op if the marker is not found in the
+  // cursor list (e.g. it is the trig/search cursor which is not tracked
+  // in the Core registry) or if the index is out of range on the Core
+  // side (e.g. the cursor was created before Core sync was wired up —
+  // the position simply does not persist, which is the historical
+  // behaviour).
+  void sync_cursor_position_to_core(TimeMarker *marker);
+
+  // Reconcile the View's rendering cursor list with the Core-layer
+  // CursorRegistry. Creates view::Cursor rendering objects for any Core
+  // entries that do not yet have a matching View cursor. Called on
+  // data-source binding so cursors added by MCP while headless appear
+  // once the View is created (e.g. headless -> GUI transition).
+  void sync_cursors_from_core();
+
 private:
   View *_view;
 };

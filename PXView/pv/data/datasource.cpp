@@ -67,5 +67,31 @@ void DataSource::auto_end() {}
 SessionDocument *DataSource::get_active_document() { return nullptr; }
 void DataSource::decode_done() {}
 
+// Task C1: default returns empty — only SigSession overrides with real
+// computation via core::MeasureCalculator. SessionDocument/SessionSnapshot
+// stubs inherit this no-op (they have no live DSO data to measure).
+// Non-const to match the header declaration (other data accessors such as
+// get_signal_models / get_decoder_stacks / get_dso_snapshot are also
+// non-const because they read non-const SessionStateContext state).
+std::vector<api::MeasurementValue> DataSource::get_measurements(
+    int channel_index,
+    int view_rect_height) {
+    (void)channel_index;
+    (void)view_rect_height;
+    return {};
+}
+
+// Task C2: cursor state defaults — only SigSession overrides with real
+// state via SessionStateContext::cursor_registry(). SessionDocument /
+// SessionSnapshot stubs inherit these no-ops (cursor state lives in the
+// live session only, not in saved documents/snapshots).
+std::vector<core::CursorEntry> DataSource::get_cursors() const { return {}; }
+int  DataSource::add_cursor(uint64_t sample_position) { (void)sample_position; return -1; }
+bool DataSource::remove_cursor(int index) { (void)index; return false; }
+bool DataSource::set_cursor_position(int index, uint64_t sample_position) {
+    (void)index; (void)sample_position; return false;
+}
+void DataSource::clear_cursors() {}
+
 } // namespace data
 } // namespace pv

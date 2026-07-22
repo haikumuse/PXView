@@ -32,6 +32,8 @@
 #include "../data/decoderstack.h"
 #include "../data/sessiondocument.h"
 #include "../data/mathstack.h"
+#include "../data/spectrumstack.h"
+#include "../data/lissajousmodel.h"
 #include "../data/decode/decoder.h"
 #include "../data/decode/annotation.h"
 #include "../data/decode/row.h"
@@ -3093,16 +3095,16 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
 // ===========================================================================
 
 std::vector<MeasurementValue> SessionService::get_measurements() const {
-    // Measurement readout is a View concern — the View layer computes
-    // width/period/frequency/duty from the visible region and signal header.
-    // In the decoupled architecture the SessionService no longer holds a
-    // View pointer; measurement values are exposed via a future
-    // IServiceEventListener / measurement-request event or by direct
-    // View queries from the caller. For now we return an empty list and
-    // broadcast a request event so any subscribed View can respond.
-    broadcast_event(ServiceEvent::ErrorOccurred,
-                    {{"detail", "get_measurements_not_available_in_headless"}});
-    return {};
+    // Task C1.6: measurement computation now lives in the Core layer
+    // (core::MeasureCalculator, reached via SigSession::get_measurements).
+    // This works in both headless and GUI modes — no View pointer needed.
+    // The old headless special case (returning empty + ErrorOccurred) is
+    // removed. _session is a non-const pointer member, so calling the
+    // non-const SigSession::get_measurements() from this const method is
+    // legal (the pointed-to SigSession is not const-qualified).
+    if (!_session)
+        return {};
+    return _session->get_measurements();
 }
 
 // ===========================================================================
@@ -3110,12 +3112,34 @@ std::vector<MeasurementValue> SessionService::get_measurements() const {
 // ===========================================================================
 
 std::vector<CursorInfo> SessionService::get_cursors() const {
-    // Cursor state is owned by the View layer. Without a View binding the
-    // SessionService cannot enumerate cursors; return an empty list in
-    // headless mode. A subscribed View can be queried via a future event.
-    broadcast_event(ServiceEvent::ErrorOccurred,
-                    {{"detail", "get_cursors_not_available_in_headless"}});
-    return {};
+    // Task C2.5: cursor state now lives in the Core layer
+    // (SessionStateContext::cursor_registry(), reached via
+    // SigSession::get_cursors / DataSource::get_cursors). This works in
+    // both headless and GUI modes — no View pointer needed. The old
+    // headless special case (returning empty + ErrorOccurred) is removed.
+    // _session is a non-const pointer member, so calling the non-const
+    // SigSession::get_cursors() from this const method is legal (the
+    // pointed-to SigSession is not const-qualified; get_cursors is const
+    // anyway). The Core CursorEntry is converted to the API CursorInfo
+    // type here at the SessionService boundary (sample_position -> time_sec
+    // via cur_snap_samplerate).
+    if (!_session)
+        return {};
+
+    std::vector<CursorInfo> out;
+    auto entries = _session->get_cursors();
+    const uint64_t samplerate = _session->cur_snap_samplerate();
+    out.reserve(entries.size());
+    for (const auto &e : entries) {
+        CursorInfo ci;
+        ci.index      = e.index;
+        ci.sample_pos = static_cast<int64_t>(e.sample_position);
+        ci.time_sec   = (samplerate > 0)
+                          ? static_cast<double>(e.sample_position) / static_cast<double>(samplerate)
+                          : 0.0;
+        out.push_back(ci);
+    }
+    return out;
 }
 
 Result<void> SessionService::add_cursor(uint64_t sample_pos) {
@@ -3123,9 +3147,17 @@ Result<void> SessionService::add_cursor(uint64_t sample_pos) {
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    // Broadcast a request: the View layer (when present) listens via
-    // IServiceEventListener and calls View::add_cursor(). In headless
-    // mode this is a no-op but the request is logged for debugging.
+    // Task C2.5: write to the Core-layer CursorRegistry first so headless
+    // mode persists state. The broadcast is retained so the GUI View layer
+    // (when present) creates a matching view::Cursor rendering object via
+    // MainWindow's IServiceEventListener handler. In headless mode the
+    // broadcast is received by no-one and the Core state is the sole
+    // effect, which is the intended behaviour.
+    int new_index = _session->add_cursor(sample_pos);
+    if (new_index < 0)
+        return Result<void>::Fail(ErrorCode::InternalError,
+                                  "Failed to add cursor to Core registry");
+
     broadcast_event(ServiceEvent::ViewCursorAdded,
                     {{"sample_pos", std::to_string(sample_pos)}});
     return Result<void>::Success();
@@ -3136,6 +3168,14 @@ Result<void> SessionService::remove_cursor(int index) {
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
+    // Task C2.5: remove from the Core-layer CursorRegistry. The broadcast
+    // is retained so the GUI View layer (when present) can remove the
+    // matching view::Cursor rendering object.
+    bool ok = _session->remove_cursor(index);
+    if (!ok)
+        return Result<void>::Fail(ErrorCode::InvalidRequest,
+                                  "Cursor index out of range");
+
     broadcast_event(ServiceEvent::ViewCursorRemoved,
                     {{"index", std::to_string(index)}});
     return Result<void>::Success();
@@ -3145,6 +3185,11 @@ Result<void> SessionService::clear_cursors() {
     if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
+
+    // Task C2.5: clear the Core-layer CursorRegistry. The broadcast is
+    // retained so the GUI View layer (when present) clears its rendering
+    // objects.
+    _session->clear_cursors();
 
     broadcast_event(ServiceEvent::ViewCursorsCleared);
     return Result<void>::Success();
@@ -4196,6 +4241,562 @@ void SessionService::on_event(const pv::interface::SaveComplete &) {
 void SessionService::on_event(const pv::interface::ClearDecodeData &) {
     broadcast_event(ServiceEvent::DecodeDone,
                     {{"detail", "clear_decode_data"}});
+}
+
+// ===========================================================================
+// 22. Batch B — extended operations
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// B1.1: reconfigure_decoder — in-place option/channel_map update + re-decode
+// ---------------------------------------------------------------------------
+
+Result<void> SessionService::reconfigure_decoder(
+    const std::string &instance_id,
+    const std::map<std::string, std::string> &options,
+    const std::map<std::string, int> &channel_map) {
+    if (!_session)
+        return Result<void>::Fail(ErrorCode::InternalError,
+                                  "Session is null");
+
+    auto do_reconfigure = [this, &instance_id, &options, &channel_map]() -> Result<void> {
+        auto &stacks = _session->get_decoder_stacks(api_document());
+        std::shared_ptr<data::DecoderStack> target_stack =
+            find_stack_by_instance_id(stacks, instance_id);
+
+        if (!target_stack)
+            return Result<void>::Fail(ErrorCode::DecoderNotFound,
+                                      "Decoder instance not found");
+
+        auto &dec_list = target_stack->stack();
+        if (dec_list.empty())
+            return Result<void>::Fail(ErrorCode::DecoderError,
+                                      "Decoder stack has no root decoder");
+
+        auto *root_decoder = dec_list.front();
+        if (!root_decoder || !root_decoder->decoder())
+            return Result<void>::Fail(ErrorCode::DecoderError,
+                                      "Invalid root decoder");
+
+        const srd_decoder *dec = root_decoder->decoder();
+
+        // Apply new options (only those present in the options map; others
+        // remain unchanged). The GVariant type-matching logic mirrors
+        // add_decoder's option binding.
+        for (const auto &opt : options) {
+            GVariant *val = nullptr;
+            bool found_type = false;
+
+            for (const GSList *o = dec->options; o; o = o->next) {
+                auto *opt_def = static_cast<srd_decoder_option*>(o->data);
+                if (!opt_def || !opt_def->id) continue;
+                if (opt.first != opt_def->id) continue;
+
+                if (opt_def->values) {
+                    for (const GSList *v = opt_def->values; v; v = v->next) {
+                        auto *enum_val = static_cast<GVariant*>(v->data);
+                        if (!enum_val) continue;
+                        gchar *enum_str = g_variant_print(enum_val, false);
+                        std::string cmp_str = enum_str ? enum_str : "";
+                        g_free(enum_str);
+                        if (cmp_str.size() >= 2 && cmp_str.front() == '\'' && cmp_str.back() == '\'')
+                            cmp_str = cmp_str.substr(1, cmp_str.size() - 2);
+                        if (cmp_str == opt.second) {
+                            if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("s")))
+                                val = g_variant_new_string(g_variant_get_string(enum_val, nullptr));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("d")))
+                                val = g_variant_new_double(g_variant_get_double(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("x")))
+                                val = g_variant_new_int64(g_variant_get_int64(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("b")))
+                                val = g_variant_new_boolean(g_variant_get_boolean(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("y")))
+                                val = g_variant_new_byte(g_variant_get_byte(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("n")))
+                                val = g_variant_new_int16(g_variant_get_int16(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("q")))
+                                val = g_variant_new_uint16(g_variant_get_uint16(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("i")))
+                                val = g_variant_new_int32(g_variant_get_int32(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("u")))
+                                val = g_variant_new_uint32(g_variant_get_uint32(enum_val));
+                            else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("t")))
+                                val = g_variant_new_uint64(g_variant_get_uint64(enum_val));
+                            else
+                                val = g_variant_new_string(opt.second.c_str());
+                            break;
+                        }
+                    }
+                    if (!val && opt_def->def) {
+                        if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("s")))
+                            val = g_variant_new_string(opt.second.c_str());
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("d")))
+                            val = g_variant_new_double(std::stod(opt.second));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("x")))
+                            val = g_variant_new_int64(std::stoll(opt.second));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("b")))
+                            val = g_variant_new_boolean(opt.second == "True" || opt.second == "1");
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("y")))
+                            val = g_variant_new_byte(static_cast<guchar>(std::stoi(opt.second)));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("n")))
+                            val = g_variant_new_int16(static_cast<gint16>(std::stoi(opt.second)));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("q")))
+                            val = g_variant_new_uint16(static_cast<guint16>(std::stoi(opt.second)));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("i")))
+                            val = g_variant_new_int32(std::stoi(opt.second));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("u")))
+                            val = g_variant_new_uint32(std::stoul(opt.second));
+                        else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("t")))
+                            val = g_variant_new_uint64(std::stoull(opt.second));
+                        else
+                            val = g_variant_new_string(opt.second.c_str());
+                    }
+                    if (!val)
+                        val = g_variant_new_string(opt.second.c_str());
+                } else if (opt_def->def) {
+                    if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("d")))
+                        val = g_variant_new_double(std::stod(opt.second));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("x")))
+                        val = g_variant_new_int64(std::stoll(opt.second));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("s")))
+                        val = g_variant_new_string(opt.second.c_str());
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("b")))
+                        val = g_variant_new_boolean(opt.second == "True" || opt.second == "1");
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("y")))
+                        val = g_variant_new_byte(static_cast<guchar>(std::stoi(opt.second)));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("n")))
+                        val = g_variant_new_int16(static_cast<gint16>(std::stoi(opt.second)));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("q")))
+                        val = g_variant_new_uint16(static_cast<guint16>(std::stoi(opt.second)));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("i")))
+                        val = g_variant_new_int32(std::stoi(opt.second));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("u")))
+                        val = g_variant_new_uint32(std::stoul(opt.second));
+                    else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("t")))
+                        val = g_variant_new_uint64(std::stoull(opt.second));
+                    else
+                        val = g_variant_new_string(opt.second.c_str());
+                } else {
+                    val = g_variant_new_string(opt.second.c_str());
+                }
+                found_type = true;
+                break;
+            }
+
+            if (!found_type)
+                val = g_variant_new_string(opt.second.c_str());
+
+            root_decoder->set_option(opt.first.c_str(), val);
+        }
+
+        // Apply new channel_map (only when non-empty). The matching logic
+        // mirrors add_decoder: keys are matched case-insensitively against
+        // srd_channel id/name/desc. When channel_map has exactly one entry
+        // and the decoder has exactly one required channel, auto-map.
+        if (!channel_map.empty()) {
+            auto match_channel = [&channel_map](const srd_channel *ch) -> std::pair<bool, int> {
+                if (!ch) return {false, 0};
+                std::string ch_id = ch->id ? ch->id : "";
+                std::string ch_name = ch->name ? ch->name : "";
+                std::string ch_desc = ch->desc ? ch->desc : "";
+
+                auto ci_eq = [](const std::string& a, const std::string& b) {
+                    if (a.size() != b.size()) return false;
+                    for (size_t i = 0; i < a.size(); i++)
+                        if (tolower(a[i]) != tolower(b[i])) return false;
+                    return true;
+                };
+
+                for (const auto& [key, val] : channel_map) {
+                    if (ci_eq(key, ch_id) || ci_eq(key, ch_name) || ci_eq(key, ch_desc))
+                        return {true, val};
+                }
+                return {false, 0};
+            };
+
+            std::map<const srd_channel*, int> probes;
+
+            int required_ch_count = 0;
+            for (const GSList *c = dec->channels; c; c = c->next)
+                required_ch_count++;
+
+            bool auto_map = (channel_map.size() == 1 && required_ch_count == 1);
+
+            for (const GSList *c = dec->channels; c; c = c->next) {
+                auto *ch = static_cast<srd_channel*>(c->data);
+                auto [found, val] = match_channel(ch);
+                if (!found && auto_map) {
+                    val = channel_map.begin()->second;
+                    found = true;
+                }
+                if (found)
+                    probes[ch] = val;
+            }
+
+            for (const GSList *c = dec->opt_channels; c; c = c->next) {
+                auto *ch = static_cast<srd_channel*>(c->data);
+                auto [found, val] = match_channel(ch);
+                if (found)
+                    probes[ch] = val;
+            }
+
+            root_decoder->set_probes(probes);
+        }
+
+        target_stack->set_options_changed(true);
+
+        // Trigger re-decode via rst_decoder_by_key_handel. This attaches
+        // view data and starts a single decode task for the affected stack.
+        // Deferred via QTimer::singleShot to avoid running the decode task
+        // while we are still inside this lambda on the main thread (same
+        // pattern as add_decoder — running it inline can race Qt signal
+        // delivery when the decode thread emits new_decode_data()).
+        bool copy_in_progress = _session->is_copy_in_progress();
+        if (!_session->have_view_data() || copy_in_progress) {
+            // No data yet or copy in progress — the capture pipeline will
+            // start the decode for us when data is ready (CopyToDocDone).
+            target_stack->set_options_changed(true);
+        } else {
+            target_stack->set_capture_end_flag(true);
+            target_stack->frame_ended();
+
+            std::shared_ptr<data::DecoderStack> stack_ref = target_stack;
+            QTimer::singleShot(0, qApp, [this, stack_ref]() {
+                if (!stack_ref || stack_ref->_delete_flag)
+                    return;
+                _session->rst_decoder_by_key_handel(stack_ref->get_key_handel(),
+                                                    api_document());
+            });
+        }
+
+        _session->rebuild_decoder_pannel();
+
+        broadcast_event(ServiceEvent::ChannelConfigChanged,
+                        {{"feature", "decoder_reconfigured"},
+                         {"instance_id", instance_id}});
+
+        return Result<void>::Success();
+    };
+
+    return run_void_on_main_thread(do_reconfigure);
+}
+
+// ---------------------------------------------------------------------------
+// B1.2: get_error_state / clear_error_state
+// ---------------------------------------------------------------------------
+
+Result<ErrorState> SessionService::get_error_state() {
+    if (!_session)
+        return Result<ErrorState>::Fail(ErrorCode::InternalError,
+                                        "Session is null");
+
+    ErrorState state;
+    auto err = _session->get_error();
+    state.error_code = static_cast<int>(err);
+    state.has_error = (err != SigSession::No_err);
+    state.error_pattern = _session->get_error_pattern();
+
+    // Derive a human-readable message from the SESSION_ERROR_STATUS enum.
+    switch (err) {
+    case SigSession::No_err:
+        state.error_message = "";
+        break;
+    case SigSession::Hw_err:
+        state.error_message = "Hardware error";
+        break;
+    case SigSession::Malloc_err:
+        state.error_message = "Memory allocation error";
+        break;
+    case SigSession::Test_timeout_err:
+        state.error_message = "Test timeout error";
+        break;
+    case SigSession::Pkt_data_err:
+        state.error_message = "Packet data error";
+        break;
+    case SigSession::Data_overflow:
+        state.error_message = "Data overflow";
+        break;
+    default:
+        state.error_message = "Unknown error";
+        break;
+    }
+
+    return Result<ErrorState>::Success(state);
+}
+
+Result<void> SessionService::clear_error_state() {
+    if (!_session)
+        return Result<void>::Fail(ErrorCode::InternalError,
+                                  "Session is null");
+
+    _session->clear_error();
+    return Result<void>::Success();
+}
+
+// ---------------------------------------------------------------------------
+// B1.3: set_save_range
+// ---------------------------------------------------------------------------
+
+Result<void> SessionService::set_save_range(uint64_t start_sample,
+                                            uint64_t end_sample) {
+    if (!_session)
+        return Result<void>::Fail(ErrorCode::InternalError,
+                                  "Session is null");
+
+    if (start_sample > end_sample)
+        return Result<void>::Fail(ErrorCode::ConfigInvalid,
+                                  "start_sample must be <= end_sample");
+
+    _session->set_save_start(start_sample);
+    _session->set_save_end(end_sample);
+    return Result<void>::Success();
+}
+
+// ---------------------------------------------------------------------------
+// B1.4: refresh_device_list
+// ---------------------------------------------------------------------------
+
+Result<std::vector<DeviceInfo>> SessionService::refresh_device_list() {
+    if (!_session)
+        return Result<std::vector<DeviceInfo>>::Fail(ErrorCode::InternalError,
+                                                     "Session is null");
+
+    // Trigger a hot-plug rescan of all upstream drivers. This refreshes
+    // DeviceAgent's cached scanned_sdi() list (get_device_list reuses the
+    // cache to avoid LIBUSB_ERROR_ACCESS on already-opened devices).
+    _session->refresh_device_list();
+
+    // Build the device list from the refreshed cache. get_device_list
+    // returns a calloc'd array of ds_device_base_info (handle + name);
+    // we expand each entry into a DeviceInfo using the underlying sdi.
+    int count = 0;
+    int actived_index = -1;
+    struct ds_device_base_info *array = _session->get_device_list(count, actived_index);
+
+    std::vector<DeviceInfo> result;
+    if (!array || count <= 0) {
+        if (array)
+            free(array);
+        return Result<std::vector<DeviceInfo>>::Success(result);
+    }
+
+    // Enrich each entry with driver/connection info from the underlying
+    // sr_dev_inst. The handle is an opaque 1-based index into the
+    // scanned_sdi() vector (handle = index + 1). refresh_device_list()
+    // above called DeviceAgent::set_scanned_devices() so the cache is fresh.
+    DeviceAgent *agent = _session->get_device();
+    static const std::vector<struct sr_dev_inst*> empty_vec;
+    const std::vector<struct sr_dev_inst*> &scanned =
+        agent ? agent->scanned_sdi() : empty_vec;
+    const std::vector<struct sr_dev_inst*> &file_devs =
+        agent ? agent->file_devices() : empty_vec;
+
+    for (int i = 0; i < count; i++) {
+        struct ds_device_base_info *entry = &array[i];
+        DeviceInfo info;
+        info.id = std::to_string(static_cast<intptr_t>(entry->handle));
+        info.display_name = entry->name;
+
+        // Resolve the underlying sdi to fill driver/connection fields.
+        struct sr_dev_inst *sdi = nullptr;
+        if (i < static_cast<int>(scanned.size()))
+            sdi = scanned[i];
+        if (!sdi && i < static_cast<int>(file_devs.size()))
+            sdi = file_devs[i];
+
+        if (sdi) {
+            struct sr_dev_driver *drv = sr_dev_inst_driver_get(sdi);
+            std::string drv_name;
+            if (drv && drv->name) {
+                drv_name = drv->name;
+                info.driver_name = drv_name;
+            }
+            const char *vendor = sr_dev_inst_vendor_get(sdi);
+            const char *model = sr_dev_inst_model_get(sdi);
+            const char *conn = sr_dev_inst_connid_get(sdi);
+            if (conn)
+                info.path = conn;
+            // Classify device type using the same driver-name heuristic as
+            // DeviceAgent::open_by_handle (no public sr_dev_inst_type_get
+            // accessor exists in upstream libsigrok 0.6.0).
+            info.is_demo = (drv_name == "demo");
+            info.is_file = (drv_name == "virtual-session" ||
+                            drv_name.find("file") != std::string::npos);
+            info.is_hardware = !info.is_demo && !info.is_file;
+            info.is_virtual = info.is_file || info.is_demo;
+            if (info.display_name.empty()) {
+                if (vendor && model)
+                    info.display_name = std::string(vendor) + " " + model;
+                else if (model)
+                    info.display_name = model;
+                else if (conn)
+                    info.display_name = conn;
+            }
+        }
+
+        result.push_back(info);
+    }
+
+    free(array);
+
+    broadcast_event(ServiceEvent::DeviceListUpdated);
+    return Result<std::vector<DeviceInfo>>::Success(result);
+}
+
+// ---------------------------------------------------------------------------
+// B1.5: get_math_results / get_spectrum_results / get_lissajous_results
+// ---------------------------------------------------------------------------
+
+Result<MathResult> SessionService::get_math_results() {
+    if (!_session)
+        return Result<MathResult>::Fail(ErrorCode::InternalError,
+                                        "Session is null");
+
+    MathResult result;
+    auto math_stack = _session->get_math_stack();
+    if (!math_stack) {
+        result.is_enabled = false;
+        return Result<MathResult>::Success(result);
+    }
+
+    result.is_enabled = true;
+    result.ch1_index = math_stack->ch1_index();
+    result.ch2_index = math_stack->ch2_index();
+    result.math_type = static_cast<int>(math_stack->get_type());
+    result.sample_num = math_stack->get_sample_num();
+
+    // Copy computed math samples. get_math(start) returns a pointer into
+    // the stack's internal _math vector; we copy [0, sample_num) so the
+    // caller gets a stable snapshot.
+    if (result.sample_num > 0) {
+        const double *samples = math_stack->get_math(0);
+        if (samples) {
+            result.samples.assign(samples, samples + result.sample_num);
+        }
+    }
+
+    return Result<MathResult>::Success(result);
+}
+
+Result<SpectrumResult> SessionService::get_spectrum_results() {
+    if (!_session)
+        return Result<SpectrumResult>::Fail(ErrorCode::InternalError,
+                                            "Session is null");
+
+    SpectrumResult result;
+    auto &stacks = _session->get_spectrum_stacks();
+    if (stacks.empty()) {
+        result.is_enabled = false;
+        return Result<SpectrumResult>::Success(result);
+    }
+
+    // Expose the first spectrum stack. MCP callers that need a specific
+    // channel's spectrum should use enable_spectrum first.
+    auto &stack = stacks.front();
+    if (!stack) {
+        result.is_enabled = false;
+        return Result<SpectrumResult>::Success(result);
+    }
+
+    result.is_enabled = true;
+    result.channel_index = stack->get_index();
+    result.sample_num = stack->get_sample_num();
+    result.windows_index = stack->get_windows_index();
+    result.dc_ignored = stack->dc_ignored();
+    result.sample_interval = stack->get_sample_interval();
+
+    // get_fft_spectrum() returns const std::vector<double> by value (a copy
+    // of the internal _power_spectrum vector). The const return type
+    // prevents move semantics, so this is a copy assignment — acceptable
+    // for a snapshot read.
+    result.spectrum = stack->get_fft_spectrum();
+
+    return Result<SpectrumResult>::Success(result);
+}
+
+Result<LissajousResult> SessionService::get_lissajous_results() {
+    if (!_session)
+        return Result<LissajousResult>::Fail(ErrorCode::InternalError,
+                                             "Session is null");
+
+    LissajousResult result;
+    auto *model = _session->get_lissajous_model();
+    if (!model) {
+        result.is_enabled = false;
+        return Result<LissajousResult>::Success(result);
+    }
+
+    result.is_enabled = model->enabled();
+    result.x_index = model->x_index();
+    result.y_index = model->y_index();
+    result.percent = model->percent();
+
+    return Result<LissajousResult>::Success(result);
+}
+
+// ---------------------------------------------------------------------------
+// B1.6: get_decoder_binary_output
+// ---------------------------------------------------------------------------
+
+Result<std::vector<uint8_t>> SessionService::get_decoder_binary_output(
+    const std::string &instance_id, int output_id) {
+    if (!_session)
+        return Result<std::vector<uint8_t>>::Fail(ErrorCode::InternalError,
+                                                  "Session is null");
+
+    // DecoderStack only registers an SRD_OUTPUT_ANN callback (see
+    // decoderstack.cpp:815). Binary output (SRD_OUTPUT_BINARY) is declared
+    // by some decoders via srd_decoder::binary, but DecoderStack does not
+    // register a binary callback and does not store binary output data.
+    // Implementing this would require:
+    //   1. Adding a binary callback to DecoderStack (srd_pd_output_callback_add
+    //      with SRD_OUTPUT_BINARY).
+    //   2. Adding a binary-data store + accessor to DecoderStack.
+    // Both changes are outside the Batch B scope (which does not modify
+    // data-layer classes). Return ConfigNotSupported so the MCP layer can
+    // report the limitation cleanly.
+    (void)instance_id;
+    (void)output_id;
+    return Result<std::vector<uint8_t>>::Fail(
+        ErrorCode::ConfigNotSupported,
+        "DecoderStack does not capture binary output. "
+        "Binary output callbacks are not registered — this would require "
+        "data-layer changes outside Batch B scope.");
+}
+
+// ---------------------------------------------------------------------------
+// B1.7: get_decoder_class_names
+// ---------------------------------------------------------------------------
+
+Result<std::vector<DecoderClassInfo>> SessionService::get_decoder_class_names(
+    const std::string &decoder_id) {
+    if (!_session)
+        return Result<std::vector<DecoderClassInfo>>::Fail(
+            ErrorCode::InternalError, "Session is null");
+
+    // Look up the decoder by ID. srd_decoder_get_by_id is the same accessor
+    // used by add_decoder.
+    srd_decoder *dec = srd_decoder_get_by_id(decoder_id.c_str());
+    if (!dec)
+        return Result<std::vector<DecoderClassInfo>>::Fail(
+            ErrorCode::DecoderNotFound,
+            "Decoder not found: " + decoder_id);
+
+    std::vector<DecoderClassInfo> result;
+
+    // dec->annotations is a GSList of char* (NULL-terminated descriptions).
+    // The index in the list is the annotation class id, which matches the
+    // ann_class field of DecoderAnnotation returned by get_decoder_annotations.
+    int class_id = 0;
+    for (const GSList *l = dec->annotations; l; l = l->next, class_id++) {
+        DecoderClassInfo info;
+        info.class_id = class_id;
+        const char *desc = static_cast<const char *>(l->data);
+        info.class_name = ensure_utf8(desc);
+        result.push_back(info);
+    }
+
+    return Result<std::vector<DecoderClassInfo>>::Success(result);
 }
 
 } // namespace api

@@ -374,18 +374,8 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
 
     progress_updated();
 
-    if (_canceled || num == 0){
-        QFile::remove(_file_name);
-    }
-    else {
-        bool bret = m_zipDoc.Close();
-        m_zipDoc.Release();
-
-        if (!bret){
-            _has_error = true;
-            _error = m_zipDoc.GetError();
-        }
-    } 
+    // MSO 模式修复：不在此处关闭/释放 zip，由 save_proc 统一处理，
+    // 这样 save_logic 结束后 save_analog 仍可向同一 zip 写入数据。
 }
 
 void StoreSession::save_analog(pv::data::AnalogSnapshot *analog_snapshot)
@@ -394,10 +384,20 @@ void StoreSession::save_analog(pv::data::AnalogSnapshot *analog_snapshot)
     int num = 0;
     int ret = SR_ERR;
 
+    // MSO 模式修复：必须显式查找 ANALOG 类型的 model，
+    // 否则当 signal_models 第一个是 LOGIC 时会错误地使用 SR_CHANNEL_LOGIC 作为 ch_type，
+    // 导致 MakeChunkName 生成的 chunk name 与 save_logic 生成的重名（如 L-0/0），
+    // AddFromBuffer 因此返回失败，触发 "Failed to create zip file" 错误。
     int ch_type = -1;
     for(auto m : _session->get_signal_models()) {
-        ch_type = (int)m->type();
-        break;
+        if (m->type() == SR_CHANNEL_ANALOG) {
+            ch_type = (int)m->type();
+            break;
+        }
+    }
+    if (ch_type == -1) {
+        // 兜底：函数本身只处理 analog snapshot，类型固定为 ANALOG
+        ch_type = SR_CHANNEL_ANALOG;
     }
 
     if (ch_type != -1) {
@@ -461,18 +461,7 @@ void StoreSession::save_analog(pv::data::AnalogSnapshot *analog_snapshot)
 
     progress_updated();
 
-    if (_canceled || num == 0){
-        QFile::remove(_file_name);
-    }
-    else {
-        bool bret = m_zipDoc.Close();
-        m_zipDoc.Release();
-
-        if (!bret){
-            _has_error = true;
-            _error = m_zipDoc.GetError();
-        }
-    } 
+    // MSO 模式修复：不在此处关闭/释放 zip，由 save_proc 统一处理。
 }
 
 void StoreSession::save_dso(pv::data::DsoSnapshot *dso_snapshot)
@@ -520,17 +509,10 @@ void StoreSession::save_dso(pv::data::DsoSnapshot *dso_snapshot)
     progress_updated();
 
     if (_canceled || size == 0 || ch_num == 0){
-        QFile::remove(_file_name);
+        // 无数据或被取消时不在此处关闭 zip，由 save_proc 统一处理
     }
-    else {
-        bool bret = m_zipDoc.Close();
-        m_zipDoc.Release();
 
-        if (!bret){
-            _has_error = true;
-            _error = m_zipDoc.GetError();
-        }
-    }
+    // MSO 模式修复：不在此处关闭/释放 zip，由 save_proc 统一处理。
 }
 
 void StoreSession::save_proc(data::Snapshot *snapshot)
@@ -586,8 +568,25 @@ void StoreSession::save_proc(data::Snapshot *snapshot)
  
     pxv_info("save task end.");
 
+    // MSO 模式修复：统一在此处关闭/释放 zip 文件。
+    // 此前 save_logic/save_analog/save_dso 各自末尾都调用 Close/Release，
+    // 导致 MSO 模式下第一个 save 函数关闭 zip 后，后续 save 函数的 AddFromBuffer 必然失败，
+    // 触发 "Failed to create zip file. Please check write permission of this path." 错误。
+    if (_canceled || _has_error) {
+        QFile::remove(_file_name);
+    }
+    else {
+        bool bret = m_zipDoc.Close();
+        m_zipDoc.Release();
+        if (!bret) {
+            _has_error = true;
+            _error = m_zipDoc.GetError();
+            QFile::remove(_file_name);
+        }
+    }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    _is_busy = false;   
+    _is_busy = false;
 }
 
 bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)

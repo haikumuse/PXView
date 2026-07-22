@@ -278,9 +278,18 @@ void ViewDataSync::receive_end() {
 }
 
 void ViewDataSync::receive_trigger(quint64 trig_pos1) {
-  (void)trig_pos1;
-  uint64_t trig_pos = _view->document_snapshot_source()->get_trigger_pos();
-  _view->set_trig_cursor_posistion(trig_pos);
+  // CRITICAL FIX: 使用 feed_in_trigger() 传入的最新 trig_pos1,而不是从
+  // document_snapshot_source()->get_trigger_pos() 读取。
+  //
+  // 旧实现 (void)trig_pos1; 然后读 document_snapshot_source()->get_trigger_pos(),
+  // 但在第一次采集时 document 已经有上一次采集的数据(has_data() 返回 true),
+  // document_snapshot_source() 返回 document,读取的是 document->_trigger_pos
+  // (旧值!),导致光标显示在旧位置。直到 copy_data_to_document() 把新值复制到
+  // document 后,下一次采集光标才显示正确。
+  //
+  // feed_in_trigger() 传入的 trig_pos1 是 capture_data()->_trig_pos,即驱动
+  // 通过 SR_DF_TRIGGER 包返回的最新 trigger_pos,这是正确的值。
+  _view->set_trig_cursor_posistion(trig_pos1);
 }
 
 void ViewDataSync::data_updated() {

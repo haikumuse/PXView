@@ -9,6 +9,7 @@
 #include <mutex>
 #include <vector>
 
+#include "cursorregistry.h"
 #include "../data/datasource.h"
 #include "../data/mathstack.h"
 #include "../data/sessiondata.h"
@@ -172,6 +173,15 @@ public:
   const data::TriggerConfig &trigger_config() const { return _trigger_config; }
   void set_trigger_config(const data::TriggerConfig &c) { _trigger_config = c; }
 
+  // --- Cursor registry (Task C2: cursor position state lives in Core so
+  //     headless MCP clients can enumerate/mutate cursors without a View).
+  //     View-layer view::Cursor objects are pure rendering objects that
+  //     read/write their position through this registry via the DataSource
+  //     interface (SigSession::get_cursors / add_cursor / remove_cursor /
+  //     set_cursor_position). ---
+  CursorRegistry &cursor_registry() { return _cursor_registry; }
+  const CursorRegistry &cursor_registry() const { return _cursor_registry; }
+
   // --- EventBus dispatch helpers (migrated from SigSession private methods)---
   void data_updated();
   void set_receive_data_len(quint64 len);
@@ -199,7 +209,11 @@ public:
   void clear_all_decode_task2();
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
   void attach_data_to_signal(SessionData *data);
-  void sync_trigger_to_libsigrok();
+  // Core→libsigrok 触发配置唯一同步点。
+  // disable_trigger=true 时（instant 模式）清除 session 上的 sr_trigger，
+  // 让所有 driver（demo/pxlogic/fx2lafw）都不等待触发，立即采集数据。
+  // 这是统一入口，避免在每个 driver 内部单独判断 instant 标志。
+  void sync_trigger_to_libsigrok(bool disable_trigger = false);
   void clear_glitch_filter_state_for_capture();
   uint16_t get_ch_num(int type);
   uint64_t cur_samplelimits();
@@ -249,6 +263,11 @@ private:
   std::vector<SessionData *> _data_list;
 
   data::TriggerConfig _trigger_config;
+
+  // Task C2: cursor position state mirror. Owned by the state context so
+  // both SigSession (Core) and the View layer (via DataSource) share one
+  // source of truth. Position-indexed (see CursorRegistry docs).
+  CursorRegistry _cursor_registry;
 };
 
 } // namespace core

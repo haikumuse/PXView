@@ -261,12 +261,34 @@ void SessionStateContext::set_cur_samplelimits(uint64_t samplelimits) {
       [](ICaptureCallback *cb) { cb->cur_samplelimits_changed(); });
 }
 
-void SessionStateContext::sync_trigger_to_libsigrok() {
+void SessionStateContext::sync_trigger_to_libsigrok(bool disable_trigger) {
   // Core→libsigrok 触发配置唯一同步点。在 sr_session_start 前一次性同步。
   //
   // Fork libsigrok 删除后，ds_trigger_* API 不复存在。改用上游 sr_trigger_*
   // API 同步 simple trigger。Adv/Serial trigger 字段保留在 TriggerConfig 中
   // 但暂不下发（UI 保留供 PXLogic 驱动未来扩展）。
+  //
+  // instant 模式（disable_trigger=true）：清除 session 上的 sr_trigger，
+  // 让所有 driver 都不等待触发：
+  //   - demo/fx2lafw: sr_session_trigger_get 返回 NULL → 不创建
+  //     soft_trigger_logic → 持续发送数据（恢复旧版 fork demo 行为）
+  //   - pxlogic: set_trigger() 走 "No session trigger set" 分支 →
+  //     trig_zero/one/fall/rise 全 0 → 硬件不配置触发位图
+  // 这样统一处理，避免在每个 driver 内部单独判断 instant 标志。
+  if (disable_trigger) {
+    if (_device_agent.sr_session()) {
+      struct sr_trigger *old =
+          sr_session_trigger_get(_device_agent.sr_session());
+      if (old) {
+        sr_trigger_free(old);
+      }
+      sr_session_trigger_set(_device_agent.sr_session(), nullptr);
+      pxv_info("sync_trigger_to_libsigrok: instant mode, trigger disabled "
+               "(all drivers skip trigger wait)");
+    }
+    return;
+  }
+
   const auto &cfg = _trigger_config;
 
   // Only Simple trigger mode is synced to the driver. Adv/Serial trigger

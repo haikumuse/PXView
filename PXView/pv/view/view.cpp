@@ -327,6 +327,11 @@ View::~View() {
 
 void View::set_data_source(pv::data::DataSource *source) {
   _data_sync->set_data_source(source);
+  // Task C2.7: reconcile the View's rendering cursor list with the Core
+  // CursorRegistry. This handles the headless -> GUI transition where MCP
+  // added cursors to Core before the View existed. Safe to call on every
+  // data-source binding (idempotent — only adds cursors that are missing).
+  sync_cursors_from_core();
 }
 
 void View::clear_signal_data() { _data_sync->clear_signal_data(); }
@@ -812,6 +817,10 @@ void View::del_xcursor(XCursor *xcursor) { _cursors->del_xcursor(xcursor); }
 void View::clear_cursors() { _cursors->clear_cursors(); }
 void View::set_cursor_middle(int index) { _cursors->set_cursor_middle(index); }
 Cursor *View::get_cursor_by_index(int index) { return _cursors->get_cursor_by_index(index); }
+// Task C2.7: forward drag-position write-back and Core list reconciliation
+// to the ViewCursors delegate.
+void View::sync_cursor_position(Cursor *cursor) { _cursors->sync_cursor_position_to_core(cursor); }
+void View::sync_cursors_from_core() { _cursors->sync_cursors_from_core(); }
 void View::set_search_pos(uint64_t search_pos, bool hit) { _cursors->set_search_pos(search_pos, hit); }
 uint64_t View::get_cursor_samples(int index) { return _cursors->get_cursor_samples(index); }
 QString View::get_cm_time(int index) { return _cursors->get_cm_time(index); }

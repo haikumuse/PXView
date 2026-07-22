@@ -32,6 +32,7 @@
 #include "core/datafeedparser.h"
 #include "core/documentregistry.h"
 #include "core/capturemanager.h"
+#include "core/measurecalculator.h"  // Task C1.5: MeasureCalculator::compute
 #include "data/analogsnapshot.h"
 #include "data/decode/decoder.h"
 #include "data/decoderstack.h"
@@ -2006,6 +2007,107 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
   return _state->view_data()->get_dso();
 }
 
+// Task C1.5: DSO measurement computation via core::MeasureCalculator.
+// Computes raw MeasurementResult list from the view_data() DsoSnapshot +
+// signal_models, then converts each result to api::MeasurementValue list
+// using the per-channel data_scale (vdiv) + measure_vf (probe factor from
+// SignalModel via DsoSnapshot) + vfactor (probe factor from SignalModel —
+// same value as the View layer's _vDial->get_factor(), kept in sync via
+// DsoSignal::set_factor → model->set_vfactor).
+//
+// The voltage formula preserves the original DsoMeasure behavior exactly:
+//   v_mV = raw_adc * data_scale * measure_vf * vfactor * DS_CONF_DSO_VDIVS
+//          / view_rect_height
+// where measure_vf and vfactor are both the probe factor (this matches the
+// original code where k = get_measure_voltage_factor() and _vDial->
+// get_factor() were both the probe factor). See dso_measure.cpp original
+// get_voltage(double v, int p, scaled=false).
+//
+// view_rect_height: 0 = use headless default (256). The View layer passes
+// its actual get_view_rect().height() so GUI-displayed voltages match the
+// original DsoMeasure computation exactly.
+std::vector<api::MeasurementValue>
+SigSession::get_measurements(int channel_index, int view_rect_height) {
+  std::vector<api::MeasurementValue> result;
+
+  SessionData *data = _state->view_data();
+  if (!data)
+    return result;
+
+  auto *dso = data->get_dso();
+  if (!dso || dso->empty())
+    return result;
+
+  auto &signal_models = get_signal_models();
+
+  // Step 1: compute raw MeasurementResult list (max/min/rms/mean per channel)
+  auto raw_results = core::MeasureCalculator::compute(
+      data, signal_models, channel_index, view_rect_height);
+
+  // Step 2: convert each raw result to api::MeasurementValue list
+  for (const auto &r : raw_results) {
+    // Look up data_scale and measure_vf from the DsoSnapshot (same source
+    // as the original DsoMeasure::get_voltage — set by
+    // SessionStateContext::set_cur_snap_samplerate from m->vdiv() and
+    // m->vfactor()).
+    double data_scale = 0.0;
+    uint64_t measure_vf = 1;
+    uint64_t vfactor = 1;
+
+    if (dso->has_data(r.channel_index)) {
+      data_scale = (double)dso->get_data_scale(r.channel_index);
+      measure_vf = dso->get_measure_voltage_factor(r.channel_index);
+    }
+
+    // Look up vfactor from the SignalModel (same value as the View layer's
+    // _vDial->get_factor() — kept in sync via DsoSignal::set_factor →
+    // model->set_vfactor). This is the Core-layer substitute for the
+    // View-only _vDial widget.
+    for (const auto &m : signal_models) {
+      if (m && m->index() == r.channel_index) {
+        vfactor = (uint64_t)m->vfactor();
+        break;
+      }
+    }
+
+    auto values = core::MeasureCalculator::to_measurement_values(
+        r, data_scale, measure_vf, vfactor, view_rect_height);
+
+    // Flatten into the result vector
+    for (auto &v : values) {
+      result.push_back(std::move(v));
+    }
+  }
+
+  return result;
+}
+
+// Task C2.4: cursor state forwarded to SessionStateContext::cursor_registry().
+// The registry is the single Core-layer source of truth for cursor positions;
+// the View layer (view::Cursor / ViewCursors) reads and writes through these
+// methods via the DataSource interface, and the MCP API (SessionService::
+// add_cursor / remove_cursor / get_cursors) does the same so headless mode
+// returns real data. add_cursor returns the positional index of the new entry.
+std::vector<core::CursorEntry> SigSession::get_cursors() const {
+  return _state->cursor_registry().get_cursors();
+}
+
+int SigSession::add_cursor(uint64_t sample_position) {
+  return _state->cursor_registry().add_cursor(sample_position);
+}
+
+bool SigSession::remove_cursor(int index) {
+  return _state->cursor_registry().remove_cursor(index);
+}
+
+bool SigSession::set_cursor_position(int index, uint64_t sample_position) {
+  return _state->cursor_registry().set_cursor_position(index, sample_position);
+}
+
+void SigSession::clear_cursors() {
+  _state->cursor_registry().clear();
+}
+
 void SigSession::set_active_document(data::SessionDocument *doc) {
   _document_registry->set_active_document(doc);
 }
@@ -2040,12 +2142,20 @@ void SigSession::set_trigger_config(const data::TriggerConfig &cfg) {
       {&_state->trigger_config()});
 }
 
-void SigSession::sync_trigger_to_libsigrok() {
+void SigSession::sync_trigger_to_libsigrok(bool disable_trigger) {
   // Core→libsigrok 触发配置唯一同步点。在 start_capture 内部 sr_session_start 前调用。
   //
   // Fork libsigrok 删除后，ds_trigger_* API 不复存在。改用上游 sr_trigger_* API
   // 同步 simple trigger。Adv/Serial trigger 字段保留在 TriggerConfig 中但暂不下发
   // （UI 保留供 PXLogic 驱动未来扩展）。
+  //
+  // instant 模式（disable_trigger=true）：转发到 SessionStateContext 的统一实现，
+  // 清除 session 上的 sr_trigger，让所有 driver 都不等待触发。
+  if (disable_trigger) {
+    _state->sync_trigger_to_libsigrok(true);
+    return;
+  }
+
   const auto &cfg = _state->trigger_config();
 
   // Always sync capture_ratio (trigger position as 0..100 percent) to the driver.
@@ -2104,15 +2214,19 @@ void SigSession::sync_trigger_to_libsigrok() {
       continue;
 
     int match = 0;
+    const char *match_name = "UNKNOWN";
     switch (m->trig_type()) {
-    case data::SignalModel::POSTRIG:  match = SR_TRIGGER_RISING;  any_triggered = true; break;
-    case data::SignalModel::NEGTRIG:  match = SR_TRIGGER_FALLING; any_triggered = true; break;
-    case data::SignalModel::HIGTRIG:  match = SR_TRIGGER_ONE;     any_triggered = true; break;
-    case data::SignalModel::LOWTRIG:  match = SR_TRIGGER_ZERO;    any_triggered = true; break;
-    case data::SignalModel::EDGTRIG:  match = SR_TRIGGER_EDGE;    any_triggered = true; break;
+    case data::SignalModel::POSTRIG:  match = SR_TRIGGER_RISING;  match_name = "RISING";  any_triggered = true; break;
+    case data::SignalModel::NEGTRIG:  match = SR_TRIGGER_FALLING; match_name = "FALLING"; any_triggered = true; break;
+    case data::SignalModel::HIGTRIG:  match = SR_TRIGGER_ONE;     match_name = "ONE";     any_triggered = true; break;
+    case data::SignalModel::LOWTRIG:  match = SR_TRIGGER_ZERO;    match_name = "ZERO";    any_triggered = true; break;
+    case data::SignalModel::EDGTRIG:  match = SR_TRIGGER_EDGE;    match_name = "EDGE";    any_triggered = true; break;
     case data::SignalModel::NONTRIG:
     default: continue; // skip non-trigger channels
     }
+
+    pxv_info("sync_trigger_to_libsigrok: ch index=%d (sr_ch index=%d, enabled=%d), trig_type=%d (%s)",
+             m->index(), ch->index, (int)ch->enabled, m->trig_type(), match_name);
 
     if (sr_trigger_match_add(stage, ch, match, 0.0f) != SR_OK) {
       pxv_warn("sync_trigger_to_libsigrok: sr_trigger_match_add failed for ch %d", m->index());

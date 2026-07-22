@@ -184,6 +184,24 @@ public:
   data::LogicSnapshot *get_logic_snapshot() override;
   data::AnalogSnapshot *get_analog_snapshot() override;
   data::DsoSnapshot *get_dso_snapshot() override;
+  // Task C1.5: DSO measurement computation via core::MeasureCalculator.
+  // Overrides DataSource::get_measurements() to compute real measurement
+  // values from the view_data() DsoSnapshot + signal_models. The View layer
+  // (view::DsoMeasure::get_measure) and the MCP API (SessionService::
+  // get_measurements) both call this so headless mode returns real data.
+  std::vector<api::MeasurementValue> get_measurements(
+      int channel_index = -1,
+      int view_rect_height = 0) override;
+  // Task C2.4: cursor position state forwarded to
+  // SessionStateContext::cursor_registry(). The View layer reads/writes
+  // through these so headless MCP clients see real cursor state without
+  // a View binding. add_cursor returns the positional index of the new
+  // entry, or -1 on failure.
+  std::vector<core::CursorEntry> get_cursors() const override;
+  int  add_cursor(uint64_t sample_position) override;
+  bool remove_cursor(int index) override;
+  bool set_cursor_position(int index, uint64_t sample_position) override;
+  void clear_cursors() override;
   SESSION_ERROR_STATUS get_error() { return _state->error(); }
   void set_error(SESSION_ERROR_STATUS state) { _state->set_error(state); }
   void clear_error();
@@ -315,7 +333,7 @@ public:
   bool is_disk_write_disk_full();
 private:
   void set_cur_samplelimits(uint64_t samplelimits); void set_cur_snap_samplerate(uint64_t samplerate);
-  void math_disable(); void sync_trigger_to_libsigrok();
+  void math_disable(); void sync_trigger_to_libsigrok(bool disable_trigger = false);
   template <typename Iface, typename F> void dispatch_to(F fn) { _event_bus->dispatch_to<Iface>(fn); }
   void data_updated(); void set_receive_data_len(quint64 len); void receive_header();
   void cur_snap_samplerate_changed(); void frame_began(); void frame_ended();
