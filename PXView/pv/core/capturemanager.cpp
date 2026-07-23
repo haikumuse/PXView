@@ -541,13 +541,45 @@ void CaptureManager::exit_capture() {
 }
 
 bool CaptureManager::get_capture_status(bool &triggered, int &progress) {
-  // Fork libsigrok's ds_get_actived_device_status + sr_status struct are
-  // gone. Upstream libsigrok does not expose per-sample capture progress.
-  // Return false to indicate progress tracking is unavailable; callers
-  // fall back to non-percentage-based waiting.
-  (void)triggered;
-  (void)progress;
-  return false;
+  // Fork libsigrok exposed per-sample capture progress via the sr_status
+  // struct + ds_get_actived_device_status(); both are gone after the
+  // upstream migration. Upstream libsigrok does not expose progress, but
+  // the data path already tracks how many samples have been fed in, so we
+  // synthesize progress here from the Core trigger flag (is_triged, set by
+  // DataFeedParser when the first data packet arrives) and the current
+  // capture buffer's sample count vs cur_samplelimits(). Callers (sidebar
+  // arc text in viewport_painter.cpp and MCP get_capture_status) gate on
+  // the bool return and read the triggered/progress out-params, so we
+  // always return true and let the out-params convey the state.
+  triggered = _state->is_triged();
+
+  const uint64_t sample_limits = _state->cur_samplelimits();
+  if (sample_limits == 0) {
+    progress = 0;
+    return true;
+  }
+
+  // Pick the active snapshot by work mode. MSO (Mixed Signal Oscilloscope)
+  // = LOGIC + analog channels; the logic snapshot is the primary data
+  // source, same merge as in SigSession::get_ring_sample_count().
+  data::Snapshot *snapshot = nullptr;
+  const int mode = _state->device_agent().get_work_mode();
+  if (mode == LOGIC || mode == MSO) {
+    snapshot = _state->capture_data()->get_logic();
+  } else if (mode == DSO) {
+    snapshot = _state->capture_data()->get_dso();
+  } else {
+    snapshot = _state->capture_data()->get_analog();
+  }
+
+  if (snapshot == nullptr) {
+    progress = 0;
+    return true;
+  }
+
+  const uint64_t sample_count = snapshot->get_sample_count();
+  progress = (int)(sample_count * 100 / sample_limits);
+  return true;
 }
 
 void CaptureManager::check_update() {

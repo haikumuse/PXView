@@ -237,10 +237,15 @@ public:
     struct sr_config *new_config(int key, GVariant *data);
     void free_config(struct sr_config *src);
 
-    // --- option_value_to_code (fork libsigrok API stub) ---
+    // --- option_value_to_code (fork libsigrok API replacement) ---
     // Fork libsigrok exposed ds_option_value_to_code for converting config
     // option string values to integer codes. Upstream libsigrok does not
-    // provide this — stub returns -1 (caller handles as "conversion failed").
+    // provide this directly — implemented here by querying the driver's
+    // config_list for `key` (as a GVariant string array) and returning the
+    // index of the entry matching `value`. Returns -1 if no match is found
+    // or the list is unavailable (caller falls back to default value 0).
+    // `mode` is retained for API compatibility but not applied — the
+    // driver's config_list handler already returns mode-appropriate options.
     int option_value_to_code(int mode, int key, const char *value);
 
     // --- Typed wrappers (View-layer convenience over get_config_*) ---

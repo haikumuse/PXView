@@ -144,10 +144,8 @@ struct ds_trigger_pos {
 #define SR_CHANNEL_MATH       10006
 #define SR_CHANNEL_GROUP      10007
 
-// Fork libsigrok probe-enable config key (upstream uses SR_CONF_PROBE_EN
-// differently / does not expose it). Defined here so SignalModel::commit_to_device
-// and set_probe_enabled compile until the DSO/probe paths are cleaned up.
-#define SR_CONF_PROBE_EN  60049
+// SR_CONF_PROBE_EN (60049) is now defined in libsigrok.h enum
+// (DSL Driver Extension Keys block). Was a fork-only stub here previously.
 
 // Backward-compat alias: upstream libsigrok renamed sr_input_format to
 // sr_input_module. Code referencing the old name is updated gradually.
@@ -191,48 +189,28 @@ struct ds_trigger_pos {
 // dsotriggerdock.cpp. DSO mode is deprecated.
 #define DSO_TRIGGER_AUTO  0
 
-// Fork libsigrok DSO trigger config keys (not in upstream 0.6.0).
-// Used by dsotriggerdock.cpp for DSO trigger channel/holdoff/margin setting.
-// DSO mode is deprecated (DSCope hardware dropped); these stubs exist for
-// UI/compile compat only — no fork backend processes them.
-#define SR_CONF_TRIGGER_CHANNEL  30012
-#define SR_CONF_TRIGGER_HOLDOFF  30015
-#define SR_CONF_TRIGGER_MARGIN   30016
+// SR_CONF_TRIGGER_CHANNEL (60078) / SR_CONF_TRIGGER_HOLDOFF (60079) /
+// SR_CONF_TRIGGER_MARGIN (60080) are now defined in libsigrok.h enum
+// (DSL Driver Extension Keys block). Values changed from old fork 30012/
+// 30015/30016 to avoid conflict with upstream SR_CONF_VDIV/SAMPLE_INTERVAL/
+// NUM_HDIV (which occupied those 30000-range slots in upstream 0.6.0).
 
 // Fork libsigrok time-unit conversion macro. SR_SEC(x) converts x seconds to
 // the internal time-base unit (nanoseconds). Used by sigsession.cpp /
 // samplingbar.cpp for time-base math: total_time = timebase * HDIVS / SR_SEC(1).
 #define SR_SEC(x)  ((uint64_t)(x) * 1000000000ULL)
 
-// Fork libsigrok config keys not in upstream libsigrok. Used by
-// capturemanager.cpp (wait-for-upload). Defined as 60050+ to avoid conflict
-// with 60040-60049 DSO keys.
-#define SR_CONF_WAIT_UPLOAD    60050
-
-// Fork libsigrok config keys not in upstream libsigrok. Used by
-// view_data_sync.cpp (actual samples) and mainwindow.cpp (file version).
-// Defined as 60056+ to avoid conflict with other stubs.
-#define SR_CONF_ACTUAL_SAMPLES   60056
-#define SR_CONF_FILE_VERSION     60058
-
-// Fork libsigrok channel/zero config keys. Used by triggerdock.cpp
-// (total channel num), samplingbar.cpp (RLE support).
-#define SR_CONF_TOTAL_CH_NUM       60062
-#define SR_CONF_RLE_SUPPORT        60065
+// SR_CONF_WAIT_UPLOAD (60050) / SR_CONF_ACTUAL_SAMPLES (60056) /
+// SR_CONF_FILE_VERSION (60058) are now defined in libsigrok.h enum
+// (DSL Driver Extension Keys block). Values preserved from old fork stubs.
 
 // Fork libsigrok analog probe mapping config keys were previously defined
 // here as 60059/60060/60061. They are now enum members of sr_config_keys
 // in upstream libsigrok.h (same numeric values). No #define stubs needed.
 
-// Fork libsigrok misc config keys not in upstream libsigrok. Used by
-// deviceoptions.cpp (STATUS/CLOCK_TYPE/BANDWIDTH_LIMIT/BANDWIDTH).
-// Defined as 60081+ in the free range between the DSO calibration keys
-// (60067-60079) and SR_CONF_USB (60088).
-// NOTE: SR_CONF_PROBE_CONFIGS is now in libsigrok.h enum (60062) and is
-// no longer #defined here.
-#define SR_CONF_CLOCK_TYPE          60082
-#define SR_CONF_BANDWIDTH_LIMIT     60083
-#define SR_CONF_BANDWIDTH           60084
+// SR_CONF_CLOCK_TYPE (60081) / SR_CONF_BANDWIDTH_LIMIT (60082) /
+// SR_CONF_BANDWIDTH (60083) are now defined in libsigrok.h enum
+// (DSL Driver Extension Keys block).
 
 // Fork libsigrok DSO trigger source/type enum values. Used by dsotriggerdock.cpp
 // (QButtonGroup IDs), dsosignal.cpp (slope comparison), capturemanager.cpp,
@@ -276,15 +254,9 @@ struct ds_trigger_pos {
 // human-readable string. Caller must g_free() the returned pointer.
 char *sr_time_string(uint64_t duration);
 
-// Fork libsigrok sr_datatype enum extensions. Upstream sr_datatype enum
-// (libsigrok.h) defines SR_T_UINT64=10000 through SR_T_UINT32=10011. Fork
-// libsigrok added SR_T_UINT8/INT16/CHAR/LIST for DSO config variants. These
-// never appear in upstream driver config_info, so comparisons are always
-// false (safe stub). Defined as 10012+ to avoid conflict.
-#define SR_T_UINT8  10012
-#define SR_T_INT16  10013
-#define SR_T_CHAR   10014
-#define SR_T_LIST   10015
+// SR_T_UINT8 (10012) / SR_T_INT16 (10013) / SR_T_CHAR (10014) /
+// SR_T_LIST (10015) / SR_T_UINT16 (10016) are now defined in libsigrok.h
+// enum sr_datatype (DSL Driver Extension types block).
 
 // Fork libsigrok DSO measurement type enum. Used by DsoMeasure / DsoSignal /
 // ViewStatus for DSO auto-measurements. DSO mode is deprecated; values

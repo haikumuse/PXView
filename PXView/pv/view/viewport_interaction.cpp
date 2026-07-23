@@ -44,6 +44,7 @@
 #include <QScrollBar>
 #include <QStyleOption>
 #include <QWheelEvent>
+#include <QDateTime>
 #include <math.h>
 #include <set>
 
@@ -63,7 +64,7 @@ namespace pv {
 namespace view {
 
 ViewportInteraction::ViewportInteraction(Viewport *viewport)
-    : _viewport(viewport) {}
+    : _viewport(viewport), _last_wheel_zoom_ms(0) {}
 
 ViewportInteraction::~ViewportInteraction() {}
 
@@ -889,7 +890,15 @@ void ViewportInteraction::wheelEvent(QWheelEvent *event) {
         _viewport->_view.zoom(-zoom_scale, x);
       }
 #else
-      _viewport->_view.zoom(zoom_scale, x);
+      // 性能修复: Windows 路径加 50ms 节流，合并高精度滚轮/触控板的密集 tick。
+      // 旧代码每个 wheel event 同步触发 zoom→viewport_update→重绘链路，
+      // 配合模拟通道逐样本绘制导致严重卡顿 (macOS 路径已有节流，Windows 被遗漏)。
+      // 若距上次缩放不足 50ms 则跳过本次 tick，避免连续同步重绘堆积。
+      const int64_t cur_ms = QDateTime::currentMSecsSinceEpoch();
+      if (cur_ms - _last_wheel_zoom_ms > 50) {
+        _viewport->_view.zoom(zoom_scale, x);
+        _last_wheel_zoom_ms = cur_ms;
+      }
 #endif
     } else {
       bLstTime = false;

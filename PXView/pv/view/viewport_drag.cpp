@@ -26,6 +26,7 @@
 #include "ruler.h"
 
 #include "../sigsession.h"
+#include "analogsignal.h"
 #include "dsosignal.h"
 #include "logicsignal.h"
 #include "signal.h"
@@ -123,6 +124,19 @@ void ViewportDrag::applyDragFrame() {
             curX = min(dsoSig->get_view_rect().right(), curX);
             if (curX < dsoSig->get_view_rect().left()) {
               curX = dsoSig->get_view_rect().left();
+            }
+            break;
+          }
+          /* ANALOG mode: clamp curX to the viewport bounds so cursors
+           * can't be dragged outside the signal area. The original
+           * DSView had no branch for ANALOG here, leaving curX
+           * unclamped — a known bug. */
+          if (mode == ANALOG && s->signal_type() == SR_CHANNEL_ANALOG) {
+            view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
+            QRect vr = analogSig->get_view_rect();
+            curX = min(vr.right(), curX);
+            if (curX < vr.left()) {
+              curX = vr.left();
             }
             break;
           }

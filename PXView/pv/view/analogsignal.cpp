@@ -54,13 +54,33 @@ QColor AnalogSignal::getSignalColor(int index) {
   return c.isValid() ? c : SignalColours[index % 4];
 }
 
+// LDO (Low-Density Optimization) 双路径阈值，参考逻辑信号
+// LogicSignal::paint_mid_align (logicsignal.cpp:200-224) 的密度分界:
+//   低密度 (_cur_edges.size() < max_togs) → 连接线 (连续外观)
+//   高密度 (>= max_togs)                  → 每像素条 (条重叠成连续外观)
+//
+// 模拟信号的对偶:
+//   spp < EnvelopeThreshold  → paint_trace (逐样本折线, 恒连续)
+//   spp >= EnvelopeThreshold → paint_envelope (竖直矩形带)
+//
+// 阈值取 EnvelopeScaleFactor=16 是 envelope 矩形相切的临界点:
+//   envelope level-0 scale=16, scale_pixels_per_samples = 16/spp
+//   spp=16 → 1px/矩形, 矩形相切 → 连续
+//   spp<16 → >1px/矩形, 矩形间留白 → 离散线条 (用户反馈的缺陷)
+//   spp>16 → <1px/矩形, 矩形重叠 → 连续
+// 故 spp<16 必须走 paint_trace 折线才能保持连续外观。
+//
+// 性能由两处独立保证, 不靠降低阈值:
+//   1. paint_trace 复用成员缓冲 _points (消除每帧 new/delete)
+//   2. ViewportInteraction Windows 滚轮 50ms 节流 (合并密集 tick)
+// spp<16 时可见样本数 = spp*width <= 16*width, 折线绘制开销有上界。
 const float AnalogSignal::EnvelopeThreshold = 16.0f;
 
 AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
                            data::DataSource *data_source)
-    : Signal(model, data_source), _data(data), _rects(NULL),
-      _cached_hw_offset(model ? model->hw_offset() : 128), _hover_en(false),
+    : Signal(model, data_source), _data(data), _rects(NULL), _points(NULL),
+      _points_cap(0), _cached_hw_offset(model ? model->hw_offset() : 128), _hover_en(false),
       _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0),
       _float_scale(1.0f) {
   _typeWidth = 5;
@@ -113,8 +133,8 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s,
                            pv::data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
                            data::DataSource *data_source)
-    : Signal(*s, model, data_source), _data(data), _rects(NULL),
-      _cached_hw_offset(s->_cached_hw_offset), _hover_en(false),
+    : Signal(*s, model, data_source), _data(data), _rects(NULL), _points(NULL),
+      _points_cap(0), _cached_hw_offset(s->_cached_hw_offset), _hover_en(false),
       _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0),
       _float_scale(s->_float_scale) {
   _typeWidth = 5;
@@ -138,6 +158,11 @@ AnalogSignal::~AnalogSignal() {
   if (_rects) {
     delete[] _rects;
     _rects = NULL;
+  }
+  if (_points) {
+    delete[] _points;
+    _points = NULL;
+    _points_cap = 0;
   }
 }
 
@@ -403,6 +428,11 @@ void AnalogSignal::resize() {
     delete[] _rects;
     _rects = NULL;
   }
+  if (_points) {
+    delete[] _points;
+    _points = NULL;
+    _points_cap = 0;
+  }
 }
 
 /**
@@ -587,7 +617,15 @@ void AnalogSignal::paint_trace(
     p.setPen(_colour);
     // p.setPen(QPen(_colour, 2, Qt::SolidLine));
 
-    QPointF *points = new QPointF[sample_count];
+    // 性能修复: 复用成员缓冲 _points，避免每帧 new/delete。
+    // 仅当现有容量不足时才重新分配 (类比 paint_envelope 对 _rects 的处理)。
+    if (!_points || _points_cap < sample_count) {
+      if (_points)
+        delete[] _points;
+      _points_cap = sample_count;
+      _points = new QPointF[_points_cap];
+    }
+    QPointF *points = _points;
     QPointF *point = points;
     uint64_t yindex = start_index;
 
@@ -636,7 +674,7 @@ void AnalogSignal::paint_trace(
     }
 
     p.drawPolyline(points, point - points);
-    delete[] points;
+    // 不释放 points: 复用成员缓冲 _points，由析构/resize 统一释放。
   }
 }
 

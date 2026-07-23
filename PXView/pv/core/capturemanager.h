@@ -68,6 +68,12 @@ public:
   bool action_stop_capture();
 
   // --- Status queries ---
+  // Synthesized from the Core trigger flag (is_triged, set by DataFeedParser
+  // on first data packet) and the active capture buffer's sample count vs
+  // cur_samplelimits(). Fork libsigrok's sr_status/ds_get_actived_device_status
+  // are gone; upstream libsigrok does not expose per-sample progress, so this
+  // derivation replaces them. Always returns true; triggered/progress convey
+  // the state (used by the sidebar arc text and MCP get_capture_status).
   bool get_capture_status(bool &triggered, int &progress);
   int get_repeat_hold();
   bool is_first_store_confirm();

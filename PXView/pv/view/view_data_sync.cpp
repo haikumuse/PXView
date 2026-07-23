@@ -412,7 +412,19 @@ uint64_t ViewDataSync::pixel2index(double pixel) {
   const double samples_per_pixel = rateValue * scaleValue;
   const double index = (pixel + offsetValue) * samples_per_pixel - hoffValue;
 
+  /* Clamp to [0, sample_limit-1] to prevent cursor indices from exceeding
+   * the valid sample range. Without this, dragging a cursor to the view's
+   * right edge (or negative pixel values wrapping to uint64_t max) produces
+   * an out-of-bounds index that corrupts measurements and can crash
+   * snapshot accessors. cur_samplelimits() is the configured capture depth —
+   * the maximum valid sample index for the current session. */
+  if (index < 0)
+    return 0;
+
   const uint64_t sampleIndex = (uint64_t)std::round(index);
+  const uint64_t sample_limit = _view->document_snapshot_source()->cur_samplelimits();
+  if (sample_limit > 0 && sampleIndex >= sample_limit)
+    return sample_limit - 1;
 
   return sampleIndex;
 }

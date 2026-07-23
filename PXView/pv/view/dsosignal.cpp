@@ -610,6 +610,8 @@ void DsoSignal::paint_prepare() {
         const int64_t i1 = trig_index - i;
         if (i1 < 0)
           break;
+        if (i0 < 0)          /* prevent trig_samples[-1] read when trig_index==0 */
+          break;
         const uint8_t t0 = trig_samples[i0];
         const uint8_t t1 = trig_samples[i1];
         if ((slope == DSO_TRIGGER_RISING && t0 >= _trig_value &&
@@ -912,8 +914,14 @@ void DsoSignal::paint_trace(QPainter &p, const pv::data::DsoSnapshot *snapshot,
         const_cast<pv::data::DsoSnapshot *>(snapshot);
     const uint8_t *const samples_buffer =
         pshot->get_samples(start, end, get_index());
-    ;
-    assert(samples_buffer);
+
+    /* AGENTS.md: assert() is a no-op in Release — use explicit null check.
+     * If the snapshot has not yet allocated channel data, get_samples
+     * returns a wild pointer (NULL + offset). Bail out safely instead. */
+    if (!samples_buffer) {
+      pxv_warn("[DSO] paint_trace: samples_buffer is NULL, skipping draw");
+      return;
+    }
 
     QColor trace_colour = _colour;
     trace_colour.setAlpha(View::ForeAlpha);

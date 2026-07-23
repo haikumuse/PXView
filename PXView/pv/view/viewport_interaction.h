@@ -69,6 +69,11 @@ private:
   LogicSignal *get_hovered_logic_signal(const QPoint &pos);
 
   Viewport *_viewport;
+  // 性能修复: 滚轮缩放节流时间戳 (毫秒)。
+  // Windows 高精度滚轮/触控板每秒可产生数十个 wheel event，每个都同步触发
+  // zoom→viewport_update→重绘链路，配合模拟通道逐样本绘制导致卡顿。
+  // 参照 macOS 路径的 50ms 节流，Windows 路径同样合并相邻 tick。
+  int64_t _last_wheel_zoom_ms;
 };
 
 } // namespace view

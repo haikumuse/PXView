@@ -1467,12 +1467,63 @@ void DeviceAgent::free_config(struct sr_config *src)
 
 int DeviceAgent::option_value_to_code(int mode, int key, const char *value)
 {
+    /* Fork libsigrok's ds_option_value_to_code is not available in upstream
+     * libsigrok. Upstream's sr_config_list already returns the mode-
+     * appropriate string list (the driver's config_list handler checks the
+     * current mode internally), so `mode` does not need to be applied again
+     * here — it is retained only for API compatibility. */
     (void)mode;
-    (void)key;
-    (void)value;
-    // Fork libsigrok ds_option_value_to_code is not available in upstream
-    // libsigrok. Return -1 so caller falls back to default value.
-    return -1;
+
+    if (!value || !_di)
+        return -1;
+
+    /* Find a channel group to query config_list against. Prefer the first
+     * DSO channel group (per-probe SR_T_LIST keys used by DSO configs are
+     * cg-scoped in the demo/DSL drivers); otherwise fall back to the first
+     * available group so device-level list keys still resolve. */
+    const struct sr_channel_group *cg = NULL;
+    const struct sr_channel_group *first_cg = NULL;
+    for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
+        const struct sr_channel_group *grp =
+            (const struct sr_channel_group *)l->data;
+        if (!grp)
+            continue;
+        if (!first_cg)
+            first_cg = grp;
+        if (grp->channels) {
+            const struct sr_channel *ch =
+                (const struct sr_channel *)grp->channels->data;
+            if (ch && ch->type == SR_CHANNEL_DSO) {
+                cg = grp;
+                break;
+            }
+        }
+    }
+    if (!cg)
+        cg = first_cg;
+
+    GVariant *gvar = get_config_list(cg, key);
+    if (!gvar)
+        return -1;
+
+    /* g_variant_get_strv returns a freshly-allocated NULL-terminated array
+     * of pointers into the GVariant's internal buffer. The array must be
+     * g_free'd; the variant must be g_variant_unref'd after we are done
+     * with the strings. */
+    int result = -1;
+    gsize n_items = 0;
+    const gchar **strs = g_variant_get_strv(gvar, &n_items);
+    if (strs) {
+        for (gsize i = 0; i < n_items; i++) {
+            if (strs[i] && strcmp(strs[i], value) == 0) {
+                result = (int)i;
+                break;
+            }
+        }
+        g_free(strs);
+    }
+    g_variant_unref(gvar);
+    return result;
 }
 
 // Fork libsigrok sr_time_string stub. Formats a duration (in nanoseconds)

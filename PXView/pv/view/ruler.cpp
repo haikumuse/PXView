@@ -361,13 +361,13 @@ void Ruler::mouseReleaseEvent(QMouseEvent *event)
                     int msx = _cursor_sel_x;
                     if (msx < 0)
                         msx = 0;
-                    
+
                     int body_width = _view.get_body_width();
                     if (msx > body_width)
                         msx = body_width;
 
                     auto &cursor_list = _view.get_cursorList();
-                    uint64_t index = _view.pixel2index(_cursor_sel_x);
+                    uint64_t index = _view.pixel2index(msx);
                     overCursor = in_cursor_sel_rect(event->position().toPoint());
 
                     if (overCursor == 0) {

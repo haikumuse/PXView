@@ -360,16 +360,26 @@ const uint8_t *DsoSnapshot::get_samples(int64_t start_sample, int64_t end_sample
 
 	assert(start_sample >= 0);
     assert(start_sample < (int64_t)_sample_count);
-	assert(end_sample >= 0);
+    assert(end_sample >= 0);
     assert(end_sample < (int64_t)_sample_count);
-	assert(start_sample <= end_sample);
+    assert(start_sample <= end_sample);
 
     int order = get_ch_order(ch_index);
 
     if (order == -1){
         pxv_err("The channel index is not exist:%d", ch_index);
         assert(false);
-    } 
+        return nullptr;
+    }
+
+    /* AGENTS.md: assert() is a no-op in Release. If _ch_data[order] has
+     * not been allocated yet (channel data not populated), return nullptr
+     * so callers can check for null instead of dereferencing a wild pointer
+     * (NULL + start_sample). */
+    if (!_ch_data[order]) {
+        pxv_warn("DsoSnapshot::get_samples: _ch_data[%d] is NULL", order);
+        return nullptr;
+    }
 
     return (uint8_t*)_ch_data[order] + start_sample;
 }

@@ -3037,6 +3037,27 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
   }
+
+  /* If the currently-open drawer page belongs to a sidebar item that is
+   * now invisible (e.g. switching DSO→ANALOG hides SIDEBAR_TRIGGER while
+   * the DsoTriggerDock drawer is still open), close the drawer so the user
+   * doesn't see stale content from the previous mode. Without this, the
+   * drawer remains open but the sidebar button to close it is invisible. */
+  if (_sliding_drawer && _sliding_drawer->isOpen()) {
+    int cp = _drawer_current_page;
+    bool should_close = false;
+    if (cp == _drawer_page_trigger || cp == _drawer_page_dso_trigger)
+      should_close = !_side_bar->isItemVisible(SIDEBAR_TRIGGER);
+    else if (cp == _drawer_page_protocol)
+      should_close = !_side_bar->isItemVisible(SIDEBAR_DECODE);
+    else if (cp == _drawer_page_search)
+      should_close = !_side_bar->isItemVisible(SIDEBAR_SEARCH);
+    if (should_close) {
+      _sliding_drawer->close();
+      _side_bar->clearAllChecked();
+      _drawer_current_page = -1;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
