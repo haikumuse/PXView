@@ -791,6 +791,18 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
         min(max((int64_t)ceil(end) + 1, (int64_t)0), last_sample);
     const int hw_offset = get_hw_offset();
 
+    static thread_local int _dso_paint_dbg = 0;
+    if ((++_dso_paint_dbg % 50) == 0) {
+      pxv_info("[DSO-PAINT] sample_count=%llu last_sample=%lld offset=%lld "
+               "scale=%.9g spp=%.4f start=%.1f end=%.1f start_sample=%lld "
+               "end_sample=%lld span=%lld trig_hoff=%.2f",
+               (unsigned long long)_data->get_sample_count(),
+               (long long)last_sample, (long long)offset, scale,
+               samples_per_pixel, start, end, (long long)start_sample,
+               (long long)end_sample, (long long)(end_sample - start_sample + 1),
+               _view->trig_hoff());
+    }
+
     if (samples_per_pixel < EnvelopeThreshold) {
       _data->enable_envelope(false);
       paint_trace(p, _data, zeroY, left, start_sample, end_sample, hw_offset,
@@ -1160,11 +1172,16 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     }
 
     // User interaction changed device options (vDial/acdc/factor). Broadcast
-    // so MCP/WS clients receive a push notification. The individual setters
-    // (set_factor/set_acCoupling/go_vDial*) deliberately do NOT broadcast
-    // because they are also called from JSON restore paths (rebuild loop
-    // risk); mouse_press is the user-interaction entry point per AGENTS.md.
-    _view->session().broadcast_async<interface::DeviceOptionsUpdated>({});
+    // DsoViewOptionChanged (NOT DeviceOptionsUpdated) so MCP/WS clients receive
+    // a push notification AND dock panels refresh, WITHOUT triggering
+    // reload()/rebuild_signals() which would drop View-only state
+    // (_stop_scale resets to 1 in path-B full rebuild → waveform no longer
+    // scales with vdiv). The individual setters (set_factor/set_acCoupling/
+    // go_vDial*) deliberately do NOT broadcast because they are also called
+    // from JSON restore paths (rebuild loop risk); mouse_press is the
+    // user-interaction entry point per AGENTS.md.
+    _view->session().broadcast_async<interface::DsoViewOptionChanged>(
+        interface::DsoViewOptionChanged{get_index()});
     return true;
   }
   return false;
@@ -1179,12 +1196,13 @@ bool DsoSignal::mouse_wheel(int right, const QPoint pt, const int shift) {
       go_vDialPre(true);
     else if (shift < -0.5)
       go_vDialNext(true);
+    // Same rationale as mouse_press: notify docks/MCP without rebuild.
+    _view->session().broadcast_async<interface::DsoViewOptionChanged>(
+        interface::DsoViewOptionChanged{get_index()});
     return true;
   } else {
     return false;
   }
-
-  return true;
 }
 
 QRectF DsoSignal::get_rect(DsoSetRegions type, int y, int right) {

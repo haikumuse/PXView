@@ -249,6 +249,7 @@ private:
     void on_event(const pv::interface::TriggerConfigChanged &) override;
     void on_event(const pv::interface::SampleCountUpdated &) override;
     void on_event(const pv::interface::DeviceOptionsUpdated &) override;
+    void on_event(const pv::interface::DsoViewOptionChanged &) override;
     void on_event(const pv::interface::ActiveDocumentChanged &) override;
     void on_event(const pv::interface::CopyToDocDone &) override;
     void on_event(const pv::interface::DecodeDone &) override;

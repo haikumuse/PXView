@@ -2804,7 +2804,9 @@ void MainWindow::reset_all_view() {
   _trig_bar->reload();
   _dso_trigger_widget->update_view();
   _measure_widget->reload();
-  _device_options_widget->update_view();
+  // DeviceOptionsDock refresh is handled by the caller:
+  //   - DeviceModeChanged  → on_mode_changed() (lightweight, preserves scaffolding)
+  //   - CurrentDeviceChanged → update_view() (full rebuild, called explicitly at line ~3160)
   // if (_sliding_drawer->isOpen())
   //   _sliding_drawer->close();
   // _side_bar->clearAllChecked();
@@ -3351,6 +3353,22 @@ void MainWindow::on_event(const pv::interface::DeviceOptionsUpdated &) {
   current_view()->rebuild_signals();
   current_view()->signals_changed(NULL);
 }
+void MainWindow::on_event(const pv::interface::DsoViewOptionChanged &) {
+  // DSO header interaction (vDial/factor/acCoupling). The DsoSignal setters
+  // already synced driver + Core model + View state; we only need to refresh
+  // dock panels and persist config. reload()/rebuild_signals() are explicitly
+  // avoided here because they drop View-only state (_stop_scale resets to 1
+  // in path-B full rebuild → waveform no longer scales with vdiv).
+  _trigger_widget->device_updated();
+  _device_options_widget->device_updated();
+  _measure_widget->reload();
+
+  pv::TabContext *ctx = current_context();
+  if (ctx && ctx->document()) {
+    ctx->document()->save_signal_config(
+        _session->get_signal_models(), build_channel_layout(current_view()));
+  }
+}
 void MainWindow::on_event(const pv::interface::SampleRateChanged &) {
   _trigger_widget->device_updated();
   current_view()->timebase_changed();
@@ -3369,6 +3387,11 @@ void MainWindow::on_event(const pv::interface::DeviceModeChanged &) {
   reset_all_view();
   load_device_config();
   update_title_bar_text();
+  // Lightweight refresh of DeviceOptionsDock: only rebuild the dynamic panel
+  // (channel area) and Mode section, preserving scaffolding (separators,
+  // minWid, stretch, sampling widget). Avoids the full nuke-and-rebuild of
+  // update_view() which caused UI jumping on mode switch.
+  _device_options_widget->on_mode_changed();
   // Calibration dialog removed; nothing to hide.
 
   update_toolbar_view_status();

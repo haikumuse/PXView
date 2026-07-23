@@ -170,8 +170,15 @@ DeviceOptions::DeviceOptions(SigSession *session)
             break;
 
 		case SR_CONF_TIMEBASE:
-            bind_enum(name, label, key, gvar_list, print_timebase);
-			break;
+            /* Skip: SamplingBar 已经提供时基下拉框（DSO 模式下由
+             * SR_CONF_MAX/MIN_TIMEBASE 驱动生成 500ms/div ... 10ns/div
+             * 列表）。此处再次绑定会出现重复控件，且 print_timebase 期望
+             * GVariant 类型为 "(tt)" 元组，但 demo 等驱动 config_list
+             * 返回 uint64 数组（std_gvar_array_u64），类型不匹配导致
+             * g_variant_get 取到未初始化值，下拉框显示成错误的"8s"。
+             * 驱动 devopts[] 保留 SR_CONF_TIMEBASE 声明，hwdriver.c
+             * check_key() 仍允许 SamplingBar 路径 get/set/list。 */
+            continue;
 
         case SR_CONF_BANDWIDTH_LIMIT:
             bind_bandwidths(name, label, key, gvar_list);

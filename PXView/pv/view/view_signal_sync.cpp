@@ -629,7 +629,12 @@ void ViewSignalSync::rebuild_signals_from_config(
     case SR_CHANNEL_DSO:
       pxv_info("rebuild: creating DsoSignal for index=%d", ch.index);
       if (old_signal) {
-        signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
+        // carry over 旧 _data 快照指针，避免 rebuild 后 set_data 条件重绑
+        // (依赖 _document->has_data()) 未命中时 _data 为 nullptr 导致波形消失。
+        // 快照由 document/session 持有，old_signal 析构不释放，指针安全。
+        // 若后续 set_data 重绑命中，会覆盖为最新 active 快照。
+        signal = new DsoSignal(static_cast<DsoSignal *>(old_signal),
+                               static_cast<DsoSignal *>(old_signal)->data(),
                                model, _view->_data_source);
       } else {
         signal = new DsoSignal(nullptr, model, _view->_data_source);

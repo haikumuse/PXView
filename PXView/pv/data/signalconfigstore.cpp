@@ -321,6 +321,49 @@ void SignalConfigStore::apply_signal_config() {
       // no-op: probe->map_unit/min/max writes removed
     }
   }
+
+  // Safety net: ensure at least one channel of the current work mode's type
+  // remains enabled. The saved .pxc may carry stale enabled=false for all
+  // channels of the active mode (e.g. demo2.pxc saved with all ANALOG
+  // channels disabled). Without this, SigSession::reload() finds no enabled
+  // channel of the active mode → "Unable to create any channel" →
+  // clear_signals() → viewport disappears. switch_work_mode() had correctly
+  // enabled the mode's channels, but apply_signal_config() then overwrote
+  // them with the stale saved state. Force-enable the first channel of the
+  // active mode type if none survived.
+  {
+    sr_channel *first_mode_ch = nullptr;
+    bool any_mode_enabled = false;
+    for (const GSList *l = agent->get_channels(); l; l = l->next) {
+      sr_channel *const probe = (sr_channel *)l->data;
+      if (!probe)
+        continue;
+      bool is_mode_type = false;
+      switch (mode) {
+      case LOGIC:  is_mode_type = (probe->type == SR_CHANNEL_LOGIC);  break;
+      case DSO:    is_mode_type = (probe->type == SR_CHANNEL_DSO);    break;
+      case ANALOG: is_mode_type = (probe->type == SR_CHANNEL_ANALOG); break;
+      case MSO:    is_mode_type = (probe->type == SR_CHANNEL_LOGIC ||
+                                   probe->type == SR_CHANNEL_ANALOG); break;
+      default: break;
+      }
+      if (!is_mode_type)
+        continue;
+      if (!first_mode_ch)
+        first_mode_ch = probe;
+      if (probe->enabled) {
+        any_mode_enabled = true;
+        break;
+      }
+    }
+    if (!any_mode_enabled && first_mode_ch) {
+      agent->enable_probe(first_mode_ch, true);
+      pxv_warn("apply_signal_config: all %d-mode channels were disabled "
+               "in .pxc; force-enabling ch[%d] '%s' to avoid empty viewport",
+               mode, first_mode_ch->index,
+               first_mode_ch->name ? first_mode_ch->name : "(null)");
+    }
+  }
 }
 
 void SignalConfigStore::apply_pending_config() {

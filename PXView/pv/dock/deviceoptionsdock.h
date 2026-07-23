@@ -56,6 +56,7 @@ public:
   ~DeviceOptionsDock();
 
   void update_view();
+  void on_mode_changed();
   void device_updated();
   void update_widgets_status();
 

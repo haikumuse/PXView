@@ -4154,6 +4154,12 @@ void SessionService::on_event(const pv::interface::DeviceOptionsUpdated &) {
                     {{"detail", "options_updated"}});
 }
 
+void SessionService::on_event(const pv::interface::DsoViewOptionChanged &ev) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged,
+                    {{"detail", "dso_view_option"},
+                     {"channel_index", std::to_string(ev.channel_index)}});
+}
+
 void SessionService::on_event(const pv::interface::SampleRateChanged &) {
     broadcast_event(ServiceEvent::DeviceConfigChanged,
                     {{"detail", "duration_updated"}});

@@ -332,6 +332,7 @@ public:
     void on_event(const pv::interface::UsbDeviceArrived &) override;
     void on_event(const pv::interface::CurrentDeviceChanged &) override;
     void on_event(const pv::interface::DeviceOptionsUpdated &) override;
+    void on_event(const pv::interface::DsoViewOptionChanged &) override;
     void on_event(const pv::interface::SampleRateChanged &) override;
     void on_event(const pv::interface::CollectModeChanged &) override;
     void on_event(const pv::interface::DataPoolChanged &) override;

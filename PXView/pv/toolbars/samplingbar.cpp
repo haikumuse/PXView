@@ -661,6 +661,16 @@ void SamplingBar::update_sample_count_selector() {
 
   pxv_info("Update sample count list.");
 
+  // DSO 模式下拉内容是 time/div（时基），非 DSO 模式是采样深度（总捕获时长）。
+  // 标签需要随模式切换，否则用户看到"采样深度"标签下显示"ms/div"会误解为电压刻度。
+  if (_device_agent && _device_agent->get_work_mode() == DSO) {
+    _depth_label->setText(
+        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_TIMEBASE), "时基"));
+  } else {
+    _depth_label->setText(
+        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"));
+  }
+
   if (_updating_sample_count) {
     pxv_err("Error! The sample count is updating.");
     return;
@@ -990,7 +1000,27 @@ double SamplingBar::commit_hori_res() {
            (unsigned long long)max_sample_rate, dso_ch_num,
            (unsigned long long)sample_rate);
 
-  set_sample_rate(sample_rate);
+  // 直接设置采样率到设备，不调用 set_sample_rate() → commit_settings()。
+  // commit_settings() 会广播 DeviceOptionsUpdated → SigSession::reload()，
+  // 重建所有 SignalModel（重操作）。时基切换不需要重建 SignalModel
+  // （通道结构没变，只是采样率/时基变了），reload 会导致滚轮切换时基
+  // 严重卡顿（每次 tick 重建一次 SignalModel + View 重新绑定）。
+  // DSView 的 commit_settings() 不广播任何事件，所以滚轮很流畅。
+  // 这里仍更新 _sample_rate 下拉框显示（断开信号避免递归触发 on_samplerate_sel）。
+  disconnect(_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
+             this, &SamplingBar::on_samplerate_sel);
+  for (int i = _sample_rate->count() - 1; i >= 0; i--) {
+    uint64_t cur = _sample_rate->itemData(i).value<uint64_t>();
+    if (sample_rate >= cur) {
+      _sample_rate->setCurrentIndex(i);
+      break;
+    }
+  }
+  connect(_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplerate_sel);
+
+  if (sample_rate != _device_agent->get_sample_rate())
+    _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
   _device_agent->set_config_uint64(SR_CONF_TIMEBASE, hori_res);
 

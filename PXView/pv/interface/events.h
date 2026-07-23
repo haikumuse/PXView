@@ -128,6 +128,20 @@ struct SampleCountUpdated {
 // DeviceOptionsUpdated — device options changed; signals need reload.
 struct DeviceOptionsUpdated {};
 
+// DsoViewOptionChanged — DSO view-layer option changed from header interaction
+// (vDial/factor/acCoupling). Unlike DeviceOptionsUpdated, this does NOT trigger
+// reload()/rebuild_signals() because go_vDial*/set_factor/set_acCoupling have
+// already synced driver (set_config_*), Core model (model->set_vdiv/...), and
+// View state (_stop_scale/_scale/_vDial/_acCoupling). A rebuild here would
+// drop View-only state (_stop_scale resets to 1 in path-B full rebuild,
+// causing the waveform to no longer scale with vdiv — see go_vDialPre/Next).
+// Listeners: MainWindow refreshes docks + persists config; SigSession skips
+// reload; SessionService forwards to MCP/WS clients.
+struct DsoViewOptionChanged {
+    int channel_index; // -1 = unspecified / batch
+    DsoViewOptionChanged(int idx = -1) : channel_index(idx) {}
+};
+
 // ActiveDocumentChanged — the active SessionDocument switched.
 struct ActiveDocumentChanged {
     data::SessionDocument *old_doc;
@@ -331,6 +345,7 @@ public:
     virtual void on_event(const TriggerConfigChanged &) {}
     virtual void on_event(const SampleCountUpdated &) {}
     virtual void on_event(const DeviceOptionsUpdated &) {}
+    virtual void on_event(const DsoViewOptionChanged &) {}
     virtual void on_event(const ActiveDocumentChanged &) {}
     virtual void on_event(const CopyToDocDone &) {}
     virtual void on_event(const DecodeDone &) {}

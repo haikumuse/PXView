@@ -402,6 +402,12 @@ bool CaptureManager::exec_capture() {
   // bind to the old, cleared document snapshot and fail to show results.
   _state->attach_data_to_signal(_state->capture_data());
 
+  // 将应用层 _is_instant 同步到驱动 SR_CONF_INSTANT。
+  // demo 驱动读取 devc->instant 决定 DSO 单帧/连续采集语义；其他驱动
+  // 不支持此 key 时 set_config_bool 静默失败（pxv_dbg 日志），无副作用。
+  // 旧注释"driver no longer reads instant mode"是错误的——demo 驱动确实读取。
+  _state->device_agent().set_config_bool(SR_CONF_INSTANT, _is_instant);
+
   // Core→libsigrok 触发配置唯一同步点。在 ds_start_collect 前一次性同步，
   // 消除 TriggerDock/SessionService 各自调 ds_trigger_* 导致的互相覆盖。
   //

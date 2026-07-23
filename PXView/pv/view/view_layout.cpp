@@ -203,30 +203,32 @@ bool ViewLayout::zoom(double steps, int offset) {
     _view->_scale *= std::pow(3.0 / 2.0, -steps);
     _view->_scale = max(min(_view->_scale, _view->_maxscale), _view->_minscale);
   } else {
-    // DSO mode: user requested direct view scale zoom (matching LOGIC
-    // behavior) instead of the original DSView design that stepped through
-    // discrete timebase values via hori_knob(). The original design bound
-    // vertical wheel scrolling to the horizontal timebase combobox, which
-    // felt unnatural — DSO now zooms the view continuously just like LOGIC.
+    // DSO mode: wheel steps through discrete timebase values via hori_knob(),
+    // matching DSView's original design (Reference/DSView-master/DSView/pv/
+    // view/view.cpp:301-313). This keeps the wheel and the timebase combobox
+    // in sync — scrolling the wheel changes the selected timebase item, just
+    // like clicking the combobox. The previous design (mutating _dso_zoom_factor
+    // for continuous view zoom) decoupled the wheel from the combobox, so
+    // selecting a timebase from the dropdown made the wheel appear to "do
+    // nothing" (it changed the zoom factor, not the timebase).
     // The instant-mode running guard is retained: don't zoom while an
     // instant capture is in progress.
     if (_view->_data_source->is_running_status() &&
         _view->_data_source->is_instant()) {
       return ret;
     }
-    // Mutate the user zoom factor, not _scale directly. update_scale_offset()
-    // (called every frame from data_updated()) re-derives _scale from
-    // base_scale * _dso_zoom_factor, so without this indirection the user's
-    // zoom would be wiped on the next frame and the horizontal scrollbar
-    // would collapse back to range=0 (no panning possible).
-    const double base_scale = _view->_data_source->cur_view_time() / width;
-    if (base_scale <= 0) {
-      return ret;  // can't zoom without a known view time
+    double hori_res = -1;
+    if (steps > 0.5)
+      hori_res = _view->_sampling_bar->hori_knob(-1);
+    else if (steps < -0.5)
+      hori_res = _view->_sampling_bar->hori_knob(1);
+
+    if (hori_res > 0) {
+      const double scale = _view->_data_source->cur_view_time() / width;
+      _view->_scale = max(min(scale, _view->_maxscale), _view->_minscale);
+    } else {
+      ret = false;
     }
-    _view->_dso_zoom_factor *= std::pow(3.0 / 2.0, -steps);
-    _view->_scale = base_scale * _view->_dso_zoom_factor;
-    _view->_scale = max(min(_view->_scale, _view->_maxscale), _view->_minscale);
-    _view->_dso_zoom_factor = _view->_scale / base_scale;
   }
 
   _view->_offset =

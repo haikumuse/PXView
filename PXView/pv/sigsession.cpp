@@ -1769,9 +1769,7 @@ void SigSession::DeviceSessionStopped() {
 
 void SigSession::on_event(const interface::SessionStopped &) {
   // Main-thread handler for the SessionStopped event re-broadcast by
-  // DeviceSessionStopped(). Releases the CaptureOwnerGuard (which sets
-  // _is_working=false + broadcasts EndCollectWork) — the part that
-  // SR_DF_END / RevEndPacket / CopyToDocDone used to do prematurely.
+  // DeviceSessionStopped().
   //
   // Idempotency: action_stop_capture (manual stop) already calls
   // set_is_working(false) + release_capture_owner() + EndCollectWork before
@@ -1784,13 +1782,27 @@ void SigSession::on_event(const interface::SessionStopped &) {
              "guard already released (manual stop path). Skipping.");
     return;
   }
-  pxv_info("SigSession::on_event(SessionStopped): releasing CaptureOwnerGuard "
-           "(auto-stop path).");
-  _state->set_is_working(false);
-  _capture_manager->data_unlock();
-  _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
-  _document_registry->release_capture_owner();
-  _event_bus->broadcast_async<interface::EndCollectWork>({});
+
+  // Auto-stop path (capture completed normally, sr_session_run() returned).
+  // Matches DSView's DS_EV_COLLECT_TASK_END handler (Reference/DSView-master/
+  // DSView/pv/sigsession.cpp:2112-2121): in repeat mode, keep _is_working=true
+  // and the CaptureOwnerGuard alive, and broadcast TrigNextCollect to trigger
+  // the next collection. In all other modes, release the guard (sets
+  // _is_working=false) and broadcast EndCollectWork.
+  if (is_repeat_mode()) {
+    pxv_info("SigSession::on_event(SessionStopped): repeat mode — keeping "
+             "guard alive, broadcasting TrigNextCollect.");
+    _capture_manager->data_unlock();
+    _event_bus->broadcast_async<interface::TrigNextCollect>({});
+  } else {
+    pxv_info("SigSession::on_event(SessionStopped): releasing CaptureOwnerGuard "
+             "(auto-stop path).");
+    _state->set_is_working(false);
+    _capture_manager->data_unlock();
+    _event_bus->broadcast_sync<interface::EndCollectWorkPrev>({});
+    _document_registry->release_capture_owner();
+    _event_bus->broadcast_async<interface::EndCollectWork>({});
+  }
 }
 
 bool SigSession::switch_work_mode(int mode) {
