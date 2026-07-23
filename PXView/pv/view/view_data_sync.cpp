@@ -278,7 +278,6 @@ void ViewDataSync::receive_end() {
 }
 
 void ViewDataSync::receive_trigger(quint64 trig_pos1) {
-  pxv_info("[DEBUG-TRIG] receive_trigger: trig_pos1=%llu", (unsigned long long)trig_pos1);
   // CRITICAL FIX: 使用 feed_in_trigger() 传入的最新 trig_pos1,而不是从
   // document_snapshot_source()->get_trigger_pos() 读取。
   //
@@ -336,10 +335,6 @@ void ViewDataSync::data_updated() {
         s->set_scale(scale_height > 0 ? scale_height
                                       : s->get_view_rect().height());
         s->paint_prepare();
-        pxv_info("[DEBUG-DSO] data_updated: name=%s scale_height=%d view_rect_h=%d _scale=%.4f ref_min=%.2f ref_max=%.2f stop_scale=%.4f bits=%d",
-                 s->get_name().toUtf8().data(), scale_height,
-                 s->get_view_rect().height(), s->get_scale(),
-                 s->get_ref_min(), s->get_ref_max(), 1.0f, s->get_bits());
         break;
       }
       }

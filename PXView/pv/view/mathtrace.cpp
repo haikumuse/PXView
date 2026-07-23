@@ -334,6 +334,13 @@ void MathTrace::paint_envelope(QPainter &p,
     double top = get_view_rect().top();
     double bottom = get_view_rect().bottom();
 
+    // 矩形横向宽度: spp < e.scale 时每个 envelope 样本跨越 >1px，
+    // 固定 1.0f 宽 → 矩形间留白 → 缩放到 spp∈[threshold, e.scale] 区间
+    // 出现间断线条。改为 max(1, step) 使低密度时矩形横向铺满到下一个
+    // 样本位置 → 连续。与 DsoSignal/AnalogSignal 的 paint_envelope 一致。
+    const float scale_pixels_per_samples = e.scale / samples_per_pixel;
+    const float rect_w = max(1.0f, scale_pixels_per_samples);
+
     for(uint64_t sample = 0; sample < e.length-1; sample++) {
 		const float x = ((e.scale * sample + e.start) /
             samples_per_pixel - pixels_offset) + left + _view->trig_hoff()/samples_per_pixel;
@@ -351,7 +358,7 @@ void MathTrace::paint_envelope(QPainter &p,
 		if(h <= 0.0f && h >= -1.0f)
 			h = -1.0f;
 
-		*rect++ = QRectF(x, t, 1.0f, h);
+		*rect++ = QRectF(x, t, rect_w, h);
 	}
 
 	p.drawRects(rects, e.length);

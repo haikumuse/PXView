@@ -55,24 +55,9 @@ namespace pv {
 namespace view {
 
 void ViewLayout::set_scale_offset(double scale, int64_t offset) {
-  // Use return address to identify the caller for debugging offset=-408 issue
-  pxv_info("[DEBUG-SCALE] set_scale_offset ENTRY: scale=%.9g offset=%lld cur_scale=%.9g cur_offset=%lld maxscale=%.9g minscale=%.9g max_off=%lld min_off=%lld caller=%p",
-           scale, (long long)offset, _view->_scale, (long long)_view->_offset,
-           _view->_maxscale, _view->_minscale,
-           (long long)get_max_offset(), (long long)get_min_offset(),
-           __builtin_return_address(0));
-  // Restore bidirectional clamping from Reference/DSView-master/DSView/pv/view/
-  // view.cpp:355-356. Previously only `max(...)` (lower bound) was applied,
-  // missing the upper bound clamp on both _scale and _offset. This caused
-  // set_trig_cursor_posistion() to compute offset = (time/_scale) - (width/2)
-  // when trig_pos was near the buffer end (typical for DSO acquisitions with
-  // trigger delay) — offset exceeded get_max_offset(), the viewport scrolled
-  // past the data end, and the right half of the screen showed no waveform
-  // and no cursor. The original DSView clamps both bounds here, so do the
-  // same. Note: in DSO mode update_scale_offset() sets _maxscale=1e9 (no
-  // upper bound on scale), but get_max_offset() still constrains _offset
-  // based on the current scale and total sampletime — that's the relevant
-  // clamp for fixing the off-screen cursor regression.
+  // Bidirectional clamping: both _scale and _offset are clamped to their
+  // valid ranges. Without the upper-bound clamp on _offset, trigger cursor
+  // positioning (set_trig_cursor_posistion) can scroll past the data end.
   _view->_preScale = _view->_scale;
   _view->_preOffset = _view->_offset;
 
@@ -205,12 +190,7 @@ void ViewLayout::zoom(double steps) {
 
 bool ViewLayout::zoom(double steps, int offset) {
   int width = _view->get_view_width();
-  pxv_info("[DEBUG-ZOOM] zoom ENTRY: steps=%.4f offset=%d width=%d mode=%d scale=%.9g zoom_factor=%.6f maxscale=%.9g minscale=%.9g",
-           steps, offset, width, _view->get_work_mode(),
-           _view->_scale, _view->_dso_zoom_factor,
-           _view->_maxscale, _view->_minscale);
   if (width == 0) {
-    pxv_info("[DEBUG-ZOOM] zoom ABORT: width=0");
     return false;
   }
 
@@ -266,12 +246,6 @@ bool ViewLayout::zoom(double steps, int offset) {
 }
 
 void ViewLayout::h_scroll_value_changed(int value) {
-  // DEBUG: log BEFORE the guard so we can see if the signal fires at all
-  pxv_info("[DEBUG-SCROLL] h_scroll_value_changed ENTRY: value=%d updating_scroll=%d max_off=%lld min_off=%lld scale=%.9g zoom_factor=%.6f offset=%lld",
-           value, _view->_updating_scroll ? 1 : 0,
-           (long long)get_max_offset(), (long long)get_min_offset(),
-           _view->_scale, _view->_dso_zoom_factor, (long long)_view->_offset);
-
   if (_view->_updating_scroll)
     return;
 
@@ -319,26 +293,9 @@ void ViewLayout::update_scroll() {
   get_scroll_layout(length, offset);
   length = max(length - areaSize.width(), (int64_t)0);
 
-  pxv_info("[DEBUG-SCROLL] update_scroll: mode=%d width=%d scale=%.9g sampletime=%.9g view_time=%.9g zoom_factor=%.6f length=%lld offset=%lld range=%lld max_off=%lld min_off=%lld",
-           _view->get_work_mode(), width, _view->_scale,
-           _view->document_snapshot_source()->cur_snap_sampletime(),
-           _view->_data_source->cur_view_time(),
-           _view->_dso_zoom_factor,
-           (long long)length, (long long)offset, (long long)length,
-           (long long)get_max_offset(), (long long)get_min_offset());
-
   _view->horizontalScrollBar()->setPageStep(areaSize.width());
 
   _view->_updating_scroll = true;
-
-  // DEBUG: log scrollbar geometry & state to diagnose drag failure
-  auto *hbar = _view->horizontalScrollBar();
-  QRect hbarGeo = hbar->geometry();
-  pxv_info("[DEBUG-SCROLL] hbar state: visible=%d enabled=%d geo=[x=%d y=%d w=%d h=%d] min=%d max=%d pagestep=%d sliderpos=%d value=%d",
-           hbar->isVisible() ? 1 : 0, hbar->isEnabled() ? 1 : 0,
-           hbarGeo.x(), hbarGeo.y(), hbarGeo.width(), hbarGeo.height(),
-           hbar->minimum(), hbar->maximum(), hbar->pageStep(),
-           hbar->sliderPosition(), hbar->value());
 
   if (length < View::MaxScrollValue) {
     _view->horizontalScrollBar()->setRange(0, length);

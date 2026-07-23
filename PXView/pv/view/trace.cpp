@@ -214,8 +214,7 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
         return;
 
     if (_type == SR_CHANNEL_DSO) {
-        pxv_info("[DEBUG-DSO] paint_label: name=%s, y=%d, right=%d, enabled=%d, visible=%d",
-                 _name.toUtf8().data(), get_y(), right, enabled(), visible());
+        // Hot path debug logging removed for performance
     }
 
     compute_text_size(p);

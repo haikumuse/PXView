@@ -67,7 +67,11 @@ QColor DsoSignal::getSignalColor(int index) {
   return c.isValid() ? c : SignalColours[index % 4];
 }
 
-const float DsoSignal::EnvelopeThreshold = 256.0f;
+// LDO dual-path threshold: spp < threshold → paint_trace (per-sample polyline),
+// spp >= threshold → paint_envelope (min/max rectangles). Lowered from 256.0f
+// to 4.0f to match the AnalogSignal optimization: at spp=100, paint_trace
+// draws 100x more points than paint_envelope, causing severe zoom lag.
+const float DsoSignal::EnvelopeThreshold = 4.0f;
 
 DsoSignal::DsoSignal(data::DsoSnapshot *data,
                      std::shared_ptr<data::SignalModel> model,
@@ -174,15 +178,21 @@ void DsoSignal::set_enable(bool enable) {
   set_vDialActive(false);
   _model->set_probe_enabled(enable, probe);
 
-  _view->update_hori_res();
+  // _view 可能在构造期(load_settings 调用本函数)为 NULL，
+  // set_view() 要等 update_signals() 返回后才执行。此处需保护，
+  // 与 load_settings() 末尾的 if(_view) 风格一致。
+  if (_view)
+    _view->update_hori_res();
 
   if (running) {
     _data_source->stop_capture();
     _data_source->start_capture(false);
   }
 
-  _view->set_update(_viewport, true);
-  _view->update();
+  if (_view) {
+    _view->set_update(_viewport, true);
+    _view->update();
+  }
   _en_lock = false;
 }
 
@@ -196,11 +206,6 @@ bool DsoSignal::go_vDialPre(bool manul) {
 
   if (_autoV && manul)
     autoV_end();
-
-  pxv_info("[DEBUG-VDIAL] go_vDialPre: enabled=%d isMin=%d count=%d sel=%d",
-           enabled(), _vDial ? _vDial->isMin() : -1,
-           _vDial ? (int)_vDial->get_count() : -1,
-           _vDial ? (int)_vDial->get_sel() : -1);
 
   if (enabled() && !_vDial->isMin()) {
     if (_data_source->is_running_status())
@@ -245,11 +250,6 @@ bool DsoSignal::go_vDialNext(bool manul) {
 
   if (_autoV && manul)
     autoV_end();
-
-  pxv_info("[DEBUG-VDIAL] go_vDialNext: enabled=%d isMax=%d count=%d sel=%d",
-           enabled(), _vDial ? _vDial->isMax() : -1,
-           _vDial ? (int)_vDial->get_count() : -1,
-           _vDial ? (int)_vDial->get_sel() : -1);
 
   if (enabled() && !_vDial->isMax()) {
     if (_data_source->is_running_status())
@@ -397,40 +397,52 @@ bool DsoSignal::load_settings() {
     }
   }
 
-  // -- vpos
-  // Initialize to mid-range before the call so that if get_probe_offset
-  // fails (returns false without writing _zero_offset), we fall back to a
-  // sensible default instead of garbage. For 8-bit ADC, mid = 128.
-  _zero_offset = (1 << _bits) / 2;
+  // -- vpos (zero offset)
+  // Pre-initialize to mid-range so that if get_probe_offset fails, we keep
+  // a sensible default (0V at screen center) instead of 0 (top of screen).
+  // For 8-bit ADC, mid = 128.
+  const int mid_range = (1 << _bits) / 2;
+  _zero_offset = mid_range;
   if (probe) {
     ret = _data_source->device()->get_probe_offset(_zero_offset, probe);
-    pxv_info("[DEBUG-DSO-INIT] load_settings vpos: probe=%p get_probe_offset_ret=%d _zero_offset=%d bits=%d", (void*)probe, ret ? 1 : 0, _zero_offset, _bits);
     if (!ret) {
-      // Don't return false — use the mid-range default so the waveform
-      // renders with 0V at screen center instead of at the top.
+      // Driver GET failed — keep the mid-range default. Do NOT fall back to
+      // _model->vertical_offset() because the model defaults to 0.0 (unset),
+      // which would place 0V at the top of the screen.
       pxv_warn("config_get SR_CONF_PROBE_OFFSET failed, using default %d", _zero_offset);
     }
-  } else {
-    _zero_offset = _model ? (int)_model->vertical_offset() : (1 << _bits) / 2;
-    pxv_info("[DEBUG-DSO-INIT] load_settings vpos: probe=NULL model_vertical_offset=%.2f _zero_offset=%d",
-             _model ? _model->vertical_offset() : -1.0, _zero_offset);
   }
 
-  // -- trig_value (DSO-key backed; fall back to model value)
-  // Similarly, initialize _trig_value to mid-range before the call.
-  _trig_value = (1 << _bits) / 2;
+  // -- hw_offset (hardware DC offset)
+  // Query the driver here so _cached_hw_offset is correct even when the
+  // device is stopped (get_hw_offset() only refreshes during running status).
+  // Without this, _cached_hw_offset stays at the model default (0.0), causing
+  // the waveform to shift down by mid_range * _scale pixels from the zero line.
+  _cached_hw_offset = mid_range;
+  if (probe) {
+    int hw_off = mid_range;
+    if (_data_source->device()->get_probe_hw_offset(hw_off, probe)) {
+      _cached_hw_offset = hw_off;
+    } else {
+      pxv_warn("config_get SR_CONF_PROBE_HW_OFFSET failed, using default %d", _cached_hw_offset);
+    }
+  }
+
+  // -- trig_value (trigger level)
+  // Pre-initialize to mid-range so the T cursor appears at screen center
+  // instead of the top when the driver call fails.
+  _trig_value = mid_range;
   if (probe) {
     ret = _data_source->device()->get_trigger_value(_trig_value, probe);
-    pxv_info("[DEBUG-DSO-INIT] load_settings trig: probe=%p get_trigger_value_ret=%d _trig_value=%d", (void*)probe, ret ? 1 : 0, _trig_value);
     if (ret) {
       _trig_delta = get_trig_vrate() - get_zero_ratio();
     } else {
-      // SR_CONF_TRIGGER_VALUE fork stub deleted; fall back to model.
-      _trig_value = _model ? _model->trig_value() : 0;
+      // Driver GET failed — keep the mid-range default. Do NOT fall back to
+      // _model->trig_value() because the model defaults to 0.0 (unset),
+      // which would place the T cursor at the top of the screen.
       _trig_delta = get_trig_vrate() - get_zero_ratio();
     }
   } else {
-    _trig_value = _model ? _model->trig_value() : 0;
     _trig_delta = get_trig_vrate() - get_zero_ratio();
   }
 
@@ -567,20 +579,15 @@ void DsoSignal::set_factor(uint64_t factor) {
 }
 
 uint64_t DsoSignal::get_factor() {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  uint64_t factor;
-
-  if (probe) {
-    bool ret = _data_source->device()->get_probe_factor(factor, probe);
-    if (ret) {
-      return factor;
-    } else {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-      return 1;
-    }
-  } else {
-    return _model ? _model->vfactor() : 1;
+  // PERFORMANCE FIX: Use cached _vDial factor instead of querying the driver
+  // on every paint cycle. load_settings() already syncs the driver value into
+  // _vDial via get_probe_factor(), so reading the cached value is equivalent
+  // but avoids 974+ sr_config_get calls per session (the main zoom lag cause).
+  if (_vDial) {
+    uint64_t f = _vDial->get_factor();
+    return f > 0 ? f : 1;
   }
+  return _model ? _model->vfactor() : 1;
 }
 
 // -- DsoTriggerConfig --
@@ -743,13 +750,6 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
   // Refresh colour from theme on every paint
   _colour = getSignalColor(_model ? _model->index() : 0);
 
-  static int _paint_mid_cnt = 0;
-  _paint_mid_cnt++;
-  if (_paint_mid_cnt % 100 == 1) {
-    pxv_info("[DEBUG-DSO] paint_mid ENTRY: name=%s _show=%d left=%d right=%d _data=%p enabled=%d",
-             get_name().toUtf8().data(), _show ? 1 : 0, left, right, (void*)_data, enabled() ? 1 : 0);
-  }
-
   if (!_show || right <= left) {
     return;
   }
@@ -770,11 +770,6 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
     const int64_t offset = _view->offset();
 
     if (!_data || _data->empty() || !_data->has_data(index)) {
-      if (_paint_mid_cnt % 100 == 1) {
-        pxv_info("[DEBUG-DSO] paint_mid SKIP: name=%s data_empty=%d has_data=%d",
-                 get_name().toUtf8().data(), _data ? _data->empty() : 1,
-                 _data ? _data->has_data(index) : 0);
-      }
       return;
     }
 
@@ -795,17 +790,6 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
     const int64_t end_sample =
         min(max((int64_t)ceil(end) + 1, (int64_t)0), last_sample);
     const int hw_offset = get_hw_offset();
-
-    static int _range_cnt = 0;
-    _range_cnt++;
-    if (_range_cnt % 100 == 1) {
-      pxv_info("[DEBUG-DSO] paint_mid range: name=%s view_scale=%.9g offset=%lld samplerate=%llu samples_per_pixel=%.6f width=%d start=%.2f end=%.2f start_sample=%lld end_sample=%lld last_sample=%lld trig_hoff=%lld sample_count=%lld",
-               get_name().toUtf8().data(), scale, (long long)offset,
-               (unsigned long long)samplerate, samples_per_pixel, width,
-               start, end, (long long)start_sample, (long long)end_sample,
-               (long long)last_sample, (long long)_view->trig_hoff(),
-               (long long)(end_sample - start_sample + 1));
-    }
 
     if (samples_per_pixel < EnvelopeThreshold) {
       _data->enable_envelope(false);
@@ -928,23 +912,12 @@ void DsoSignal::paint_trace(QPainter &p, const pv::data::DsoSnapshot *snapshot,
 
   const int64_t sample_count = end - start + 1;
 
-  static int _paint_trace_cnt = 0;
-  _paint_trace_cnt++;
-  if (_paint_trace_cnt % 50 == 1) {
-    pxv_info("[DEBUG-DSO] paint_trace: name=%s sample_count=%lld _scale=%.4f hw_offset=%d zeroY=%d ref_min=%.2f ref_max=%.2f",
-             get_name().toUtf8().data(), (long long)sample_count, _scale,
-             hw_offset, zeroY, _ref_min, _ref_max);
-  }
-
   if (sample_count > 0) {
     pv::data::DsoSnapshot *pshot =
         const_cast<pv::data::DsoSnapshot *>(snapshot);
     const uint8_t *const samples_buffer =
         pshot->get_samples(start, end, get_index());
 
-    /* AGENTS.md: assert() is a no-op in Release — use explicit null check.
-     * If the snapshot has not yet allocated channel data, get_samples
-     * returns a wild pointer (NULL + offset). Bail out safely instead. */
     if (!samples_buffer) {
       pxv_warn("[DSO] paint_trace: samples_buffer is NULL, skipping draw");
       return;
@@ -954,8 +927,14 @@ void DsoSignal::paint_trace(QPainter &p, const pv::data::DsoSnapshot *snapshot,
     trace_colour.setAlpha(View::ForeAlpha);
     p.setPen(trace_colour);
 
-    QPointF *points = new QPointF[sample_count];
-    QPointF *point = points;
+    // Reuse a thread-local buffer to avoid heap alloc/dealloc on every paint.
+    // Painting is GUI-thread-only, so thread_local is safe and the buffer
+    // grows once then stays stable across paints.
+    static thread_local QVector<QPointF> points;
+    if (points.size() < (int)sample_count)
+      points.resize(sample_count);
+    QPointF *pts = points.data();
+    QPointF *point = pts;
 
     float top = get_view_rect().top();
     float bottom = get_view_rect().bottom();
@@ -982,9 +961,7 @@ void DsoSignal::paint_trace(QPainter &p, const pv::data::DsoSnapshot *snapshot,
       x += pixels_per_sample;
     }
 
-    p.drawPolyline(points, point - points);
-
-    delete[] points;
+    p.drawPolyline(pts, point - pts);
   }
 }
 
@@ -1011,10 +988,24 @@ void DsoSignal::paint_envelope(QPainter &p,
   envelope_colour.setAlpha(View::ForeAlpha);
   p.setBrush(envelope_colour);
 
-  QRectF *const rects = new QRectF[e.length];
-  QRectF *rect = rects;
+  // Reuse a thread-local buffer to avoid heap alloc/dealloc on every paint.
+  static thread_local QVector<QRectF> rects;
+  if (rects.size() < (int)e.length)
+    rects.resize(e.length);
+  QRectF *r = rects.data();
+  QRectF *rect = r;
   float top = get_view_rect().top();
   float bottom = get_view_rect().bottom();
+
+  // 矩形横向宽度: spp < e.scale(16) 时每个 envelope 样本跨越 >1px，
+  // 旧代码固定 1.0f 宽 → 矩形间留白 → 缩放到 spp∈[4,16] 区间出现
+  // 间断线条（与 AnalogSignal 旧版本同样的问题）。
+  // 改为 max(1, step) 使低密度时矩形横向铺满到下一个样本位置 → 连续。
+  // 高密度 (spp>e.scale) 时 step<1, max(1,step)=1, 行为与旧代码一致。
+  // 与 AnalogSignal::paint_envelope (analogsignal.cpp:717) 保持一致。
+  const float scale_pixels_per_samples = e.scale / samples_per_pixel;
+  const float rect_w = max(1.0f, scale_pixels_per_samples);
+
   for (uint64_t sample = 0; sample < e.length - 1; sample++) {
     const float x =
         ((e.scale * sample + e.start) / samples_per_pixel - pixels_offset) +
@@ -1036,19 +1027,15 @@ void DsoSignal::paint_envelope(QPainter &p,
     if (h <= 0.0f && h >= -1.0f)
       h = -1.0f;
 
-    *rect++ = QRectF(x, t, 1.0f, h);
+    *rect++ = QRectF(x, t, rect_w, h);
   }
 
-  p.drawRects(rects, e.length);
-
-  delete[] rects;
+  p.drawRects(r, e.length);
 }
 
 void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
                                    QColor fore) {
-  pxv_info("[DEBUG-DSO] paint_type_options: name=%s, y=%d, right=%d, "
-           "enabled=%d, visible=%d",
-           _name.toUtf8().data(), get_y(), right, enabled(), visible());
+  // Hot path debug logging removed for performance
   p.setRenderHint(QPainter::Antialiasing, true);
 
   QColor foreBack = fore;
@@ -1139,15 +1126,6 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
   const QRectF x10_rect = get_rect(DSO_X10, y, right);
   const QRectF x100_rect = get_rect(DSO_X100, y, right);
 
-  pxv_info("[DEBUG-VDIAL] DsoSignal::mouse_press: name=%s enabled=%d "
-           "vDial_count=%d pt=(%d,%d) vDial_rect=(%.0f,%.0f,%.0f,%.0f) "
-           "chEn=%d vDial_contains=%d",
-           _name.toUtf8().data(), enabled(),
-           _vDial ? (int)_vDial->get_count() : -1,
-           pt.x(), pt.y(),
-           vDial_rect.x(), vDial_rect.y(), vDial_rect.width(), vDial_rect.height(),
-           (int)chEn_rect.contains(pt), (int)vDial_rect.contains(pt));
-
   if (chEn_rect.contains(pt)) {
     if (_data_source->device()->is_file() == false && !_en_lock) {
       set_enable(!enabled());
@@ -1155,10 +1133,6 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     return true;
   } else if (enabled()) {
     if (vDial_rect.contains(pt) && pt.x() > vDial_rect.center().x()) {
-      pxv_info("[DEBUG-VDIAL] vDial right-half clicked: pt.x=%d center.x=%.0f "
-               "pt.y=%d center.y=%.0f -> %s",
-               pt.x(), vDial_rect.center().x(), pt.y(), vDial_rect.center().y(),
-               (pt.y() > vDial_rect.center().y()) ? "go_vDialNext" : "go_vDialPre");
       if (pt.y() > vDial_rect.center().y())
         go_vDialNext(true);
       else

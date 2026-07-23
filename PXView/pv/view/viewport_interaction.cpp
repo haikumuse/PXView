@@ -143,16 +143,17 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
       event->button() == Qt::LeftButton &&
       _viewport->_view.get_work_mode() == DSO) {
 
+    // Use the raw event position (without vOffset) for the trigger rect
+    // hit test. _mouse_point includes vOffset, but get_trig_rect() returns
+    // a rect in viewport-widget coordinates (no vOffset). Without this fix,
+    // any vertical scroll makes the T cursor impossible to grab.
+    const QPoint clickPos = event->position().toPoint();
+
     for (auto s : _viewport->_view.get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
         DsoSignal *dsoSig = (DsoSignal *)s;
         QRectF trigRect = dsoSig->get_trig_rect(0, _viewport->_view.get_view_width());
-        bool hit = trigRect.contains(_viewport->_mouse_point);
-        pxv_info("[DEBUG-DSO-CLICK] mousePressEvent DSO: mouse_point=(%d,%d) trig_rect=[x=%.1f y=%.1f w=%.1f h=%.1f] hit=%d action=%d",
-                 _viewport->_mouse_point.x(), _viewport->_mouse_point.y(),
-                 trigRect.x(), trigRect.y(), trigRect.width(), trigRect.height(),
-                 hit ? 1 : 0, _viewport->_action_type);
-        if (hit) {
+        if (trigRect.contains(clickPos)) {
           _viewport->_drag_sig = s;
           _viewport->set_action(DSO_TRIG_MOVE);
           dsoSig->select(true);
