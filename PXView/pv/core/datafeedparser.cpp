@@ -54,18 +54,27 @@ void DataFeedParser::feed_in_trigger() {
   // fallback, matching prior behavior). device_agent() returns a
   // reference (never null); the no-device case is handled inside
   // get_config (returns false → get_trigger_pos returns 0).
+  //
+  // Note: For DSO mode, the demo driver does NOT emit SR_DF_TRIGGER —
+  // the trigger position is carried inside each SR_DF_DSO packet via
+  // sr_datafeed_dso::trig_offset, and is processed in feed_in_dso().
+  // For real DSO hardware (PXLogic), SR_DF_TRIGGER may still be emitted
+  // in DSO mode, so we no longer exclude DSO here — the driver query
+  // path is harmless if unsupported (returns 0).
   _state->set_hw_replied(true);
 
-  if (_state->device_agent().get_work_mode() != DSO) {
-    _state->set_trigger_flag(true);
+  // Set trigger flag for ALL modes (including DSO). Previously DSO was
+  // excluded, which caused _trigger_flag to stay false → trigd() returns
+  // false → paint_prepare() skipped trigger-search → set_trig_hoff(0),
+  // and viewport "Trig'd" status display was permanently wrong.
+  _state->set_trigger_flag(true);
 
-    // Read the trigger position reported by the driver.
-    _state->capture_data()->_trig_pos = _state->device_agent().get_trigger_pos();
+  // Read the trigger position reported by the driver.
+  _state->capture_data()->_trig_pos = _state->device_agent().get_trigger_pos();
 
-    // Update trig position for current view.
-    if (_state->capture_data() == _state->view_data()) {
-      _state->receive_trigger(_state->capture_data()->_trig_pos);
-    }
+  // Update trig position for current view.
+  if (_state->capture_data() == _state->view_data()) {
+    _state->receive_trigger(_state->capture_data()->_trig_pos);
   }
 }
 
@@ -172,6 +181,12 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     _state->set_trig_time(QDateTime::currentDateTime());
   }
 
+  // Record the sample count BEFORE first_payload/append_payload — needed
+  // to compute the absolute trigger position from o.trig_offset (which
+  // is relative to the current packet's first sample).
+  const uint64_t pre_sample_count =
+      _state->capture_data()->get_dso()->get_sample_count();
+
   if (_state->capture_data()->get_dso()->last_ended()) {
     // first payload
     _state->capture_data()->get_dso()->first_payload(
@@ -189,6 +204,42 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     _state->set_error(SessionStateContext::Malloc_err);
     _state->session_error();
     return;
+  }
+
+  // Port from upstream DSView's feed_in_dso (Reference/DSView-master/
+  // DSView/pv/sigsession.cpp:1343-1344). Without this, _trigger_flag stays
+  // false in DSO mode → trigd() returns false → paint_prepare() skips
+  // trigger-search → set_trig_hoff(0), and viewport "Trig'd" status display
+  // is permanently wrong. Also, downstream receive_trigger() is never
+  // invoked for DSO mode → horizontal trigger cursor stays stale.
+  if (o.trig_flag) {
+    _state->set_trigger_flag(true);
+    _state->set_trigger_ch(o.trig_ch);
+
+    // o.trig_offset is the trigger sample offset WITHIN the current DSO
+    // packet. Convert to absolute sample index by adding the sample count
+    // that existed before this packet was appended. This is the upstream
+    // replacement for the fork ds_trigger_pos.real_pos field that the
+    // original DSView used in its feed_in_trigger DSO else-branch.
+    uint64_t abs_trig_pos = pre_sample_count +
+                            (o.trig_offset > 0 ? (uint64_t)o.trig_offset : 0);
+    _state->capture_data()->_trig_pos = abs_trig_pos;
+
+    // Update trig position for current view (DSO mode has
+    // capture_data == view_data, so the receive_trigger path is taken).
+    if (_state->capture_data() == _state->view_data()) {
+      _state->receive_trigger(_state->capture_data()->_trig_pos);
+    }
+  }
+
+  // Sync the snapshot samplerate so paint_mid's samples_per_pixel uses the
+  // current acquisition's samplerate (port from Reference/DSView-master/
+  // DSView/pv/sigsession.cpp:1319). Without this, downstream code reading
+  // cur_snap_samplerate() may use a stale value (e.g. 0) → samples_per_pixel
+  // is incorrect → waveform may render at the wrong scale or not at all.
+  const uint64_t cur_samplerate = _state->device_agent().get_sample_rate();
+  if (cur_samplerate > 0) {
+    _state->set_cur_snap_samplerate(cur_samplerate);
   }
 
   _state->set_receive_data_len(o.num_samples);

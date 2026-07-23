@@ -60,21 +60,20 @@ QColor AnalogSignal::getSignalColor(int index) {
 //   高密度 (>= max_togs)                  → 每像素条 (条重叠成连续外观)
 //
 // 模拟信号的对偶:
-//   spp < EnvelopeThreshold  → paint_trace (逐样本折线, 恒连续)
-//   spp >= EnvelopeThreshold → paint_envelope (竖直矩形带)
+//   spp < EnvelopeThreshold  → paint_trace (逐样本折线, 平滑曲线)
+//   spp >= EnvelopeThreshold → paint_envelope (竖直矩形带, min/max 范围)
 //
-// 阈值取 EnvelopeScaleFactor=16 是 envelope 矩形相切的临界点:
-//   envelope level-0 scale=16, scale_pixels_per_samples = 16/spp
-//   spp=16 → 1px/矩形, 矩形相切 → 连续
-//   spp<16 → >1px/矩形, 矩形间留白 → 离散线条 (用户反馈的缺陷)
-//   spp>16 → <1px/矩形, 矩形重叠 → 连续
-// 故 spp<16 必须走 paint_trace 折线才能保持连续外观。
+// 性能悬崖: paint_trace 是 O(spp*width), paint_envelope 是 O(width/16),
+// 在阈值处相差 16 倍。阈值越高, 悬崖处 paint_trace 的绝对工作量越大
+// (16*width @ spp=16), 配合滚轮节流导致 "卡在分界线" 现象。
 //
-// 性能由两处独立保证, 不靠降低阈值:
-//   1. paint_trace 复用成员缓冲 _points (消除每帧 new/delete)
-//   2. ViewportInteraction Windows 滚轮 50ms 节流 (合并密集 tick)
-// spp<16 时可见样本数 = spp*width <= 16*width, 折线绘制开销有上界。
-const float AnalogSignal::EnvelopeThreshold = 16.0f;
+// 取 4.0 而非 16.0:
+//   1. paint_envelope 矩形已加宽 (rect_w = max(1, 16/spp)), spp<16 也连续,
+//      不再需要靠阈值=16 保证相切 → 可安全降低阈值。
+//   2. 阈值=4 使 paint_trace 最坏工作量 = 4*width (4 倍降低), 悬崖帧 ~1ms。
+//   3. spp>=4 时每像素 >=4 样本, envelope 的 16 样本 min/max 矩形视觉可接受;
+//      spp<4 时用户放大看曲线细节, paint_trace 折线更平滑。
+const float AnalogSignal::EnvelopeThreshold = 4.0f;
 
 AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
@@ -638,10 +637,15 @@ void AnalogSignal::paint_trace(
     // 对 float 数据完全错误。检查 _data->is_float() 决定读取方式。
     const bool is_float = pshot->is_float();
 
+    // 性能修复: get_sample_count/get_ring_end 是非 inline 方法 (snapshot.h)，
+    // 旧代码每次迭代调用 3 次 → spp*width 次函数调用。提出到循环外。
+    const uint64_t sample_cnt = pshot->get_sample_count();
+    const uint64_t ring_end = pshot->get_ring_end();
+    const uint64_t data_size = sample_cnt * channel_num * unit_bytes;
+
     for (int64_t sample = 0; sample < sample_count; sample++) {
       uint64_t index = (yindex * channel_num + order) * unit_bytes;
       // 边界安全检查：防止读取越界导致 SIGSEGV
-      const uint64_t data_size = (uint64_t)pshot->get_sample_count() * channel_num * unit_bytes;
       if (index + unit_bytes > data_size) {
         break;
       }
@@ -665,11 +669,11 @@ void AnalogSignal::paint_trace(
       yvalue = min(max(yvalue, top), bottom);
       *point++ = QPointF(x, yvalue);
 
-      if (yindex == pshot->get_ring_end())
+      if (yindex == ring_end)
         break;
 
       yindex++;
-      yindex %= pshot->get_sample_count();
+      yindex %= sample_cnt;
       x += pixels_per_sample;
     }
 
@@ -705,6 +709,12 @@ void AnalogSignal::paint_envelope(
   float y_min = zeroY, y_max = zeroY, pre_y_min = zeroY, pre_y_max = zeroY;
   int pcnt = 0;
   const double scale_pixels_per_samples = e.scale / samples_per_pixel;
+  // 矩形横向宽度: spp < e.scale(16) 时每个 envelope 样本跨越 >1px，
+  // 旧代码固定 1.0f 宽 → 矩形间留白 → 离散线条。
+  // 改为 max(1, step) 使低密度时矩形横向铺满到下一个样本位置 → 连续。
+  // 高密度 (spp>16) 时 step<1, max(1,step)=1, 行为与旧代码一致。
+  // 这使 envelope 在 spp<16 也能连续绘制，从而可安全降低 EnvelopeThreshold。
+  const float rect_w = max(1.0f, (float)scale_pixels_per_samples);
   int64_t end_v = pshot->get_ring_end();
   const uint64_t ring_end = max((int64_t)0, end_v / e.scale - 1);
   const int hw_offset = get_hw_offset();
@@ -746,11 +756,11 @@ void AnalogSignal::paint_envelope(
         // We overlap this sample with the previous so that vertical
         // gaps do not appear during steep rising or falling edges
         if (pre_y_min > y_max)
-          *rect++ = QRectF(pre_px, y_min, 1.0f, pre_y_min - y_min + 1);
+          *rect++ = QRectF(pre_px, y_min, rect_w, pre_y_min - y_min + 1);
         else if (pre_y_max < y_min)
-          *rect++ = QRectF(pre_px, pre_y_max, 1.0f, y_max - pre_y_max + 1);
+          *rect++ = QRectF(pre_px, pre_y_max, rect_w, y_max - pre_y_max + 1);
         else
-          *rect++ = QRectF(pre_px, y_min, 1.0f, y_max - y_min + 1);
+          *rect++ = QRectF(pre_px, y_min, rect_w, y_max - y_min + 1);
         pre_y_min = y_min;
         pre_y_max = y_max;
         pcnt++;

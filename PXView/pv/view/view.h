@@ -766,6 +766,14 @@ private:
   double _preScale;
   double _maxscale;
   double _minscale;
+  /// DSO user zoom factor (1.0 = fit one frame to viewport width).
+  /// DSO mode update_scale_offset() forces _scale = cur_view_time/width
+  /// every frame (called from data_updated()). To let the user zoom in
+  /// and pan horizontally like LOGIC mode, we keep this factor separate
+  /// and reapply it: _scale = base_scale * _dso_zoom_factor. zoom() only
+  /// mutates this factor; data frames re-derive _scale from it. Reset to
+  /// 1.0 on mode change (ViewDataSync::mode_changed).
+  double _dso_zoom_factor = 1.0;
 
   /// The pixels offset of the left edge of the view
   int64_t _offset;

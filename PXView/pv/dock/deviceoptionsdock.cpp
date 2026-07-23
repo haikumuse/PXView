@@ -942,9 +942,15 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
       pow->setFont(contentFont);
 
       if (p->name().contains("map default", Qt::CaseInsensitive)) {
+        // Bool 属性创建的是 QCheckBox (bool.cpp:51), 不是 QPushButton。
+        // 旧代码 qobject_cast<QPushButton*> 返回 NULL → connect 失败 →
+        // 点击 "map default" 复选框不触发重建 → map unit/min/max 永远禁用。
         pow->setProperty("index", probe->index);
-        connect(qobject_cast<QPushButton *>(pow), &QPushButton::clicked, this,
-                &DeviceOptionsDock::analog_channel_check);
+        QCheckBox *map_ckbox = qobject_cast<QCheckBox *>(pow);
+        if (map_ckbox) {
+          connect(map_ckbox, &QCheckBox::released, this,
+                  &DeviceOptionsDock::analog_channel_check);
+        }
       } else {
         if (probe_checkBox->isChecked() && p->name().contains("map", Qt::CaseInsensitive)) {
           bool map_default = true;

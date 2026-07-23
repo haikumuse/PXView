@@ -206,6 +206,17 @@ void ProbeOptions::bind_vdiv(const QString &name, const QString label,
         bind_enum(name, label, SR_CONF_PROBE_VDIV,
             gvar_list_vdivs, print_vdiv);
         g_variant_unref(gvar_list_vdivs);
+    } else {
+        /* g_variant_lookup_value returned NULL — either the dict is missing
+         * the "vdivs" key or its value type is not "at". Without this branch
+         * the vdiv control would silently disappear from the DeviceOptions
+         * dialog in ANALOG mode, leaving the user with no way to change
+         * probe attenuation. Log enough context to diagnose the driver. */
+        pxv_warn("ProbeOptions::bind_vdiv: key 'vdivs' not found in "
+                 "gvar_list (probe index=%d name='%s') — vdiv control "
+                 "will not be created",
+                 _probe ? _probe->index : -1,
+                 (_probe && _probe->name) ? _probe->name : "(null)");
     }
 }
 
@@ -226,6 +237,17 @@ void ProbeOptions::bind_coupling(const QString &name, const QString label,
         bind_enum(name, label, SR_CONF_PROBE_COUPLING,
             gvar_list_coupling, print_coupling);
         g_variant_unref(gvar_list_coupling);
+    } else {
+        /* g_variant_lookup_value returned NULL — either the dict is missing
+         * the "coupling" key or its value type is not "ay". Without this
+         * branch the coupling control would silently disappear from the
+         * DeviceOptions dialog in ANALOG mode. Log enough context to
+         * diagnose the driver. */
+        pxv_warn("ProbeOptions::bind_coupling: key 'coupling' not found in "
+                 "gvar_list (probe index=%d name='%s') — coupling control "
+                 "will not be created",
+                 _probe ? _probe->index : -1,
+                 (_probe && _probe->name) ? _probe->name : "(null)");
     }
 }
 

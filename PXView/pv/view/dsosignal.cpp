@@ -382,7 +382,19 @@ bool DsoSignal::load_settings() {
       _acCoupling = _model ? (uint8_t)_model->coupling() : 0;
     }
   } else {
-    _acCoupling = _model ? _model->coupling() : 0;
+    _acCoupling = _model ? (uint8_t)_model->coupling() : 0;
+  }
+
+  // -- enable state (sync from driver so CH1 is enabled by default)
+  if (probe) {
+    bool ch_enabled = false;
+    ret = _data_source->device()->get_config_bool(SR_CONF_PROBE_EN, ch_enabled, probe, NULL);
+    if (ret) {
+      set_enable(ch_enabled);
+    } else {
+      // Driver GET failed (e.g. stub) — assume enabled to avoid CH1 waveform disappearing
+      set_enable(true);
+    }
   }
 
   // -- vpos
@@ -466,7 +478,11 @@ int DsoSignal::ratio2pos(double ratio) {
 }
 
 double DsoSignal::value2ratio(int value) {
-  return max(0.0, (value - _ref_min) / (_ref_max - _ref_min));
+  // Clamp to [0.0, 1.0]. Previously only `max(0.0, ...)` clipped the lower
+  // bound — when the driver-reported _trig_value exceeded _ref_max (driver
+  // bug, profile mismatch, stale restored-session value), this returned >1.0
+  // and paint_fore() rendered the T pointer below the viewport (off-screen).
+  return min(1.0, max(0.0, (value - _ref_min) / (_ref_max - _ref_min)));
 }
 
 double DsoSignal::pos2ratio(int pos) {
@@ -1139,9 +1155,9 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     } else if (_data_source->device()->is_file() == false &&
                acdc_rect.contains(pt)) {
       if (_data_source->device()->is_hardware_logic())
-        set_acCoupling((get_acCoupling() + 1) % 2);
+        set_acCoupling((get_acCoupling() + 1) % 3);
       else
-        set_acCoupling((get_acCoupling() + 1) % 2);
+        set_acCoupling((get_acCoupling() + 1) % 3);
     } else if (auto_rect.contains(pt)) {
       if (_data_source->device()->is_hardware())
         auto_start();

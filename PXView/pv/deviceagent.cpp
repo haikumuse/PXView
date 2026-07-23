@@ -1584,7 +1584,9 @@ bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
 
 bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
     if (!is_dsl_device() && !is_demo()) { v = 0; return false; }
-    return get_config_int32(SR_CONF_PROBE_COUPLING, v, probe, NULL);
+    /* demo 驱动 GET 返回 byte ("y"), 用 get_config_byte 读取。
+     * (DSL 驱动 GET 返回 string, 此方法对 DSL 本就不工作 — DSL 硬件已 dropped) */
+    return get_config_byte(SR_CONF_PROBE_COUPLING, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {

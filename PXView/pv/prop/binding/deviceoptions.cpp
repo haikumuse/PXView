@@ -111,11 +111,18 @@ DeviceOptions::DeviceOptions(SigSession *session)
             bind_int(name, label, key, "%", pair<int64_t, int64_t>(0, 100));
 			break;
 
+		case SR_CONF_MAX_HEIGHT:
+		case SR_CONF_MAX_HEIGHT_VALUE:
+		case SR_CONF_INSTANT:
+            /* Skip: DeviceOptionsDock 不显示这三个 key。
+             * MAX_HEIGHT/MAX_HEIGHT_VALUE 由 SamplingBar 的下拉框控制，
+             * INSTANT 由 sidebar 的 SIDEBAR_INSTANT 按钮控制。
+             * 驱动 devopts[] 保留声明，其它路径仍可 get/set/list。 */
+            continue;
+
 		case SR_CONF_PATTERN_MODE:
 		case SR_CONF_BUFFERSIZE:
 		case SR_CONF_TRIGGER_SOURCE:
-        case SR_CONF_MAX_HEIGHT:
-        case SR_CONF_MAX_HEIGHT_VALUE:
         case SR_CONF_PROBE_EN:
         case SR_CONF_STREAM:
         case SR_CONF_TEST:
@@ -153,7 +160,6 @@ DeviceOptions::DeviceOptions(SigSession *session)
         case SR_CONF_CLOCK_TYPE:
         case SR_CONF_CLOCK_EDGE:
 		case SR_CONF_TRIGGER_OUT:
-		case SR_CONF_INSTANT:
             bind_bool(name, label, key);
             break;
         case SR_CONF_PWM0_EN:

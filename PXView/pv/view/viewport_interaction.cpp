@@ -890,12 +890,13 @@ void ViewportInteraction::wheelEvent(QWheelEvent *event) {
         _viewport->_view.zoom(-zoom_scale, x);
       }
 #else
-      // 性能修复: Windows 路径加 50ms 节流，合并高精度滚轮/触控板的密集 tick。
-      // 旧代码每个 wheel event 同步触发 zoom→viewport_update→重绘链路，
+      // 性能修复: Windows 路径加 16ms 节流 (60fps 上限)，合并高精度滚轮/触控板
+      // 的密集 tick。旧代码每个 wheel event 同步触发 zoom→viewport_update→重绘链路，
       // 配合模拟通道逐样本绘制导致严重卡顿 (macOS 路径已有节流，Windows 被遗漏)。
-      // 若距上次缩放不足 50ms 则跳过本次 tick，避免连续同步重绘堆积。
+      // 16ms: 配合 envelope 优化后单帧已 <5ms, 60fps 既跟手又避免事件堆积。
+      // (旧值 50ms=20fps, 每 tick 1.5x 跳跃过大, 用户感觉 "卡在分界线")。
       const int64_t cur_ms = QDateTime::currentMSecsSinceEpoch();
-      if (cur_ms - _last_wheel_zoom_ms > 50) {
+      if (cur_ms - _last_wheel_zoom_ms > 16) {
         _viewport->_view.zoom(zoom_scale, x);
         _last_wheel_zoom_ms = cur_ms;
       }

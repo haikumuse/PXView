@@ -799,12 +799,20 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
       pow->setEnabled(probe_checkBox->isChecked());
       pow->setFont(font);
 
-      if (p->name().contains("Map Default")) {
+      // sr_config_info->name 是全小写 ("probe_map_default" 等), 必须用
+      // CaseInsensitive 匹配; 旧代码 "Map Default"/"Map" 匹配不到 →
+      // map default 复选框的 connect 失效 + map 字段不被标记为 map-row。
+      if (p->name().contains("map default", Qt::CaseInsensitive)) {
+        // Bool 属性创建的是 QCheckBox (bool.cpp:51), 不是 QPushButton。
+        // 旧代码 qobject_cast<QPushButton*> 返回 NULL → connect 失效。
         pow->setProperty("index", probe->index);
-        connect(qobject_cast<QPushButton *>(pow), &QPushButton::clicked, this,
-                &DeviceOptions::analog_channel_check);
+        QCheckBox *map_ckbox = qobject_cast<QCheckBox *>(pow);
+        if (map_ckbox) {
+          connect(map_ckbox, &QCheckBox::released, this,
+                  &DeviceOptions::analog_channel_check);
+        }
       } else {
-        if (probe_checkBox->isChecked() && p->name().contains("Map")) {
+        if (probe_checkBox->isChecked() && p->name().contains("map", Qt::CaseInsensitive)) {
           bool map_default = true;
 
           _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
@@ -820,6 +828,48 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
       i++;
     }
     _probe_options_binding_list.push_back(probe_options_binding);
+
+    // Diagnostic: verify driver returns correct coupling/vdiv defaults for
+    // this ANALOG channel. If GET returns 0 (GND) for coupling but the driver
+    // is demo (whose scan-time init sets analog_coupling[i]=1=DC), proactively
+    // SET DC to match the documented default. Same for vdiv (default 1000).
+    // This ensures the ProbeOptions enum widget shows the correct initial
+    // state instead of falling back to GND when the binding's config_getter
+    // returns a stale/zero value.
+    {
+      int coupling_val = -1;
+      /* demo 驱动 GET 返回 byte ("y"), 用 get_config_byte 读取。
+       * (旧代码用 get_config_int32, 在 GET 返回 byte 时返回 0 → 误判为 GND
+       *  → 触发 set_config_int32 → SET 用 g_variant_get_byte 读 int32 变体 → 0
+       *  → 反而把正确的 DC 覆盖成 GND。改为 byte 方法保持一致。) */
+      if (_device_agent->get_config_byte(SR_CONF_PROBE_COUPLING,
+                                          coupling_val, probe, NULL)) {
+        pxv_info("analog_probes: probe=%s coupling=%d (expected 1=DC)",
+                 probe->name, coupling_val);
+        if (coupling_val == 0 && _device_agent->is_demo()) {
+          pxv_info("  -> syncing DC default (was GND=0)");
+          _device_agent->set_config_byte(SR_CONF_PROBE_COUPLING, 1,
+                                           probe, NULL);
+        }
+      } else {
+        pxv_warn("analog_probes: probe=%s GET SR_CONF_PROBE_COUPLING failed",
+                 probe->name);
+      }
+      uint64_t vdiv_val = 0;
+      if (_device_agent->get_config_uint64(SR_CONF_PROBE_VDIV,
+                                           vdiv_val, probe, NULL)) {
+        pxv_info("analog_probes: probe=%s vdiv=%llu (expected 1000)",
+                 probe->name, (unsigned long long)vdiv_val);
+        if (vdiv_val == 0 && _device_agent->is_demo()) {
+          pxv_info("  -> syncing default vdiv=1000 (was 0)");
+          _device_agent->set_config_uint64(SR_CONF_PROBE_VDIV, 1000,
+                                           probe, NULL);
+        }
+      } else {
+        pxv_warn("analog_probes: probe=%s GET SR_CONF_PROBE_VDIV failed",
+                 probe->name);
+      }
+    }
 
     connect(probe_checkBox, &QCheckBox::released, this,
             &DeviceOptions::on_analog_channel_enable);

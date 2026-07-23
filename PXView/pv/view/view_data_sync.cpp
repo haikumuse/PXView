@@ -356,11 +356,18 @@ void ViewDataSync::data_updated() {
   _view->setViewportMargins(_view->headerWidth(), View::RulerHeight, 0, 0);
   _view->update_margins();
 
-  // Update the scroll bars
-  _view->update_scroll();
-
-  // update scale & offset
+  // update scale & offset FIRST, then refresh scroll bars.
+  // Order matters: update_scale_offset() recomputes _scale (in DSO mode
+  // it re-derives _scale = base_scale * _dso_zoom_factor). If update_scroll()
+  // runs before update_scale_offset(), it computes the scroll range with a
+  // stale _scale — in DSO mode that collapses the range to ~0 on every
+  // data frame (because the stale _scale fits the whole frame to the
+  // viewport width), which makes the horizontal scrollbar un-draggable
+  // even after the user zoomed in.
   _view->update_scale_offset();
+
+  // Update the scroll bars (now using the correct _scale)
+  _view->update_scroll();
 
   // Repaint the view
   _view->_time_viewport->unshow_wait_trigger();
@@ -508,6 +515,10 @@ void ViewDataSync::timebase_changed() {
 }
 
 void ViewDataSync::mode_changed() {
+  // Reset DSO user zoom factor on mode transition — entering DSO should
+  // start at fit-frame (1.0), and leaving DSO shouldn't carry a stale
+  // factor back in if the user later re-enters DSO.
+  _view->_dso_zoom_factor = 1.0;
   if (_view->_device_agent->is_virtual()) {
     uint64_t samplerate = _view->document_snapshot_source()->cur_snap_samplerate();
     if (samplerate > 0)
