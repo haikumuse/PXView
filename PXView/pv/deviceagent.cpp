@@ -1228,17 +1228,44 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     if (is_fork_only_key(key) && !is_dsl_device() && !is_demo())
         return false;
 
+    // Capture GVariant type string BEFORE sr_config_set(): sr_config_set()
+    // takes ownership of `data` (it does g_variant_ref_sink + g_variant_unref),
+    // so `data` may be FREED by the time it returns. Reading the type
+    // afterwards was a use-after-free that crashed strlen() with 0xfeeefeee
+    // when SR_ERR_ARG came back from sr_variant_type_check() or driver
+    // config_set() (both fall through to g_variant_unref). The check_key()
+    // early-return path leaks data instead (no unref), but we must not rely
+    // on which path was taken.
+    char type_buf[8] = "(null)";
+    const GVariantType *gvt_pre = data ? g_variant_get_type(data) : nullptr;
+    if (gvt_pre) {
+        const gchar *ts = g_variant_type_peek_string(gvt_pre);
+        if (ts) {
+            size_t n = strlen(ts);
+            if (n >= sizeof(type_buf)) n = sizeof(type_buf) - 1;
+            memcpy(type_buf, ts, n);
+            type_buf[n] = '\0';
+        }
+    }
+
     int ret = sr_config_set(_di, cg, (uint32_t)key, data);
     (void)ch;  // upstream sr_config_set does not take a channel parameter
     if (ret != SR_OK) {
         // SR_ERR_NA: device doesn't support this config key — common and
         // acceptable, stay silent.
-        // SR_ERR_ARG: hwdriver.c rejected the value (e.g. SR_CONF_LIMIT_SAMPLES=0
-        // is rejected with "Cannot set 'limit_samples' to 0."). This was
-        // previously silent, causing stale values to persist undiagnosed.
-        // Log at debug level so future similar issues are visible.
+        // SR_ERR_ARG: hwdriver.c rejected the value. This can be caused by
+        // either check_key() (key not in devopts) or sr_variant_type_check()
+        // (GVariant type mismatch, e.g. passing byte "y" for a key declared
+        // as SR_T_INT32 "i"). Previously logged at debug level, making type
+        // mismatches invisible in Release builds and causing stale values to
+        // persist undiagnosed. Now logged at warning level with key name and
+        // actual GVariant type string for immediate diagnosis.
         if (ret == SR_ERR_ARG) {
-            pxv_dbg("DeviceAgent::set_config: key %d rejected by hwdriver (SR_ERR_ARG, likely value=0 for LIMIT_SAMPLES)", key);
+            const struct sr_key_info *kinfo = sr_key_info_get(SR_KEY_CONFIG, (uint32_t)key);
+            const char *key_name = kinfo ? kinfo->name : "(unknown)";
+            pxv_warn("DeviceAgent::set_config: key '%s' (id=%d) rejected (SR_ERR_ARG) — "
+                     "likely type mismatch (got GVariant type '%s') or invalid value",
+                     key_name, key, type_buf);
         } else if (ret != SR_ERR_NA) {
             pxv_err("%s%d", "ERROR:DeviceAgent::set_config, Failed to set value of config id:", key);
         }
@@ -1584,9 +1611,9 @@ bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
 
 bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
     if (!is_dsl_device() && !is_demo()) { v = 0; return false; }
-    /* demo 驱动 GET 返回 byte ("y"), 用 get_config_byte 读取。
+    /* demo 驱动 GET 返回 int32 ("i"), 匹配 sr_key_info_config SR_T_INT32。
      * (DSL 驱动 GET 返回 string, 此方法对 DSL 本就不工作 — DSL 硬件已 dropped) */
-    return get_config_byte(SR_CONF_PROBE_COUPLING, v, probe, NULL);
+    return get_config_int32(SR_CONF_PROBE_COUPLING, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {

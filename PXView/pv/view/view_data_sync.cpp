@@ -278,6 +278,7 @@ void ViewDataSync::receive_end() {
 }
 
 void ViewDataSync::receive_trigger(quint64 trig_pos1) {
+  pxv_info("[DEBUG-TRIG] receive_trigger: trig_pos1=%llu", (unsigned long long)trig_pos1);
   // CRITICAL FIX: 使用 feed_in_trigger() 传入的最新 trig_pos1,而不是从
   // document_snapshot_source()->get_trigger_pos() 读取。
   //

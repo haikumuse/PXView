@@ -398,19 +398,30 @@ bool DsoSignal::load_settings() {
   }
 
   // -- vpos
+  // Initialize to mid-range before the call so that if get_probe_offset
+  // fails (returns false without writing _zero_offset), we fall back to a
+  // sensible default instead of garbage. For 8-bit ADC, mid = 128.
+  _zero_offset = (1 << _bits) / 2;
   if (probe) {
     ret = _data_source->device()->get_probe_offset(_zero_offset, probe);
+    pxv_info("[DEBUG-DSO-INIT] load_settings vpos: probe=%p get_probe_offset_ret=%d _zero_offset=%d bits=%d", (void*)probe, ret ? 1 : 0, _zero_offset, _bits);
     if (!ret) {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
-      return false;
+      // Don't return false — use the mid-range default so the waveform
+      // renders with 0V at screen center instead of at the top.
+      pxv_warn("config_get SR_CONF_PROBE_OFFSET failed, using default %d", _zero_offset);
     }
   } else {
-    _zero_offset = _model ? (int)_model->vertical_offset() : 0;
+    _zero_offset = _model ? (int)_model->vertical_offset() : (1 << _bits) / 2;
+    pxv_info("[DEBUG-DSO-INIT] load_settings vpos: probe=NULL model_vertical_offset=%.2f _zero_offset=%d",
+             _model ? _model->vertical_offset() : -1.0, _zero_offset);
   }
 
   // -- trig_value (DSO-key backed; fall back to model value)
+  // Similarly, initialize _trig_value to mid-range before the call.
+  _trig_value = (1 << _bits) / 2;
   if (probe) {
     ret = _data_source->device()->get_trigger_value(_trig_value, probe);
+    pxv_info("[DEBUG-DSO-INIT] load_settings trig: probe=%p get_trigger_value_ret=%d _trig_value=%d", (void*)probe, ret ? 1 : 0, _trig_value);
     if (ret) {
       _trig_delta = get_trig_vrate() - get_zero_ratio();
     } else {

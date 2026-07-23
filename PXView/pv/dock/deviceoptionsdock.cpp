@@ -255,7 +255,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
       lable_text = QString::fromUtf8(lang_str);
     }
 
-    QWidget *wid = p->get_widget(parent, true);
+    QWidget *wid = p->get_widget_live(parent);
 
     // Property::get_widget may return NULL when the underlying getter fails
     // (e.g. driver doesn't support the key). Skip such properties instead of
@@ -930,7 +930,12 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
       lb->setProperty("lang_page", STR_PAGE_DSL);
       probe_layout->addWidget(lb, i, 0, 1, 1);
 
-      QWidget *pow = p->get_widget(probe_widget);
+      /* Live widget: dock panel commits immediately — changing VDIV/Coupling/Map
+       * must write to the driver right away (unlike DeviceOptions dialog
+       * which commits all at once on OK). Without this, coupling dropdown
+       * changes were silently lost — the value stayed at DC (default) and
+       * the driver never received SR_CONF_PROBE_COUPLING SET. */
+      QWidget *pow = p->get_widget_live(probe_widget);
       if (!pow) {
         pxv_warn("DeviceOptionsDock::analog_probes: get_widget returned NULL "
                  "for property '%s' (name='%s'), skipping",
@@ -940,6 +945,11 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
       }
       pow->setEnabled(probe_checkBox->isChecked());
       pow->setFont(contentFont);
+
+      /* Notify dock on commit so settings_applied() fires for downstream
+       * UI sync (same pattern as device-level properties at line 320). */
+      connect(p, &pv::prop::Property::committed, this,
+              &DeviceOptionsDock::on_property_committed);
 
       if (p->name().contains("map default", Qt::CaseInsensitive)) {
         // Bool 属性创建的是 QCheckBox (bool.cpp:51), 不是 QPushButton。
@@ -1472,7 +1482,7 @@ QJsonObject DeviceOptionsDock::get_session() {
 
         for (auto p : properties) {
           if (p->name().contains("Volts/div")) {
-            QWidget *w = p->get_widget(nullptr);
+            QWidget *w = p->get_widget_deferred(nullptr);
             QComboBox *combo = qobject_cast<QComboBox *>(w);
             if (combo && combo->currentIndex() >= 0) {
               GVariant *gvar =
@@ -1484,19 +1494,19 @@ QJsonObject DeviceOptionsDock::get_session() {
               }
             }
           } else if (p->name().contains("Coupling")) {
-            QWidget *w = p->get_widget(nullptr);
+            QWidget *w = p->get_widget_deferred(nullptr);
             QComboBox *combo = qobject_cast<QComboBox *>(w);
             if (combo && combo->currentIndex() >= 0) {
               GVariant *gvar =
                   (GVariant *)combo->itemData(combo->currentIndex())
                       .value<void *>();
-              if (gvar && g_variant_is_of_type(gvar, G_VARIANT_TYPE("y"))) {
-                int coupling = g_variant_get_byte(gvar);
+              if (gvar && g_variant_is_of_type(gvar, G_VARIANT_TYPE("i"))) {
+                int coupling = g_variant_get_int32(gvar);
                 ch_obj["coupling"] = coupling;
               }
             }
           } else if (p->name().contains("Map Default")) {
-            QWidget *w = p->get_widget(nullptr);
+            QWidget *w = p->get_widget_deferred(nullptr);
             QCheckBox *checkBox = qobject_cast<QCheckBox *>(w);
             if (checkBox) {
               ch_obj["map_default"] = checkBox->checkState() == Qt::Checked;

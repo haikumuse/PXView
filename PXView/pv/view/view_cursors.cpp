@@ -95,11 +95,21 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
       }
     }
   }
+
+  AppConfig &app = AppConfig::Instance();
+  pxv_info("[DEBUG-TRIG] set_trig_cursor_posistion: trig_pos=%llu time=%.9g width=%d scale=%.9g trigger_en=%d is_virtual=%d mode=%d trigPosDisplayInMid=%d computed_offset=%.2f cur_offset=%lld",
+           (unsigned long long)trig_pos, time, width, _view->_scale,
+           trigger_enabled ? 1 : 0,
+           _view->_device_agent ? _view->_device_agent->is_virtual() : -1,
+           _view->get_work_mode(),
+           app.appOptions.trigPosDisplayInMid ? 1 : 0,
+           (time / _view->_scale) - (width / 2),
+           (long long)_view->_offset);
+
   if (trigger_enabled || _view->_device_agent->is_virtual() ||
       _view->get_work_mode() == DSO) {
     _view->_show_trig_cursor = true;
 
-    AppConfig &app = AppConfig::Instance();
     if (app.appOptions.trigPosDisplayInMid) {
       _view->set_scale_offset(_view->_scale, (time / _view->_scale) - (width / 2));
     }

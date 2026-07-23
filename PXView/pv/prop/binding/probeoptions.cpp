@@ -230,16 +230,17 @@ void ProbeOptions::bind_coupling(const QString &name, const QString label,
         return;
     }
 
-    /* Driver returns a dict {"coupling": [uint8...]} (a{sv}). */
+    /* Driver returns a dict {"coupling": [int32...]} (a{sv}). int32 matches
+     * sr_key_info_config SR_T_INT32 so SET passes sr_variant_type_check. */
     if ((gvar_list_coupling = g_variant_lookup_value(gvar_list,
-            "coupling", G_VARIANT_TYPE("ay"))))
+            "coupling", G_VARIANT_TYPE("ai"))))
     {
         bind_enum(name, label, SR_CONF_PROBE_COUPLING,
             gvar_list_coupling, print_coupling);
         g_variant_unref(gvar_list_coupling);
     } else {
         /* g_variant_lookup_value returned NULL — either the dict is missing
-         * the "coupling" key or its value type is not "ay". Without this
+         * the "coupling" key or its value type is not "ai". Without this
          * branch the coupling control would silently disappear from the
          * DeviceOptions dialog in ANALOG mode. Log enough context to
          * diagnose the driver. */
@@ -282,8 +283,11 @@ QString ProbeOptions::print_vdiv(GVariant *const gvar)
 
 QString ProbeOptions::print_coupling(GVariant *const gvar)
 {
-    uint8_t coupling;
-    g_variant_get(gvar, "y", &coupling);
+    /* Driver LIST now returns int32 ("i") to match sr_key_info_config
+     * SR_T_INT32. Old code used "y" (byte) which caused SET to be rejected
+     * by sr_variant_type_check. */
+    int32_t coupling;
+    g_variant_get(gvar, "i", &coupling);
     if (coupling == SR_DC_COUPLING) {
         return QString("DC");
     } else if (coupling == SR_AC_COUPLING) {

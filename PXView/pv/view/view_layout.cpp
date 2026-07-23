@@ -55,6 +55,12 @@ namespace pv {
 namespace view {
 
 void ViewLayout::set_scale_offset(double scale, int64_t offset) {
+  // Use return address to identify the caller for debugging offset=-408 issue
+  pxv_info("[DEBUG-SCALE] set_scale_offset ENTRY: scale=%.9g offset=%lld cur_scale=%.9g cur_offset=%lld maxscale=%.9g minscale=%.9g max_off=%lld min_off=%lld caller=%p",
+           scale, (long long)offset, _view->_scale, (long long)_view->_offset,
+           _view->_maxscale, _view->_minscale,
+           (long long)get_max_offset(), (long long)get_min_offset(),
+           __builtin_return_address(0));
   // Restore bidirectional clamping from Reference/DSView-master/DSView/pv/view/
   // view.cpp:355-356. Previously only `max(...)` (lower bound) was applied,
   // missing the upper bound clamp on both _scale and _offset. This caused
@@ -199,7 +205,12 @@ void ViewLayout::zoom(double steps) {
 
 bool ViewLayout::zoom(double steps, int offset) {
   int width = _view->get_view_width();
+  pxv_info("[DEBUG-ZOOM] zoom ENTRY: steps=%.4f offset=%d width=%d mode=%d scale=%.9g zoom_factor=%.6f maxscale=%.9g minscale=%.9g",
+           steps, offset, width, _view->get_work_mode(),
+           _view->_scale, _view->_dso_zoom_factor,
+           _view->_maxscale, _view->_minscale);
   if (width == 0) {
+    pxv_info("[DEBUG-ZOOM] zoom ABORT: width=0");
     return false;
   }
 
@@ -255,12 +266,14 @@ bool ViewLayout::zoom(double steps, int offset) {
 }
 
 void ViewLayout::h_scroll_value_changed(int value) {
+  // DEBUG: log BEFORE the guard so we can see if the signal fires at all
+  pxv_info("[DEBUG-SCROLL] h_scroll_value_changed ENTRY: value=%d updating_scroll=%d max_off=%lld min_off=%lld scale=%.9g zoom_factor=%.6f offset=%lld",
+           value, _view->_updating_scroll ? 1 : 0,
+           (long long)get_max_offset(), (long long)get_min_offset(),
+           _view->_scale, _view->_dso_zoom_factor, (long long)_view->_offset);
+
   if (_view->_updating_scroll)
     return;
-
-  pxv_info("[DEBUG-SCROLL] h_scroll_value_changed: value=%d max_off=%lld min_off=%lld scale=%.9g zoom_factor=%.6f",
-           value, (long long)get_max_offset(), (long long)get_min_offset(),
-           _view->_scale, _view->_dso_zoom_factor);
 
   _view->_preOffset = _view->_offset;
 
@@ -314,9 +327,18 @@ void ViewLayout::update_scroll() {
            (long long)length, (long long)offset, (long long)length,
            (long long)get_max_offset(), (long long)get_min_offset());
 
-  _view->horizontalScrollBar()->setPageStep(areaSize.width() / 2);
+  _view->horizontalScrollBar()->setPageStep(areaSize.width());
 
   _view->_updating_scroll = true;
+
+  // DEBUG: log scrollbar geometry & state to diagnose drag failure
+  auto *hbar = _view->horizontalScrollBar();
+  QRect hbarGeo = hbar->geometry();
+  pxv_info("[DEBUG-SCROLL] hbar state: visible=%d enabled=%d geo=[x=%d y=%d w=%d h=%d] min=%d max=%d pagestep=%d sliderpos=%d value=%d",
+           hbar->isVisible() ? 1 : 0, hbar->isEnabled() ? 1 : 0,
+           hbarGeo.x(), hbarGeo.y(), hbarGeo.width(), hbarGeo.height(),
+           hbar->minimum(), hbar->maximum(), hbar->pageStep(),
+           hbar->sliderPosition(), hbar->value());
 
   if (length < View::MaxScrollValue) {
     _view->horizontalScrollBar()->setRange(0, length);

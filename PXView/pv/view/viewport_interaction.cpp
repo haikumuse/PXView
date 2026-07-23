@@ -146,8 +146,13 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
     for (auto s : _viewport->_view.get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
         DsoSignal *dsoSig = (DsoSignal *)s;
-        if (dsoSig->get_trig_rect(0, _viewport->_view.get_view_width())
-                .contains(_viewport->_mouse_point)) {
+        QRectF trigRect = dsoSig->get_trig_rect(0, _viewport->_view.get_view_width());
+        bool hit = trigRect.contains(_viewport->_mouse_point);
+        pxv_info("[DEBUG-DSO-CLICK] mousePressEvent DSO: mouse_point=(%d,%d) trig_rect=[x=%.1f y=%.1f w=%.1f h=%.1f] hit=%d action=%d",
+                 _viewport->_mouse_point.x(), _viewport->_mouse_point.y(),
+                 trigRect.x(), trigRect.y(), trigRect.width(), trigRect.height(),
+                 hit ? 1 : 0, _viewport->_action_type);
+        if (hit) {
           _viewport->_drag_sig = s;
           _viewport->set_action(DSO_TRIG_MOVE);
           dsoSig->select(true);

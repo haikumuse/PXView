@@ -334,11 +334,11 @@ QLayout *DeviceOptions::get_property_form(QWidget *parent) {
     layout->addWidget(lb, i, 0);
 
     if (label == QString("Operation mode")) {
-      QWidget *wid = p->get_widget(parent, true);
+      QWidget *wid = p->get_widget_live(parent);
       wid->setFont(font);
       layout->addWidget(wid, i, 1);
     } else {
-      QWidget *wid = p->get_widget(parent);
+      QWidget *wid = p->get_widget_deferred(parent);
       wid->setFont(font);
       layout->addWidget(wid, i, 1);
     }
@@ -795,7 +795,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
       lb->setFont(font);
       probe_layout->addWidget(lb, i, 0, 1, 1);
 
-      QWidget *pow = p->get_widget(probe_widget);
+      QWidget *pow = p->get_widget_deferred(probe_widget);
       pow->setEnabled(probe_checkBox->isChecked());
       pow->setFont(font);
 
@@ -838,17 +838,15 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
     // returns a stale/zero value.
     {
       int coupling_val = -1;
-      /* demo 驱动 GET 返回 byte ("y"), 用 get_config_byte 读取。
-       * (旧代码用 get_config_int32, 在 GET 返回 byte 时返回 0 → 误判为 GND
-       *  → 触发 set_config_int32 → SET 用 g_variant_get_byte 读 int32 变体 → 0
-       *  → 反而把正确的 DC 覆盖成 GND。改为 byte 方法保持一致。) */
-      if (_device_agent->get_config_byte(SR_CONF_PROBE_COUPLING,
+      /* demo 驱动 GET 返回 int32 ("i"), 匹配 sr_key_info_config SR_T_INT32。
+       * 用 get_config_int32 读取。 */
+      if (_device_agent->get_config_int32(SR_CONF_PROBE_COUPLING,
                                           coupling_val, probe, NULL)) {
         pxv_info("analog_probes: probe=%s coupling=%d (expected 1=DC)",
                  probe->name, coupling_val);
         if (coupling_val == 0 && _device_agent->is_demo()) {
           pxv_info("  -> syncing DC default (was GND=0)");
-          _device_agent->set_config_byte(SR_CONF_PROBE_COUPLING, 1,
+          _device_agent->set_config_int32(SR_CONF_PROBE_COUPLING, 1,
                                            probe, NULL);
         }
       } else {
