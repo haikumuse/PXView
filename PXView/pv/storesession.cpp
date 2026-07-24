@@ -611,9 +611,16 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
     sprintf(meta, "capturefile = data\n"); str += meta;
     sprintf(meta, "total samples = %" PRIu64 "\n", snapshot->get_sample_count()); str += meta;
 
-    if (mode != LOGIC) {
-        sprintf(meta, "total probes = %d\n", snapshot->get_channel_num()); str += meta;
-        sprintf(meta, "total blocks = %d\n", snapshot->get_block_num()); str += meta;
+    // MSO 架构修复：按通道类型分别统计 logic/analog 通道数。
+    // session_file.c 解析时：total probes → 创建 SR_CHANNEL_LOGIC，
+    // total analog → 创建 SR_CHANNEL_ANALOG。若不区分，所有通道都会被当成 logic。
+    int logic_count = 0, analog_count = 0;
+    for (l = _session->get_device()->get_channels(); l; l = l->next) {
+        probe = (struct sr_channel *)l->data;
+        if (probe->type == SR_CHANNEL_LOGIC)
+            logic_count++;
+        else if (probe->type == SR_CHANNEL_ANALOG || probe->type == SR_CHANNEL_DSO)
+            analog_count++;
     }
 
     data::LogicSnapshot *logic_snapshot = NULL;
@@ -621,7 +628,8 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
         uint16_t to_save_probes = 0;
         for (l = _session->get_device()->get_channels(); l; l = l->next) {
             probe = (struct sr_channel *)l->data;
-            if (probe->enabled && logic_snapshot->has_data(probe->index))
+            if (probe->enabled && probe->type == SR_CHANNEL_LOGIC
+                && logic_snapshot->has_data(probe->index))
                 to_save_probes++;
         }
 
@@ -656,6 +664,16 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
 
         sprintf(meta, "total probes = %d\n", to_save_probes); str += meta;
         sprintf(meta, "total blocks = %d\n", block_count); str += meta;
+    }
+    else {
+        // 非 LOGIC 模式（ANALOG/DSO）：logic_count 可能为 0，analog_count > 0
+        sprintf(meta, "total probes = %d\n", logic_count); str += meta;
+        sprintf(meta, "total blocks = %d\n", snapshot->get_block_num()); str += meta;
+    }
+
+    // MSO 架构修复：写入 total analog，让 session_file.c 创建 SR_CHANNEL_ANALOG 通道。
+    if (analog_count > 0) {
+        sprintf(meta, "total analog = %d\n", analog_count); str += meta;
     }
 
     s = sr_samplerate_string(_session->cur_snap_samplerate());
@@ -703,7 +721,8 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
     }
     sprintf(meta, "trigger pos = %" PRIu64 "\n", _session->get_trigger_pos()); str += meta;
 
-    probecnt = 0; 
+    probecnt = 0;
+    int analogcnt = 0;
 
     for (l = _session->get_device()->get_channels(); l; l = l->next) {
         
@@ -715,16 +734,19 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
         if (mode == LOGIC && !probe->enabled)
             continue;
 
+        // MSO 架构修复：按通道类型写入不同的命名前缀。
+        // session_file.c 解析时：probe<N> → 给第 N 个 LOGIC 通道改名，
+        // analog<N> → 给第 N 个 ANALOG 通道改名。0-based 编号。
+        gboolean is_logic = (probe->type == SR_CHANNEL_LOGIC);
         if (probe->name)
         {
-            int sigdex = (mode == LOGIC) ? probe->index : probecnt;
-            sprintf(meta, "probe%d = %s\n", sigdex, probe->name);
+            if (is_logic) {
+                sprintf(meta, "probe%d = %s\n", probe->index, probe->name);
+            } else {
+                sprintf(meta, "analog%d = %s\n", analogcnt, probe->name);
+            }
             str += meta;
         }
-
-        // Fork sr_channel.trigger field removed in upstream libsigrok.
-        // Trigger config is now in Core TriggerConfig (SigSession::_trigger_config),
-        // not per-channel. Skip trigger string write — DSO mode is deprecated.
 
         // Find matching SignalModel by probe->index for fork field replacements.
         std::shared_ptr<data::SignalModel> matched_model;
@@ -739,8 +761,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
         {
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
-            // Fork sr_channel.coupling/vdiv/vfactor/hw_offset/trig_value removed
-            // in upstream libsigrok — read from matched SignalModel instead.
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double vfactor = matched_model ? matched_model->vfactor() : 1;
@@ -761,8 +781,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
         {
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
-            // Fork sr_channel.coupling/vdiv/hw_offset removed in upstream
-            // libsigrok — read from matched SignalModel instead.
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double hw_offset = matched_model ? matched_model->hw_offset() : 0;
@@ -772,8 +790,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             str += meta;
             sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
             str += meta;
-            // Fork sr_channel.map_unit/map_min/map_max removed in upstream
-            // libsigrok. Analog mapping UI is being deprecated — stub defaults.
             sprintf(meta, " mapUnit%d = %s\n", probecnt, "");
             str += meta;
             sprintf(meta, " mapMax%d = %lf\n", probecnt, 0.0);
@@ -781,8 +797,25 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, " mapMin%d = %lf\n", probecnt, 0.0);
             str += meta;
         }
-        probecnt++;
-    } 
+
+        if (is_logic)
+            probecnt++;
+        else
+            analogcnt++;
+    }
+
+    // MSO 架构修复：写入模拟数据格式信息，供 session_driver 读取。
+    data::AnalogSnapshot *analog_snap_for_meta = nullptr;
+    auto snap_analog = _session->get_snapshot(SR_CHANNEL_ANALOG);
+    if (snap_analog && !snap_analog->empty()) {
+        analog_snap_for_meta = dynamic_cast<data::AnalogSnapshot*>(snap_analog);
+    }
+    if (analog_snap_for_meta) {
+        sprintf(meta, "analog bytes = %d\n", analog_snap_for_meta->get_unit_bytes());
+        str += meta;
+        sprintf(meta, "analog float = %d\n", analog_snap_for_meta->is_float() ? 1 : 0);
+        str += meta;
+    }
 
     return true;
 }
