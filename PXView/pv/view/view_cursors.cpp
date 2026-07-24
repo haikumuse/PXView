@@ -102,7 +102,16 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
       _view->get_work_mode() == DSO) {
     _view->_show_trig_cursor = true;
 
-    if (app.appOptions.trigPosDisplayInMid) {
+    // DSO 持续采集时每帧都会调用 set_trig_cursor_posistion() (经由
+    // receive_trigger -> ViewDataSync::receive_trigger)。如果此处也调用
+    // set_scale_offset() 强制居中到触发位置,会覆盖用户的水平滚动操作,
+    // 表现为水平滑动条被强制移动到最右端 (DSO 触发位置靠近帧末尾时,
+    // (time/scale - width/2) 会被 clamp 到 get_max_offset())。
+    // 修复: DSO 模式下仅更新光标可视位置,不自动滚动。用户主动设置
+    // 触发位置 (View::set_trig_pos, 仅在采集前调用) 仍会通过 LOGIC/ANALOG
+    // 路径或首次进入 DSO 时由其他逻辑处理居中。
+    if (app.appOptions.trigPosDisplayInMid &&
+        _view->get_work_mode() != DSO) {
       _view->set_scale_offset(_view->_scale, (time / _view->_scale) - (width / 2));
     }
   }

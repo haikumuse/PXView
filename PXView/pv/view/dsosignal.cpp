@@ -67,10 +67,16 @@ QColor DsoSignal::getSignalColor(int index) {
   return c.isValid() ? c : SignalColours[index % 4];
 }
 
-// LDO dual-path threshold: spp < threshold → paint_trace (per-sample polyline),
-// spp >= threshold → paint_envelope (min/max rectangles). Lowered from 256.0f
-// to 4.0f to match the AnalogSignal optimization: at spp=100, paint_trace
-// draws 100x more points than paint_envelope, causing severe zoom lag.
+// LDO dual-path threshold:
+//   spp < threshold → paint_trace (per-sample polyline, continuous)
+//   spp >= threshold → paint_per_pixel (per-pixel min/max, 1px rects)
+// Set to 4.0: paint_trace uses drawPolyline which is inherently continuous
+// (connects points), while paint_per_pixel uses drawRects (independent
+// rectangles, no connection). At spp ≈ 1, paint_per_pixel draws 1px rects
+// with no connection → appears as scattered dots / broken lines.
+// At spp < 4, paint_trace draws < 4000 points (DSO frame = 20K samples,
+// visible = width * spp < 4000), which is < 2ms — smooth and continuous.
+// At spp >= 4, paint_per_pixel draws 1000 dense rects — no visual gaps.
 const float DsoSignal::EnvelopeThreshold = 4.0f;
 
 DsoSignal::DsoSignal(data::DsoSnapshot *data,
@@ -161,33 +167,28 @@ void DsoSignal::set_enable(bool enable) {
   _en_lock = true;
   bool cur_enable = _model->enabled();
   if (cur_enable == enable) {
+    // 即使 model 状态没变,也要同步 _local_enabled,因为 enabled()
+    // (基类 Signal::enabled()) 返回的是 _local_enabled,不是 _model->enabled()。
+    _local_enabled = enable;
     _en_lock = false;
     return;
   }
+  // 同步 _local_enabled — set_enable 不经过 Signal::set_enabled(),
+  // 而是直接调 _model->set_probe_enabled(),所以 _local_enabled 不会自动同步。
+  _local_enabled = enable;
 
-  bool running = false;
-
-  if (_data_source->is_running_status()) {
-    running = true;
-    _data_source->stop_capture();
-  }
-
-  while (_data_source->is_running_status())
-    QCoreApplication::processEvents();
-
-  set_vDialActive(false);
+  // DSO 模式: 不要 stop/start capture! 旧代码在 set_enable 内部做
+  // stop_capture + start_capture,这会触发 reload() -> rebuild_signals()
+  // -> apply_model_properties() 用新 model 覆盖 _local_enabled。但重建是
+  // 异步的,重建期间旧 signal 的 _local_enabled 可能被重置为旧值,导致
+  // "禁用后无法使能"。demo 驱动是软件生成的,enable 状态在下一帧自然
+  // 生效 (demo_send_dso_packet 只为 enabled 通道生成数据),无需重启采集。
+  // 同时调用 Signal::set_enabled() 确保基类 _local_enabled 与 model 同步。
+  Signal::set_enabled(enable);
   _model->set_probe_enabled(enable, probe);
 
-  // _view 可能在构造期(load_settings 调用本函数)为 NULL，
-  // set_view() 要等 update_signals() 返回后才执行。此处需保护，
-  // 与 load_settings() 末尾的 if(_view) 风格一致。
   if (_view)
     _view->update_hori_res();
-
-  if (running) {
-    _data_source->stop_capture();
-    _data_source->start_capture(false);
-  }
 
   if (_view) {
     _view->set_update(_viewport, true);
@@ -482,6 +483,8 @@ uint64_t DsoSignal::get_vDialValue() { return _vDial->get_value(); }
 uint16_t DsoSignal::get_vDialSel() { return _vDial->get_sel(); }
 
 void DsoSignal::set_acCoupling(uint8_t coupling) {
+  pxv_info("[DSO-COUPLING] set_acCoupling(%u) called, enabled=%d",
+           (unsigned)coupling, enabled());
   auto model = _model;
 
   if (enabled()) {
@@ -550,6 +553,8 @@ void DsoSignal::set_zero_ratio(double ratio) {
 }
 
 void DsoSignal::set_factor(uint64_t factor) {
+  pxv_info("[DSO-FACTOR] set_factor(%llu) called, enabled=%d",
+           (unsigned long long)factor, enabled());
   auto model = _model;
   sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
 
@@ -574,6 +579,34 @@ void DsoSignal::set_factor(uint64_t factor) {
       if (model) {
         model->set_vfactor((double)factor);
       }
+
+      // 联动 vDial: 把有效 vdiv (base_value × factor) 推送到 driver。
+      // dslDial::get_value() 返回基础档位值 (不含 factor), 而 driver 的
+      // SR_CONF_PROBE_VDIV 用于 demo_dso_vdiv_scale() 缩放波形振幅。
+      // 如果不把 factor 乘进去推送, 切换 x10 后波形振幅不变 (因为
+      // dso_vdiv 仍是基础值, demo_dso_vdiv_scale 按基础值缩放)。
+      // x10 探头衰减信号 10 倍, 等效于 vdiv 放大 10 倍, 所以推送
+      // base × factor 让 demo_dso_vdiv_scale 按放大后的 vdiv 缩放,
+      // 波形振幅相应缩小。
+      DeviceAgent *dev = _data_source ? _data_source->device() : nullptr;
+      if (dev && probe) {
+        uint64_t effective_vdiv = _vDial->get_value() * factor;
+        dev->set_config_uint64(SR_CONF_PROBE_VDIV, effective_vdiv, probe);
+        pxv_info("[DSO-FACTOR] pushed effective_vdiv=%llu (base=%llu × factor=%llu)",
+                 (unsigned long long)effective_vdiv,
+                 (unsigned long long)_vDial->get_value(),
+                 (unsigned long long)factor);
+      }
+
+      // 同步 stop_scale (与 go_vDialPre/Next 一致)
+      if (_data_source->is_stopped_status()) {
+        // factor 变化等效于 vdiv 变化, 调整 stop_scale 保持显示比例
+        // 新_vdiv / 旧_vdiv = factor / prefactor
+        set_stop_scale(_stop_scale * ((double)prefactor / (double)factor));
+        set_scale(get_view_rect().height());
+      }
+
+      _view->vDial_updated();
     }
   }
 }
@@ -791,26 +824,27 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
         min(max((int64_t)ceil(end) + 1, (int64_t)0), last_sample);
     const int hw_offset = get_hw_offset();
 
-    static thread_local int _dso_paint_dbg = 0;
-    if ((++_dso_paint_dbg % 50) == 0) {
-      pxv_info("[DSO-PAINT] sample_count=%llu last_sample=%lld offset=%lld "
-               "scale=%.9g spp=%.4f start=%.1f end=%.1f start_sample=%lld "
-               "end_sample=%lld span=%lld trig_hoff=%.2f",
-               (unsigned long long)_data->get_sample_count(),
-               (long long)last_sample, (long long)offset, scale,
-               samples_per_pixel, start, end, (long long)start_sample,
-               (long long)end_sample, (long long)(end_sample - start_sample + 1),
-               _view->trig_hoff());
-    }
-
+    // LDO (Low-Density Optimization) three-path dispatch:
+    //   spp < 1.0  → paint_trace (per-sample polyline, zoomed-in)
+    //   spp >= 1.0 → paint_per_pixel (per-pixel min/max, 1px rects)
     if (samples_per_pixel < EnvelopeThreshold) {
-      _data->enable_envelope(false);
       paint_trace(p, _data, zeroY, left, start_sample, end_sample, hw_offset,
                   pixels_offset, samples_per_pixel, enabled_channels);
     } else {
-      _data->enable_envelope(true);
-      paint_envelope(p, _data, zeroY, left, start_sample, end_sample, hw_offset,
-                     pixels_offset, samples_per_pixel, enabled_channels);
+      paint_per_pixel(p, _data, zeroY, left, right, start_sample, end_sample,
+                      hw_offset, pixels_offset, samples_per_pixel,
+                      enabled_channels);
+    }
+
+    static thread_local int _dso_path_dbg = 0;
+    if ((++_dso_path_dbg % 20) == 0) {
+      pxv_info("[DSO-PATH] spp=%.4f thr=%.2f path=%s sample_count=%lld "
+               "start=%lld end=%lld width=%d offset=%lld trig_hoff=%.2f",
+               samples_per_pixel, EnvelopeThreshold,
+               samples_per_pixel < EnvelopeThreshold ? "trace" : "per_pixel",
+               (long long)(end_sample - start_sample + 1),
+               (long long)start_sample, (long long)end_sample, width,
+               (long long)offset, _view->trig_hoff());
     }
   }
 }
@@ -1045,6 +1079,96 @@ void DsoSignal::paint_envelope(QPainter &p,
   p.drawRects(r, e.length);
 }
 
+void DsoSignal::paint_per_pixel(QPainter &p,
+                                const pv::data::DsoSnapshot *snapshot,
+                                int zeroY, int left, int right,
+                                const int64_t start, const int64_t end,
+                                int hw_offset, const double pixels_offset,
+                                const double samples_per_pixel,
+                                uint64_t num_channels) {
+  (void)num_channels;
+  (void)pixels_offset; // base_sample derived from `start` directly.
+
+  const int width = right - left;
+  if (width <= 0 || end <= start)
+    return;
+
+  // Fetch the raw sample buffer for the visible range once.
+  pv::data::DsoSnapshot *pshot = const_cast<pv::data::DsoSnapshot *>(snapshot);
+  const uint8_t *const samples_buffer =
+      pshot->get_samples(start, end, get_index());
+  if (!samples_buffer)
+    return;
+
+  QColor trace_colour = _colour;
+  trace_colour.setAlpha(View::ForeAlpha);
+  p.setPen(QPen(Qt::NoPen));
+  p.setBrush(trace_colour);
+
+  // Reuse thread-local rect buffer (painting is GUI-thread-only).
+  static thread_local QVector<QRectF> rects;
+  if (rects.size() < width)
+    rects.resize(width);
+  QRectF *r = rects.data();
+
+  const float top = get_view_rect().top();
+  const float bottom = get_view_rect().bottom();
+  const double spp = samples_per_pixel;
+
+  // Sample i maps to screen x = i/spp - pixels_offset + left + trig_hoff/spp.
+  // Invert: pixel x (relative to left) → sample = (x + pixels_offset -
+  // trig_hoff/spp) * spp = x*spp + (pixels_offset*spp - trig_hoff).
+  // paint_mid computed: start = offset * spp - trig_hoff, and
+  // pixels_offset = offset, so pixels_offset*spp - trig_hoff = start.
+  // Thus sample(x) = start + x * spp, where x is pixel offset from left.
+  const double base_sample = start;
+
+  for (int x = 0; x < width; x++) {
+    // Sample range covered by this pixel [x, x+1) in pixel space.
+    int64_t s_start = (int64_t)floor(base_sample + x * spp);
+    int64_t s_end = (int64_t)floor(base_sample + (x + 1) * spp);
+
+    // Clamp to visible data window.
+    if (s_start < start) s_start = start;
+    if (s_end > end) s_end = end;
+    if (s_end <= s_start)
+      s_end = s_start + 1;
+    if (s_end > end)
+      s_end = end;
+    if (s_start >= s_end)
+      continue;
+
+    // Compute min/max over the pixel's sample range. Buffer is indexed
+    // relative to `start`, so offset by (s_start - start).
+    const uint8_t *pmin_src = samples_buffer + (s_start - start);
+    const uint8_t *pmax_src = pmin_src;
+    const int64_t span = s_end - s_start;
+    uint8_t min_v = *pmin_src;
+    uint8_t max_v = *pmin_src;
+    for (int64_t i = 1; i < span; i++) {
+      const uint8_t v = pmin_src[i];
+      if (v < min_v) min_v = v;
+      if (v > max_v) max_v = v;
+    }
+    (void)pmax_src;
+
+    // Map to screen Y. min_v → top (smaller voltage), max_v → bottom.
+    float y_top = min(max(top, zeroY + (min_v - hw_offset) * _scale), bottom);
+    float y_bot = min(max(top, zeroY + (max_v - hw_offset) * _scale), bottom);
+
+    // Ensure minimum 1px height for visibility at flat segments.
+    float h = y_bot - y_top;
+    if (h >= 0.0f && h < 1.0f)
+      h = 1.0f;
+    else if (h <= 0.0f && h > -1.0f)
+      h = -1.0f;
+
+    r[x] = QRectF((float)(left + x), y_top, 1.0f, h);
+  }
+
+  p.drawRects(r, width);
+}
+
 void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
                                    QColor fore) {
   // Hot path debug logging removed for performance
@@ -1137,6 +1261,18 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
   const QRectF x1_rect = get_rect(DSO_X1, y, right);
   const QRectF x10_rect = get_rect(DSO_X10, y, right);
   const QRectF x100_rect = get_rect(DSO_X100, y, right);
+
+  // 诊断日志:确认点击位置和各 rect 命中情况。
+  pxv_info("[DSO-MOUSE] press pt=(%d,%d) y=%d enabled=%d local_en=%d "
+           "model_en=%d chEn=%s acdc=%s x1=%s x10=%s x100=%s vDial=%s",
+           pt.x(), pt.y(), y, enabled(), _local_enabled,
+           _model ? _model->enabled() : -1,
+           chEn_rect.contains(pt) ? "Y" : "n",
+           acdc_rect.contains(pt) ? "Y" : "n",
+           x1_rect.contains(pt) ? "Y" : "n",
+           x10_rect.contains(pt) ? "Y" : "n",
+           x100_rect.contains(pt) ? "Y" : "n",
+           vDial_rect.contains(pt) ? "Y" : "n");
 
   if (chEn_rect.contains(pt)) {
     if (_data_source->device()->is_file() == false && !_en_lock) {

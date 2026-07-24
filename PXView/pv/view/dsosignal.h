@@ -292,6 +292,18 @@ private:
         const double pixels_offset, const double samples_per_pixel,
         uint64_t num_channels);
 
+    // New LDO path: per-pixel min/max. For each screen pixel, computes the
+    // min and max of all samples falling into that pixel's sample-range,
+    // then draws a 1px-wide rectangle. Time-accurate (each pixel independent)
+    // and seamless (1px rects tile perfectly). Used for spp >= TraceThreshold.
+    // Replaces the old mipmap paint_envelope path which was time-inaccurate
+    // for spp in [4, 255] (mipmap scale=256 caused 64px-wide rects at spp=4).
+    void paint_per_pixel(QPainter &p,
+        const pv::data::DsoSnapshot *snapshot,
+        int zeroY, int left, int right, const int64_t start, const int64_t end,
+        int hw_offset, const double pixels_offset,
+        const double samples_per_pixel, uint64_t num_channels);
+
     void paint_hover_measure(QPainter &p, QColor fore, QColor back);
     void auto_set();
     void init_vDial(DsoSignal *src = nullptr);

@@ -111,6 +111,18 @@ void SignalModel::set_vdiv(double vdiv) {
 void SignalModel::set_coupling(int coupling) {
     if (_coupling != coupling) {
         _coupling = coupling;
+        // SR_CONF_PROBE_COUPLING is int32 (matches DsoSignal::commit_settings
+        // and demo driver's dso_couplings[] _Static_assert). Without pushing
+        // to the driver here, set_acCoupling() only updates the model field;
+        // the next load_settings() reads the STALE driver value and resets
+        // the UI back to the old coupling (e.g. GND→DC after start_capture).
+        if (_sr_channel && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_int32(SR_CONF_PROBE_COUPLING, coupling,
+                                         _sr_channel, NULL);
+            }
+        }
         emit appearance_changed();
     }
 }

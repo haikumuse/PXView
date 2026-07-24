@@ -1022,7 +1022,19 @@ double SamplingBar::commit_hori_res() {
   if (sample_rate != _device_agent->get_sample_rate())
     _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
-  _device_agent->set_config_uint64(SR_CONF_TIMEBASE, hori_res);
+  // Only SET TIMEBASE if the value actually changed. Unconditional SET
+  // triggers config_changed() -> broadcast_async<SampleCountUpdated> ->
+  // MainWindow::on_event -> update_sample_count_selector ->
+  // on_samplecount_sel -> commit_hori_res -> SET TIMEBASE -> ... infinite
+  // async loop (visible as repeated "Update sample count list." log spam
+  // and 100% CPU). The async dispatch means the _updating_sample_count
+  // re-entry guard can't break the loop (the flag is cleared before the
+  // async event arrives). Matching the SR_CONF_SAMPLERATE check above.
+  uint64_t cur_timebase = 0;
+  if (_device_agent->get_config_uint64(SR_CONF_TIMEBASE, cur_timebase) &&
+      (uint64_t)hori_res != cur_timebase) {
+    _device_agent->set_config_uint64(SR_CONF_TIMEBASE, hori_res);
+  }
 
   return hori_res;
 }
