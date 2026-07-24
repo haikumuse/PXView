@@ -256,11 +256,16 @@ void SignalConfigStore::apply_signal_config() {
   }
 
   /* Task 10/Phase 3: write operation_mode/channel_mode as strings (driver
-   * config_set uses std_str_idx). */
-  agent->set_config_string(SR_CONF_OPERATION_MODE,
-                          _signal_config.operation_mode.toUtf8().constData());
-  agent->set_config_string(SR_CONF_CHANNEL_MODE,
-                          _signal_config.channel_mode.toUtf8().constData());
+   * config_set uses std_str_idx). Skip empty strings — a .pxc saved from a
+   * device that doesn't support these keys stores "", and passing "" to the
+   * driver's std_str_idx validation returns SR_ERR_ARG (logged as a warning
+   * by DeviceAgent::set_config). */
+  if (!_signal_config.operation_mode.isEmpty())
+    agent->set_config_string(SR_CONF_OPERATION_MODE,
+                            _signal_config.operation_mode.toUtf8().constData());
+  if (!_signal_config.channel_mode.isEmpty())
+    agent->set_config_string(SR_CONF_CHANNEL_MODE,
+                            _signal_config.channel_mode.toUtf8().constData());
 
   if (_signal_config.is_demo && !_signal_config.demo_operation_mode.isEmpty()) {
     agent->set_config_string(
