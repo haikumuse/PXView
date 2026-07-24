@@ -28,6 +28,7 @@ $whitelistDirs = @(
 $whitelistFiles = @(
     "CMakeLists.txt", "COPYING", "INSTALL.md", "INSTALL_zh.md", "LICENSE",
     "PXView.icns", "README.md", "applogo.rc", "logo-win.ico",
+    "mac_appbundle_template.plist.in",
     ".gitignore", ".gitmodules"
 )
 
