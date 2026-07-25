@@ -70,26 +70,38 @@ jobs:
           ln -s "$PY_PREFIX/Frameworks/Python.framework" "$PY_PREFIX/lib/Python.framework"
         fi
 
-        # 2) macdeployqt 会递归扫描 @rpath 依赖，遇到 Qt WebEngine/Pdf 的传递
-        #    依赖（libwebp/libsharpyuv/libbrotlicommon）会报 "Cannot resolve
-        #    rpath" 并最终导致 codesign 失败。PXView 没用 Qt WebEngine/Pdf，
-        #    这些库是被 Qt 其他模块间接拉进来的。用 -codesign=- 做 ad-hoc
-        #    签名（GitHub runner 无开发者证书），并跳过 codesign 验证。
-        #    -always-overwrite 覆盖已有 dmg。
-        $MACDEPLOYQT install.dir/PXView.app -dmg \
-          -codesign=- \
+        # 2) macdeployqt 先做依赖收集，不带 -codesign=-。
+        #    旧版用 -codesign=- 只签了主二进制和 Qt 框架，但 macdeployqt 自己
+        #    复制进 Frameworks 的非 Qt 传递依赖（libbrotlicommon/libsharpyuv/
+        #    libwebp，来自 Qt WebEngine/Pdf 的 rpath，PXView 没直接用）未被签名
+        #    → codesign --verify 整个 .app 失败 → Gatekeeper 报"已损坏"。
+        #    这里不传 -codesign，让 macdeployqt 只负责依赖收集，签名由后续步骤
+        #    显式控制。不带 -dmg，dmg 由最后 hdiutil 生成（保证签后内容一致）。
+        $MACDEPLOYQT install.dir/PXView.app \
           -always-overwrite \
-          -verbose=1 \
-          || true
+          -verbose=1
 
-        # 3) macdeployqt 可能因传递依赖缺失而未能完成 dmg 打包，用 hdiutil 兜底。
-        if [ ! -f install.dir/PXView.dmg ]; then
-          echo "macdeployqt 未生成 dmg，用 hdiutil 兜底创建"
-          hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
-            -ov -format UDZO install.dir/PXView.dmg
-        fi
+        # 3) 逐个签名所有 Mach-O 二进制（dylib/so/framework/可执行文件）。
+        #    必须先签叶子节点（嵌套 dylib），再签父级 .app，否则 codesign
+        #    --verify --deep --strict 会因子组件未签名而失败。
+        #    GitHub runner 无开发者证书，用 ad-hoc 签名（-s -）。
+        find install.dir/PXView.app -type f -print0 | while IFS= read -r -d '' f; do
+          if file "$f" 2>/dev/null | grep -q "Mach-O"; then
+            codesign --force --sign - "$f" 2>/dev/null || true
+          fi
+        done
 
-        # 4) 列出最终产物
+        # 4) 整体深度签名 .app（覆盖第 3 步的叶子签名，建立完整签名链）
+        codesign --force --deep --sign - install.dir/PXView.app
+
+        # 5) 验证签名，失败则构建失败（不再用 || true 吞掉错误）
+        codesign --verify --deep --strict install.dir/PXView.app
+
+        # 6) 签名完成后生成 dmg
+        hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
+          -ov -format UDZO install.dir/PXView.dmg
+
+        # 7) 列出最终产物
         ls -la install.dir/*.dmg
         
     - name: Upload Artifact
