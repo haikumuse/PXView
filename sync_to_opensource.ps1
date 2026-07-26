@@ -5,11 +5,13 @@
 # =============================================================================
 # 使用方式:
 #   cd c:\Users\admin\Downloads\Downloads\DSView-main_2026_4_27cppnb
-#   .\sync_to_opensource.ps1           # 同步 + commit
-#   .\sync_to_opensource.ps1 -Push     # 同步 + commit + push
+#   .\sync_to_opensource.ps1            # 只同步 + 显示变更(不 commit,预览模式)
+#   .\sync_to_opensource.ps1 -Commit    # 同步 + commit
+#   .\sync_to_opensource.ps1 -Push      # 同步 + commit + push(隐含 -Commit)
 # =============================================================================
 
 param(
+    [switch]$Commit,
     [switch]$Push
 )
 
@@ -29,7 +31,10 @@ $whitelistFiles = @(
     "CMakeLists.txt", "COPYING", "INSTALL.md", "INSTALL_zh.md", "LICENSE",
     "PXView.icns", "README.md", "applogo.rc", "logo-win.ico",
     "mac_appbundle_template.plist.in",
-    ".gitignore", ".gitmodules"
+    ".gitignore", ".gitmodules",
+    # 构建脚本:被 .github/workflows/*.yml 引用,必须同步到开源仓库
+    # migrate_to_worktree.ps1 误把它标记为私有,实际上 Linux/mac 工作流都用
+    "build_fx2lafw.sh"
 )
 
 Set-Location $repoRoot
@@ -73,25 +78,27 @@ Write-Host " [3/4] 检查变更..." -ForegroundColor Yellow
 $st = git --git-dir="$gitdir" --work-tree="$worktreePath" status --short 2>&1
 $changes = $st | Where-Object { $_ -match "^[MADRC]" }
 if ($changes.Count -eq 0) {
-    Write-Host "   [无变更] worktree 与 view_and_data 白名单内容一致,无需 commit" -ForegroundColor Green
-    if (-not $Push) {
-        exit 0
-    }
+    Write-Host "   [无变更] worktree 与 view_and_data 白名单内容一致" -ForegroundColor Green
 } else {
     Write-Host "   变更数: $($changes.Count)" -ForegroundColor DarkGray
     $changes | Select-Object -First 10 | ForEach-Object { Write-Host "   $_" -ForegroundColor DarkGray }
 
-    # git add -A 暂存所有变更(含 submodule gitlink 更新)
-    git --git-dir="$gitdir" --work-tree="$worktreePath" add -A 2>&1 | Out-Null
+    # 默认不 commit,只做预览。用 -Commit 或 -Push 才 commit。
+    if ($Commit -or $Push) {
+        # git add -A 暂存所有变更(含 submodule gitlink 更新)
+        git --git-dir="$gitdir" --work-tree="$worktreePath" add -A 2>&1 | Out-Null
 
-    # commit
-    $commitMsg = "sync: 同步开发仓库最新修改 ($devSubject)"
-    git --git-dir="$gitdir" --work-tree="$worktreePath" commit -m $commitMsg 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        $newHead = git --git-dir="$gitdir" --work-tree="$worktreePath" log --oneline -1 2>&1
-        Write-Host "   [OK] 已 commit: $newHead" -ForegroundColor Green
+        # commit
+        $commitMsg = "sync: 同步开发仓库最新修改 ($devSubject)"
+        git --git-dir="$gitdir" --work-tree="$worktreePath" commit -m $commitMsg 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $newHead = git --git-dir="$gitdir" --work-tree="$worktreePath" log --oneline -1 2>&1
+            Write-Host "   [OK] 已 commit: $newHead" -ForegroundColor Green
+        } else {
+            Write-Host "   [警告] commit 失败" -ForegroundColor Red
+        }
     } else {
-        Write-Host "   [警告] commit 失败" -ForegroundColor Red
+        Write-Host "   [预览模式] 未传 -Commit,仅显示变更不 commit" -ForegroundColor Yellow
     }
 }
 
