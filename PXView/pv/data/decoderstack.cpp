@@ -403,6 +403,9 @@ void DecoderStack::init() {
   _no_memory = false;
   _snapshot = NULL;
   _result_count = 0;
+  _ann_dropped_stop = 0;
+  _ann_dropped_mem = 0;
+  _ann_dropped_row = 0;
 
   for (auto i = _rows.begin(); i != _rows.end(); i++) {
     (*i).second->clear();
@@ -412,6 +415,9 @@ void DecoderStack::init() {
 }
 
 void DecoderStack::stop_decode_work() {
+  // [PWMDBG] track who stops the decode task (race investigation)
+  pxv_info("[PWMDBG] stop_decode_work: stack=%p, _decode_state=%d, _stask_stauts=%p, _is_decoding=%d",
+           this, (int)_decode_state, (void *)_stask_stauts, (int)_is_decoding);
   // set the flag to exit from task thread
   if (_stask_stauts) {
     _stask_stauts->_bStop = true;
@@ -424,15 +430,22 @@ void DecoderStack::begin_decode_work() {
   // 或 add_decode_task 重复添加遗漏),直接返回避免状态被覆盖。
   // assert 在 Release 下是空操作,必须显式 if 检查 + early return。
   if (_decode_state != Stopped) {
-    pxv_warn("DecoderStack::begin_decode_work: _decode_state != Stopped "
-             "(already running), skip");
+    pxv_warn("[PWMDBG] DecoderStack::begin_decode_work: stack=%p _decode_state != Stopped "
+             "(already running), skip", this);
     return;
   }
 
+  pxv_info("[PWMDBG] begin_decode_work: stack=%p, _options_changed=%d",
+           this, (int)_options_changed);
   _error_message = "";
   _decode_state = Running;
   do_decode_work();
   _decode_state = Stopped;
+  pxv_info("[PWMDBG] begin_decode_work done: stack=%p, _result_count=%llu, drops(stop/mem/row)=%llu/%llu/%llu",
+           this, (unsigned long long)_result_count,
+           (unsigned long long)_ann_dropped_stop,
+           (unsigned long long)_ann_dropped_mem,
+           (unsigned long long)_ann_dropped_row);
 }
 
 bool DecoderStack::check_required_probes() {
@@ -456,7 +469,7 @@ void DecoderStack::do_decode_work() {
   _decoder_status->clear(); // clear old items
 
   if (!_options_changed) {
-    pxv_err("ERROR:Decoder options have not changed.");
+    pxv_err("[PWMDBG] ERROR:Decoder options have not changed. stack=%p", this);
     return;
   }
   _options_changed = false;
@@ -649,6 +662,20 @@ void DecoderStack::decode_data(const uint64_t decode_start,
           chunk.push_back(data_ptr);
           chunk_const.push_back(_snapshot->get_sample(i, sig_index));
 
+          // [PWMDBG] log the first few chunk fetches to catch NULL/short data
+          if (entry_cnt < 3) {
+            pxv_info("[PWMDBG] decode_data chunk #%llu: ch=%d sig_index=%d, i=%llu, chunk_end=%llu, data_ptr=%p",
+                     (unsigned long long)entry_cnt, j, sig_index,
+                     (unsigned long long)i, (unsigned long long)chunk_end,
+                     (const void *)data_ptr);
+          }
+          if (data_ptr == NULL) {
+            pxv_warn("[PWMDBG] decode_data: get_samples NULL! ch=%d sig_index=%d, i=%llu, chunk_end=%llu, sample_count=%llu",
+                     j, sig_index, (unsigned long long)i,
+                     (unsigned long long)chunk_end,
+                     (unsigned long long)_snapshot->get_sample_count());
+          }
+
           if (_snapshot->is_able_free() == false) {
             if (lbp_array[j] != lbp) {
               if (lbp_array[j] != NULL)
@@ -726,10 +753,15 @@ void DecoderStack::decode_data(const uint64_t decode_start,
     }
   }
 
-  pxv_info("decode_data loop ended! i=%llu, end_index=%llu, _no_memory=%d, _bStop=%d, bError=%d, bEndTime=%d",
+  pxv_info("[PWMDBG] decode_data loop ended! i=%llu, end_index=%llu, sended_len=%llu, _no_memory=%d, _bStop=%d, bError=%d, bEndTime=%d, _result_count=%llu, drops(stop/mem/row)=%llu/%llu/%llu",
            (unsigned long long)i, (unsigned long long)end_index,
-           (int)_no_memory, (int)status->_bStop, (int)bError, (int)bEndTime);
-           
+           (unsigned long long)sended_len,
+           (int)_no_memory, (int)status->_bStop, (int)bError, (int)bEndTime,
+           (unsigned long long)_result_count,
+           (unsigned long long)_ann_dropped_stop,
+           (unsigned long long)_ann_dropped_mem,
+           (unsigned long long)_ann_dropped_row);
+
   pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
 
   if (error != NULL)
@@ -765,6 +797,11 @@ void DecoderStack::execute_decode_stack() {
   // Get the intial sample count
   _sample_count = _snapshot->get_sample_count();
 
+  pxv_info("[PWMDBG] execute_decode_stack: stack=%p, snapshot=%p, sample_count=%llu, ring_count=%lld, samplerate=%.0f, realtime=%d",
+           this, (void *)_snapshot, (unsigned long long)_sample_count,
+           (long long)_snapshot->get_ring_sample_count(), _samplerate,
+           (int)_session->is_realtime_refresh());
+
   // Create the decoders
   for (auto dec : _stack) {
     srd_decoder_inst *const di = dec->create_decoder_inst(session);
@@ -780,6 +817,10 @@ void DecoderStack::execute_decode_stack() {
       srd_inst_stack(session, prev_di, di);
 
     prev_di = di;
+    pxv_info("[PWMDBG] execute_decode_stack: dec=%p id=%s, RAW region start=%llu end=%llu",
+             dec, dec->decoder() ? dec->decoder()->id : "?",
+             (unsigned long long)dec->decode_start(),
+             (unsigned long long)dec->decode_end());
     decode_start = dec->decode_start();
 
     if (_session->is_realtime_refresh() == false) {
@@ -804,9 +845,10 @@ void DecoderStack::execute_decode_stack() {
     }
   }
 
-  pxv_info("decoder start sample:%llu, end sample:%llu, count:%llu",
+  pxv_info("[PWMDBG] decoder RESOLVED start sample:%llu, end sample:%llu, count:%llu (sample_count=%llu)",
            (u64_t)decode_start, (u64_t)decode_end,
-           (u64_t)(decode_end - decode_start + 1));
+           (u64_t)(decode_end - decode_start + 1),
+           (unsigned long long)_sample_count);
 
   // Start the session
   srd_session_metadata_set(session, SRD_CONF_SAMPLERATE,
@@ -865,6 +907,7 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
   assert(d);
 
   if (st->_bStop) {
+    d->_ann_dropped_stop++;
     return;
   }
   if (d->_decoder_status == NULL) {
@@ -873,6 +916,7 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
   }
 
   if (d->_no_memory) {
+    d->_ann_dropped_mem++;
     return;
   }
 
@@ -909,6 +953,7 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
   if (row_iter == d->_rows.end()) {
     pxv_err("Unexpected annotation: decoder = 0x%x, format = %d", (void *)decc,
             a->format());
+    d->_ann_dropped_row++;
     assert(0);
     return;
   }
@@ -928,6 +973,8 @@ void DecoderStack::frame_ended() {
     for (auto dec : _stack) {
       uint64_t start = dec->decode_start();
       uint64_t end = dec->decode_end();
+      const uint64_t raw_start = start;
+      const uint64_t raw_end = end;
 
       if (start > last_samples) {
         start = 0;
@@ -942,6 +989,13 @@ void DecoderStack::frame_ended() {
       if (end != 0 && end > last_samples) {
         end = last_samples;
       }
+
+      // [PWMDBG] region clamp: if raw_end was non-zero and gets clamped to a
+      // small last_samples, the region stays small permanently (H1 suspect)
+      pxv_info("[PWMDBG] frame_ended: stack=%p dec=%p, limit=%llu, region raw=%llu..%llu -> clamped=%llu..%llu",
+               this, dec, (unsigned long long)limit,
+               (unsigned long long)raw_start, (unsigned long long)raw_end,
+               (unsigned long long)start, (unsigned long long)end);
 
       dec->set_decode_region(start, end);
     }
