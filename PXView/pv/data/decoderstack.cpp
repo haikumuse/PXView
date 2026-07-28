@@ -662,15 +662,28 @@ void DecoderStack::decode_data(const uint64_t decode_start,
           chunk.push_back(data_ptr);
           chunk_const.push_back(_snapshot->get_sample(i, sig_index));
 
-          // [PWMDBG] log the first few chunk fetches to catch NULL/short data
-          if (entry_cnt < 3) {
-            pxv_info("[PWMDBG] decode_data chunk #%llu: ch=%d sig_index=%d, i=%llu, chunk_end=%llu, data_ptr=%p",
-                     (unsigned long long)entry_cnt, j, sig_index,
-                     (unsigned long long)i, (unsigned long long)chunk_end,
-                     (const void *)data_ptr);
+          // [PWMDBG5] log EVERY chunk: data_ptr, first 16 bytes, edge count in chunk
+          if (data_ptr && j == 0) {
+            uint64_t chunk_bytes = (chunk_end - i) / 8;
+            uint64_t edges = 0;
+            uint8_t prev_tail = 0;
+            bool have_prev = false;
+            char hexbuf[16*3+1]; hexbuf[0] = '\0'; int hbpos = 0;
+            for (uint64_t k = 0; k < chunk_bytes && k < 1024; k++) {
+              uint8_t b = data_ptr[k];
+              if (k < 16) { hbpos += snprintf(hexbuf+hbpos, sizeof(hexbuf)-hbpos, "%02x", b); if (k<15) hbpos += snprintf(hexbuf+hbpos, sizeof(hexbuf)-hbpos, " "); }
+              edges += (uint64_t)__builtin_popcount((unsigned)(b ^ (b >> 1)) & 0x7Fu);
+              if (have_prev && ((b & 1) != prev_tail)) edges++;
+              prev_tail = (uint8_t)(b >> 7);
+              have_prev = true;
+            }
+            pxv_info("[PWMDBG5] chunk #%llu i=%llu end=%llu bytes=%llu first16=[%s] edges_in_1k=%llu ptr=%p",
+                     (unsigned long long)entry_cnt, (unsigned long long)i,
+                     (unsigned long long)chunk_end, (unsigned long long)chunk_bytes,
+                     hexbuf, (unsigned long long)edges, (const void *)data_ptr);
           }
           if (data_ptr == NULL) {
-            pxv_warn("[PWMDBG] decode_data: get_samples NULL! ch=%d sig_index=%d, i=%llu, chunk_end=%llu, sample_count=%llu",
+            pxv_warn("[PWMDBG5] get_samples NULL! ch=%d sig_index=%d i=%llu chunk_end=%llu sample_count=%llu",
                      j, sig_index, (unsigned long long)i,
                      (unsigned long long)chunk_end,
                      (unsigned long long)_snapshot->get_sample_count());
