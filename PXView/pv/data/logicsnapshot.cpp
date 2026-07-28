@@ -288,6 +288,13 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
       return;
     }
   } else {
+    // FREE leaf blocks instead of zeroing in-place. The old in-place memset
+    // destroyed data that might still be read by a concurrent decoder (which
+    // shares the same LogicSnapshot object as capture_data when config is
+    // unchanged). By freeing (set lbp=NULL, return to pool), allocate_block
+    // will hand out fresh zeroed blocks for the new capture — and the old
+    // blocks remain valid in the pool until recycled, so any concurrent
+    // reader holding a reference to them via free_decode_lpb is safe.
     for (auto &iter : _ch_data) {
       for (auto &iter_rn : iter) {
         iter_rn.tog = 0;
@@ -295,8 +302,10 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
         iter_rn.last = 0;
 
         for (int j = 0; j < 64; j++) {
-          if (iter_rn.lbp[j] != NULL)
-            memset(iter_rn.lbp[j], 0, LeafBlockSpace);
+          if (iter_rn.lbp[j] != NULL) {
+            push_to_free_list(iter_rn.lbp[j]);
+            iter_rn.lbp[j] = NULL;
+          }
         }
       }
     }
