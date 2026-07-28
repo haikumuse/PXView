@@ -1431,6 +1431,24 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
 
   void *ptr = _ch_data[order][index0].lbp[index1];
 
+  // [PWMDBG4] log get_samples result for order 0 to see if leaf block is freed
+  {
+    static std::atomic<int> s_gs_dump{0};
+    static std::atomic<uint64_t> s_gs_gen{0};
+    if (s_gs_gen.load() != _dbg_gen) { s_gs_gen.store(_dbg_gen); s_gs_dump.store(0); }
+    int n = s_gs_dump.fetch_add(1);
+    if (n < 10 && order == 0) {
+      uint64_t first_u64 = ptr ? *((uint64_t *)((uint8_t *)ptr + offset)) : 0xDEAD;
+      pxv_info("[PWMDBG4] get_samples: order=0 idx0=%llu idx1=%llu offset=%llu ptr=%s "
+               "first_u64=0x%016llx _ring=%llu sample_count=%llu",
+               (unsigned long long)index0, (unsigned long long)index1,
+               (unsigned long long)offset, ptr ? "OK" : "NULL",
+               (unsigned long long)first_u64,
+               (unsigned long long)_ring_sample_count,
+               (unsigned long long)sample_count);
+    }
+  }
+
   if (ptr == NULL) {
     // Leaf block was freed by calc_mipmap because this region has no toggles
     // (constant value). The value is encoded in _ch_data[order][index0].first
