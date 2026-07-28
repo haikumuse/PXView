@@ -332,8 +332,6 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
              (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0],
              _ch_data.size() > 0 ? _ch_data[0][0].lbp[0] : nullptr);
   }
-           (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
-           (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0]);
   _disk_cache_writer->reset_debug();
 
   for (unsigned int i = 0; i < _channel_num; i++) {
