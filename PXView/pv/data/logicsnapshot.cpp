@@ -314,9 +314,9 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 
   // [PWMDBG4] log stale state from previous capture + increment debug gen
   _dbg_gen++;
-  pxv_info("[PWMDBG4] first_payload gen=%llu: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
+  pxv_info("[PWMDBG4] first_payload this=%p gen=%llu: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
            "_ring=%llu _sample=%llu _last_sample[0]=0x%llx _last_calc_count[0]=%llu",
-           (unsigned long long)_dbg_gen, _ch_fraction, _byte_fraction, _dest_ptr,
+           this, (unsigned long long)_dbg_gen, _ch_fraction, _byte_fraction, _dest_ptr,
            (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
            (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0]);
   _disk_cache_writer->reset_debug();
@@ -1439,8 +1439,9 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
     int n = s_gs_dump.fetch_add(1);
     if (n < 10 && order == 0) {
       uint64_t first_u64 = ptr ? *((uint64_t *)((uint8_t *)ptr + offset)) : 0xDEAD;
-      pxv_info("[PWMDBG4] get_samples: order=0 idx0=%llu idx1=%llu offset=%llu ptr=%s "
+      pxv_info("[PWMDBG4] get_samples this=%p: order=0 idx0=%llu idx1=%llu offset=%llu ptr=%s "
                "first_u64=0x%016llx _ring=%llu sample_count=%llu",
+               this,
                (unsigned long long)index0, (unsigned long long)index1,
                (unsigned long long)offset, ptr ? "OK" : "NULL",
                (unsigned long long)first_u64,
