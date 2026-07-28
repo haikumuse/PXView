@@ -341,13 +341,33 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
         }
 
         static int packet_count = 0;
+        static int s_dump_count = 0;
         if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
-            pxv_info("async_write_worker: pkt %d, fmt=%d, len=%llu, first_bytes: %02x %02x %02x %02x",
-                     packet_count, logic.format, (unsigned long long)logic.length,
-                     logic.length > 0 ? ((uint8_t *)logic.data)[0] : 0,
-                     logic.length > 1 ? ((uint8_t *)logic.data)[1] : 0,
-                     logic.length > 2 ? ((uint8_t *)logic.data)[2] : 0,
-                     logic.length > 3 ? ((uint8_t *)logic.data)[3] : 0);
+            // [PWMDBG4] dump 32 bytes (4 u64s = 256 samples of ch0) for first 5 pkts
+            char hexbuf[32*3+1];
+            hexbuf[0] = '\0';
+            int hbpos = 0;
+            for (int bi = 0; bi < 32 && bi < (int)logic.length; bi++) {
+                hbpos += snprintf(hexbuf + hbpos, sizeof(hexbuf) - hbpos, "%02x", ((uint8_t *)logic.data)[bi]);
+                if (bi < 31) hbpos += snprintf(hexbuf + hbpos, sizeof(hexbuf) - hbpos, " ");
+            }
+            // Also dump u64 at 1/4, 1/2, 3/4 positions (to see transitions within the packet)
+            char midbuf[3*16+1];
+            midbuf[0] = '\0';
+            int mbpos = 0;
+            if (logic.length >= 32) {
+                for (int qi = 0; qi < 3; qi++) {
+                    uint64_t pos = (logic.length / 8) / 4 * (qi + 1);
+                    if (pos + 8 <= logic.length) {
+                        uint64_t val = 0;
+                        memcpy(&val, (uint8_t *)logic.data + pos * 8, 8);
+                        mbpos += snprintf(midbuf + mbpos, sizeof(midbuf) - mbpos, "%s%016llx", qi > 0 ? " " : "", (unsigned long long)val);
+                    }
+                }
+            }
+            pxv_info("[PWMDBG4] async_write_worker: pkt %d, fmt=%d, len=%llu, first32=[%s] mid_u64=[%s]",
+                     packet_count, logic.format, (unsigned long long)logic.length, hexbuf, midbuf);
+            s_dump_count++;
         }
         packet_count++;
 

@@ -906,6 +906,20 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
 
   while (len >= 8) {
+    // [PWMDBG4] log first write for each channel (first packet only)
+    {
+      static std::atomic<int> s_xp_dump{0};
+      int n = s_xp_dump.fetch_add(1);
+      if (n < _channel_num) {
+        uint64_t val = *read_ptr;
+        pxv_info("[PWMDBG4] cross_payload first write: fill_chan=%u val=0x%016llx "
+                 "read_ptr_offset=%lld write_ptr_u64idx=%lld offset=%llu",
+                 fill_chan, (unsigned long long)val,
+                 (long long)((uint8_t *)read_ptr - (uint8_t *)data_src_ptr),
+                 (long long)((uint8_t *)write_ptr - (uint8_t *)lbp) / 8,
+                 (unsigned long long)offset);
+      }
+    }
     // mmap data write — release _mutex during page faults
     lock.unlock();
     *write_ptr++ = *read_ptr;
@@ -1198,6 +1212,26 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   uint8_t offset = 0;
   uint64_t i = 0;
   uint64_t last_count = _last_calc_count[order];
+
+  // [PWMDBG4] dump leaf block contents for order 0 (ch0) to see if data is flat or PWM
+  {
+    static std::atomic<int> s_cm_dump{0};
+    int n = s_cm_dump.fetch_add(1);
+    if (n < 8 && order == 0) {
+      uint64_t *raw = (uint64_t *)lbp;
+      uint64_t nz_count = 0;
+      uint64_t check_u64s = (samples / Scale > 1000) ? 1000 : samples / Scale;
+      for (uint64_t z = 0; z < check_u64s; z++)
+        if (raw[z] != 0) nz_count++;
+      pxv_info("[PWMDBG4] calc_mipmap order=0 idx0=%u idx1=%u samples=%llu isEnd=%d last_count=%llu "
+               "first4_u64=[%016llx %016llx %016llx %016llx] nz_in_1k=%llu/%llu",
+               index0, index1, (unsigned long long)samples, (int)isEnd,
+               (unsigned long long)last_count,
+               (unsigned long long)raw[0], (unsigned long long)raw[1],
+               (unsigned long long)raw[2], (unsigned long long)raw[3],
+               (unsigned long long)nz_count, (unsigned long long)check_u64s);
+    }
+  }
 
   if (last_count > 0) {
     i = last_count / Scale;
