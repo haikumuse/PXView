@@ -928,20 +928,18 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
 
   while (len >= 8) {
-    // [PWMDBG4] log first write for each channel (reset per capture via _dbg_gen)
+    // [PWMDBG6] log first write for each channel + spot checks at u64 100, 1000, 10000
     {
       static std::atomic<int> s_xp_dump{0};
       static std::atomic<uint64_t> s_xp_gen{0};
       if (s_xp_gen.load() != _dbg_gen) { s_xp_gen.store(_dbg_gen); s_xp_dump.store(0); }
       int n = s_xp_dump.fetch_add(1);
-      if ((unsigned)n < _channel_num) {
+      if ((unsigned)n < _channel_num + 4 && fill_chan == 0) {
         uint64_t val = *read_ptr;
-        pxv_info("[PWMDBG4] cross_payload first write: fill_chan=%u val=0x%016llx "
-                 "read_ptr_offset=%lld write_ptr_u64idx=%lld offset=%llu",
-                 fill_chan, (unsigned long long)val,
-                 (long long)((uint8_t *)read_ptr - (uint8_t *)data_src_ptr),
-                 (long long)((uint8_t *)write_ptr - (uint8_t *)lbp) / 8,
-                 (unsigned long long)offset);
+        uint64_t widx = (uint64_t)((uint8_t *)write_ptr - (uint8_t *)lbp) / 8;
+        pxv_info("[PWMDBG6] cross_write gen=%llu n=%d val=0x%016llx widx=%llu offset=%llu",
+                 (unsigned long long)_dbg_gen, n, (unsigned long long)val,
+                 (unsigned long long)widx, (unsigned long long)offset);
       }
     }
     // mmap data write — release _mutex during page faults
