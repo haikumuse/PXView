@@ -415,9 +415,6 @@ void DecoderStack::init() {
 }
 
 void DecoderStack::stop_decode_work() {
-  // [PWMDBG] track who stops the decode task (race investigation)
-  pxv_info("[PWMDBG] stop_decode_work: stack=%p, _decode_state=%d, _stask_stauts=%p, _is_decoding=%d",
-           this, (int)_decode_state, (void *)_stask_stauts, (int)_is_decoding);
   // set the flag to exit from task thread
   if (_stask_stauts) {
     _stask_stauts->_bStop = true;
@@ -429,23 +426,12 @@ void DecoderStack::begin_decode_work() {
   // 防御性检查:若已有解码线程在运行(RevEndPacket 与 CopyToDocDone 竞态,
   // 或 add_decode_task 重复添加遗漏),直接返回避免状态被覆盖。
   // assert 在 Release 下是空操作,必须显式 if 检查 + early return。
-  if (_decode_state != Stopped) {
-    pxv_warn("[PWMDBG] DecoderStack::begin_decode_work: stack=%p _decode_state != Stopped "
-             "(already running), skip", this);
+  if (_decode_state != Stopped)
     return;
-  }
-
-  pxv_info("[PWMDBG] begin_decode_work: stack=%p, _options_changed=%d",
-           this, (int)_options_changed);
   _error_message = "";
   _decode_state = Running;
   do_decode_work();
   _decode_state = Stopped;
-  pxv_info("[PWMDBG] begin_decode_work done: stack=%p, _result_count=%llu, drops(stop/mem/row)=%llu/%llu/%llu",
-           this, (unsigned long long)_result_count,
-           (unsigned long long)_ann_dropped_stop,
-           (unsigned long long)_ann_dropped_mem,
-           (unsigned long long)_ann_dropped_row);
 }
 
 bool DecoderStack::check_required_probes() {
@@ -469,7 +455,6 @@ void DecoderStack::do_decode_work() {
   _decoder_status->clear(); // clear old items
 
   if (!_options_changed) {
-    pxv_err("[PWMDBG] ERROR:Decoder options have not changed. stack=%p", this);
     return;
   }
   _options_changed = false;
@@ -662,33 +647,6 @@ void DecoderStack::decode_data(const uint64_t decode_start,
           chunk.push_back(data_ptr);
           chunk_const.push_back(_snapshot->get_sample(i, sig_index));
 
-          // [PWMDBG5] log EVERY chunk: data_ptr, first 16 bytes, edge count in chunk
-          if (data_ptr && j == 0) {
-            uint64_t chunk_bytes = (chunk_end - i) / 8;
-            uint64_t edges = 0;
-            uint8_t prev_tail = 0;
-            bool have_prev = false;
-            char hexbuf[16*3+1]; hexbuf[0] = '\0'; int hbpos = 0;
-            for (uint64_t k = 0; k < chunk_bytes && k < 1024; k++) {
-              uint8_t b = data_ptr[k];
-              if (k < 16) { hbpos += snprintf(hexbuf+hbpos, sizeof(hexbuf)-hbpos, "%02x", b); if (k<15) hbpos += snprintf(hexbuf+hbpos, sizeof(hexbuf)-hbpos, " "); }
-              edges += (uint64_t)__builtin_popcount((unsigned)(b ^ (b >> 1)) & 0x7Fu);
-              if (have_prev && ((b & 1) != prev_tail)) edges++;
-              prev_tail = (uint8_t)(b >> 7);
-              have_prev = true;
-            }
-            pxv_info("[PWMDBG5] chunk #%llu i=%llu end=%llu bytes=%llu first16=[%s] edges_in_1k=%llu ptr=%p",
-                     (unsigned long long)entry_cnt, (unsigned long long)i,
-                     (unsigned long long)chunk_end, (unsigned long long)chunk_bytes,
-                     hexbuf, (unsigned long long)edges, (const void *)data_ptr);
-          }
-          if (data_ptr == NULL) {
-            pxv_warn("[PWMDBG5] get_samples NULL! ch=%d sig_index=%d i=%llu chunk_end=%llu sample_count=%llu",
-                     j, sig_index, (unsigned long long)i,
-                     (unsigned long long)chunk_end,
-                     (unsigned long long)_snapshot->get_sample_count());
-          }
-
           if (_snapshot->is_able_free() == false) {
             if (lbp_array[j] != lbp) {
               if (lbp_array[j] != NULL)
@@ -766,64 +724,6 @@ void DecoderStack::decode_data(const uint64_t decode_start,
     }
   }
 
-  pxv_info("[PWMDBG] decode_data loop ended! i=%llu, end_index=%llu, sended_len=%llu, _no_memory=%d, _bStop=%d, bError=%d, bEndTime=%d, _result_count=%llu, drops(stop/mem/row)=%llu/%llu/%llu",
-           (unsigned long long)i, (unsigned long long)end_index,
-           (unsigned long long)sended_len,
-           (int)_no_memory, (int)status->_bStop, (int)bError, (int)bEndTime,
-           (unsigned long long)_result_count,
-           (unsigned long long)_ann_dropped_stop,
-           (unsigned long long)_ann_dropped_mem,
-           (unsigned long long)_ann_dropped_row);
-
-  pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
-
-  // [PWMDBG] ground truth: count real bit transitions inside the channel
-  // data we just fed to the decoder. If edges here matches the waveform
-  // (~1000) but the decoder emitted only a few annotations, the loss is
-  // inside libsigrokdecode; if edges here is ~0, the snapshot/channel data
-  // itself is flat (wrong channel binding or flat capture data).
-  {
-    for (int ch_idx = 0; ch_idx < logic_di->dec_num_channels; ch_idx++) {
-      const int sig_index = logic_di->dec_channelmap[ch_idx];
-      if (sig_index == -1 || !_snapshot->has_data(sig_index))
-        continue;
-
-      uint64_t pos = 0;
-      uint64_t edges = 0;
-      uint8_t prev_tail = 0;
-      bool have_prev = false;
-      char first_hex[3 * 8 + 1];
-      first_hex[0] = '\0';
-      int first_cnt = 0;
-
-      while (pos < _sample_count) {
-        uint64_t gend = _sample_count;
-        void *lbp2 = NULL;
-        const uint8_t *p = _snapshot->get_samples(pos, gend, sig_index, &lbp2);
-        if (!p || gend <= pos)
-          break;
-        const uint64_t nbytes = (gend - pos) / 8;
-        for (uint64_t k = 0; k < nbytes; k++) {
-          const uint8_t b = p[k];
-          if (first_cnt < 8) {
-            snprintf(first_hex + first_cnt * 3, 4, "%02x ", b);
-            first_cnt++;
-          }
-          edges += (uint64_t)__builtin_popcount((unsigned)(b ^ (b >> 1)) & 0x7Fu);
-          if (have_prev && ((b & 1) != prev_tail))
-            edges++;
-          prev_tail = (uint8_t)(b >> 7);
-          have_prev = true;
-        }
-        pos = gend;
-      }
-
-      pxv_info("[PWMDBG] FED-DATA ch=%d sig_index=%d: edges=%llu over %llu samples, first8=[%s]",
-               ch_idx, sig_index, (unsigned long long)edges,
-               (unsigned long long)_sample_count, first_hex);
-    }
-  }
-
   if (error != NULL)
     g_free(error);
 
@@ -857,11 +757,6 @@ void DecoderStack::execute_decode_stack() {
   // Get the intial sample count
   _sample_count = _snapshot->get_sample_count();
 
-  pxv_info("[PWMDBG] execute_decode_stack: stack=%p, snapshot=%p, sample_count=%llu, ring_count=%lld, samplerate=%.0f, realtime=%d",
-           this, (void *)_snapshot, (unsigned long long)_sample_count,
-           (long long)_snapshot->get_ring_sample_count(), _samplerate,
-           (int)_session->is_realtime_refresh());
-
   // Create the decoders
   for (auto dec : _stack) {
     srd_decoder_inst *const di = dec->create_decoder_inst(session);
@@ -877,10 +772,6 @@ void DecoderStack::execute_decode_stack() {
       srd_inst_stack(session, prev_di, di);
 
     prev_di = di;
-    pxv_info("[PWMDBG] execute_decode_stack: dec=%p id=%s, RAW region start=%llu end=%llu",
-             dec, dec->decoder() ? dec->decoder()->id : "?",
-             (unsigned long long)dec->decode_start(),
-             (unsigned long long)dec->decode_end());
     decode_start = dec->decode_start();
 
     if (_session->is_realtime_refresh() == false) {
@@ -904,11 +795,6 @@ void DecoderStack::execute_decode_stack() {
       decode_end = max(dec_end, decode_end);
     }
   }
-
-  pxv_info("[PWMDBG] decoder RESOLVED start sample:%llu, end sample:%llu, count:%llu (sample_count=%llu)",
-           (u64_t)decode_start, (u64_t)decode_end,
-           (u64_t)(decode_end - decode_start + 1),
-           (unsigned long long)_sample_count);
 
   // Start the session
   srd_session_metadata_set(session, SRD_CONF_SAMPLERATE,
@@ -1049,13 +935,6 @@ void DecoderStack::frame_ended() {
       if (end != 0 && end > last_samples) {
         end = last_samples;
       }
-
-      // [PWMDBG] region clamp: if raw_end was non-zero and gets clamped to a
-      // small last_samples, the region stays small permanently (H1 suspect)
-      pxv_info("[PWMDBG] frame_ended: stack=%p dec=%p, limit=%llu, region raw=%llu..%llu -> clamped=%llu..%llu",
-               this, dec, (unsigned long long)limit,
-               (unsigned long long)raw_start, (unsigned long long)raw_end,
-               (unsigned long long)start, (unsigned long long)end);
 
       dec->set_decode_region(start, end);
     }

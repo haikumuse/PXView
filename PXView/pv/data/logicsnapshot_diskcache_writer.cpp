@@ -315,8 +315,6 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
         }
 
         _async_busy.store(true);
-        auto _proc_ts = std::chrono::steady_clock::now().time_since_epoch().count();
-        pxv_info("[PWMDBG6] async_worker PROCESS_START ts=%lld", (long long)_proc_ts);
         sr_datafeed_logic logic;
         logic.length = payload.data.size();
         logic.data = payload.data.data();
@@ -343,37 +341,6 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
             logic.unitsize = (uint16_t)((_owner->_channel_num + 7) / 8);
         }
 
-        static int s_dump_count = 0;
-        int packet_count = _pkt_count.fetch_add(1);
-        if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
-            // [PWMDBG4] dump 32 bytes (4 u64s = 256 samples of ch0) for first 5 pkts
-            char hexbuf[32*3+1];
-            hexbuf[0] = '\0';
-            int hbpos = 0;
-            for (int bi = 0; bi < 32 && bi < (int)logic.length; bi++) {
-                hbpos += snprintf(hexbuf + hbpos, sizeof(hexbuf) - hbpos, "%02x", ((uint8_t *)logic.data)[bi]);
-                if (bi < 31) hbpos += snprintf(hexbuf + hbpos, sizeof(hexbuf) - hbpos, " ");
-            }
-            // Also dump u64 at 1/4, 1/2, 3/4 positions (to see transitions within the packet)
-            char midbuf[3*16+1];
-            midbuf[0] = '\0';
-            int mbpos = 0;
-            if (logic.length >= 32) {
-                for (int qi = 0; qi < 3; qi++) {
-                    uint64_t pos = (logic.length / 8) / 4 * (qi + 1);
-                    if (pos + 8 <= logic.length) {
-                        uint64_t val = 0;
-                        memcpy(&val, (uint8_t *)logic.data + pos * 8, 8);
-                        mbpos += snprintf(midbuf + mbpos, sizeof(midbuf) - mbpos, "%s%016llx", qi > 0 ? " " : "", (unsigned long long)val);
-                    }
-                }
-            }
-            pxv_info("[PWMDBG6] async_write_worker ts=%lld pkt %d, fmt=%d, len=%llu, first32=[%s] mid_u64=[%s]",
-                     (long long)std::chrono::steady_clock::now().time_since_epoch().count(),
-                     packet_count, logic.format, (unsigned long long)logic.length, hexbuf, midbuf);
-            s_dump_count++;
-        }
-
         auto start = std::chrono::steady_clock::now();
 
         // _mutex is now managed INSIDE append_payload_impl/append_cross_payload
@@ -384,23 +351,6 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
             _owner->append_cross_payload(logic);
         else
             _owner->append_payload_impl(logic);
-
-        // [PlanB] after first packet, dump leaf block u64[0/1/1000/10000] to verify data persisted
-        {
-            static std::atomic<int> s_pb_dump{0};
-            if (s_pb_dump.fetch_add(1) == 0) {
-                void *_lbp0 = (_owner->_ch_data.size() > 0 && _owner->_ch_data[0].size() > 0) ?
-                              _owner->_ch_data[0][0].lbp[0] : nullptr;
-                if (_lbp0) {
-                    uint64_t *p = (uint64_t *)_lbp0;
-                    pxv_info("[PWMDBG6] post_packet_dump lbp0=%p u64[0]=0x%016llx u64[1]=0x%016llx u64[1000]=0x%016llx u64[10000]=0x%016llx",
-                             _lbp0, (unsigned long long)p[0], (unsigned long long)p[1],
-                             (unsigned long long)p[1000], (unsigned long long)p[10000]);
-                } else {
-                    pxv_info("[PWMDBG6] post_packet_dump lbp0=NULL");
-                }
-            }
-        }
 
         auto end = std::chrono::steady_clock::now();
         _async_bytes_written += payload.data.size();

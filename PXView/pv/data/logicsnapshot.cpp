@@ -321,19 +321,6 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
   // 下次 capture 的 _ring_sample_count += _loop_offset 会从错误基址开始。
   _loop_offset = 0;
 
-  // [PWMDBG4] log stale state from previous capture + increment debug gen
-  _dbg_gen++;
-  {
-    auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
-    pxv_info("[PWMDBG6] first_payload this=%p gen=%llu ts=%lld: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
-             "_ring=%llu _sample=%llu _last_sample[0]=0x%llx _last_calc_count[0]=%llu ch0_lbp[0]=%p",
-             this, (unsigned long long)_dbg_gen, (long long)_ts, _ch_fraction, _byte_fraction, _dest_ptr,
-             (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
-             (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0],
-             _ch_data.size() > 0 ? _ch_data[0][0].lbp[0] : nullptr);
-  }
-  _disk_cache_writer->reset_debug();
-
   for (unsigned int i = 0; i < _channel_num; i++) {
     _last_sample[i] = 0;
     _last_calc_count[i] = 0;
@@ -928,40 +915,9 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
 
   while (len >= 8) {
-    // [PWMDBG6] log first write for each channel + spot checks at u64 100, 1000, 10000
-    {
-      static std::atomic<int> s_xp_dump{0};
-      static std::atomic<uint64_t> s_xp_gen{0};
-      if (s_xp_gen.load() != _dbg_gen) { s_xp_gen.store(_dbg_gen); s_xp_dump.store(0); }
-      int n = s_xp_dump.fetch_add(1);
-      if ((unsigned)n < _channel_num + 4 && fill_chan == 0) {
-        uint64_t val = *read_ptr;
-        uint64_t widx = (uint64_t)((uint8_t *)write_ptr - (uint8_t *)lbp) / 8;
-        // [PlanA] read back AFTER write to verify mmap visibility
-        uint64_t readback = 0xDEAD;
-        pxv_info("[PWMDBG6] cross_write gen=%llu n=%d lbp=%p widx=%llu val=0x%016llx offset=%llu",
-                 (unsigned long long)_dbg_gen, n, lbp, (unsigned long long)widx,
-                 (unsigned long long)val, (unsigned long long)offset);
-        // We'll log readback after the write happens (see below)
-      }
-    }
     // mmap data write — release _mutex during page faults
     lock.unlock();
     *write_ptr++ = *read_ptr;
-    // [PlanA] immediately read back the value just written to verify mmap visibility
-    {
-      static std::atomic<int> s_rb_dump{0};
-      static std::atomic<uint64_t> s_rb_gen{0};
-      if (s_rb_gen.load() != _dbg_gen) { s_rb_gen.store(_dbg_gen); s_rb_dump.store(0); }
-      int rn = s_rb_dump.fetch_add(1);
-      if ((unsigned)rn < _channel_num + 4 && fill_chan == 0) {
-        uint64_t readback = *(write_ptr - 1);
-        uint64_t rb_widx = (uint64_t)((uint8_t *)(write_ptr-1) - (uint8_t *)lbp) / 8;
-        pxv_info("[PWMDBG6] cross_readback gen=%llu n=%d lbp=%p widx=%llu readback=0x%016llx",
-                 (unsigned long long)_dbg_gen, rn, lbp, (unsigned long long)rb_widx,
-                 (unsigned long long)readback);
-      }
-    }
     read_ptr += _channel_num;
     len -= 8;
     filled_sample += Scale;
@@ -1083,23 +1039,6 @@ void LogicSnapshot::capture_ended() {
   // _mutex to call append_payload_impl().
   // Encapsulated in drain_queue_for_capture_end() (cluster D).
   _disk_cache_writer->drain_queue_for_capture_end();
-
-  {
-    auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
-    void *_lbp0 = (_ch_data.size() > 0 && _ch_data[0].size() > 0) ? _ch_data[0][0].lbp[0] : nullptr;
-    uint64_t u64_0 = 0xDEAD, u64_1k = 0xDEAD, u64_10k = 0xDEAD, u64_100k = 0xDEAD;
-    if (_lbp0) {
-      uint64_t *p = (uint64_t *)_lbp0;
-      u64_0 = p[0]; u64_1k = p[1000]; u64_10k = p[10000];
-      // 100k = u64[100000], check if within leaf block raw data (LeafBlockSamples/Scale = 262144 u64s)
-      if (100000 < 262144) u64_100k = p[100000];
-    }
-    pxv_info("[PWMDBG6] capture_ended POST_DRAIN ts=%lld _ring=%llu ch0_lbp[0]=%p "
-             "u64[0]=0x%016llx u64[1k]=0x%016llx u64[10k]=0x%016llx u64[100k]=0x%016llx",
-             (long long)_ts, (unsigned long long)_ring_sample_count, _lbp0,
-             (unsigned long long)u64_0, (unsigned long long)u64_1k,
-             (unsigned long long)u64_10k, (unsigned long long)u64_100k);
-  }
 
   std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1269,28 +1208,6 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   uint64_t i = 0;
   uint64_t last_count = _last_calc_count[order];
 
-  // [PWMDBG4] dump leaf block contents for order 0 (ch0) to see if data is flat or PWM
-  {
-    static std::atomic<int> s_cm_dump{0};
-    static std::atomic<uint64_t> s_cm_gen{0};
-    if (s_cm_gen.load() != _dbg_gen) { s_cm_gen.store(_dbg_gen); s_cm_dump.store(0); }
-    int n = s_cm_dump.fetch_add(1);
-    if (n < 8 && order == 0) {
-      uint64_t *raw = (uint64_t *)lbp;
-      uint64_t nz_count = 0;
-      uint64_t check_u64s = (samples / Scale > 1000) ? 1000 : samples / Scale;
-      for (uint64_t z = 0; z < check_u64s; z++)
-        if (raw[z] != 0) nz_count++;
-      pxv_info("[PWMDBG4] calc_mipmap order=0 idx0=%u idx1=%u samples=%llu isEnd=%d last_count=%llu "
-               "first4_u64=[%016llx %016llx %016llx %016llx] nz_in_1k=%llu/%llu",
-               index0, index1, (unsigned long long)samples, (int)isEnd,
-               (unsigned long long)last_count,
-               (unsigned long long)raw[0], (unsigned long long)raw[1],
-               (unsigned long long)raw[2], (unsigned long long)raw[3],
-               (unsigned long long)nz_count, (unsigned long long)check_u64s);
-    }
-  }
-
   if (last_count > 0) {
     i = last_count / Scale;
     offset = i % Scale;
@@ -1398,33 +1315,9 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   if (*((uint64_t *)level3_ptr) != 0) {
     _ch_data[order][index0].tog |= 1ULL << index1;
   } else if (isEnd) {
-    // [PWMDBG6] log leaf block being freed due to level3=0
-    {
-      static std::atomic<int> s_free_log{0};
-      int fn = s_free_log.fetch_add(1);
-      if (fn < 10) {
-        pxv_warn("[PWMDBG6] calc_mipmap FREE leaf: order=%u idx0=%u idx1=%u samples=%llu isEnd=%d level3=0x%016llx last_count=%llu "
-                 "lbp=%p tog=0x%llx first=0x%llx",
-                 order, index0, index1, (unsigned long long)samples, (int)isEnd,
-                 (unsigned long long)*((uint64_t *)level3_ptr), (unsigned long long)last_count,
-                 lbp, (unsigned long long)_ch_data[order][index0].tog,
-                 (unsigned long long)_ch_data[order][index0].first);
-      }
-    }
     push_to_free_list(_ch_data[order][index0].lbp[index1]);
 
     _ch_data[order][index0].lbp[index1] = NULL;
-  } else {
-    // [PWMDBG6] log when level3=0 but isEnd=false (block NOT freed, tog NOT set)
-    {
-      static std::atomic<int> s_notog_log{0};
-      int fn = s_notog_log.fetch_add(1);
-      if (fn < 10 && order == 0) {
-        pxv_info("[PWMDBG6] calc_mipmap NO_TOG: order=0 samples=%llu isEnd=%d level3=0x%016llx last_count=%llu",
-                 (unsigned long long)samples, (int)isEnd,
-                 (unsigned long long)*((uint64_t *)level3_ptr), (unsigned long long)last_count);
-      }
-    }
   }
 
   if (isEnd)
@@ -1487,25 +1380,6 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
 
   void *ptr = _ch_data[order][index0].lbp[index1];
 
-  // [PWMDBG6] log get_samples result for order 0 with timestamp
-  {
-    static std::atomic<int> s_gs_dump{0};
-    static std::atomic<uint64_t> s_gs_gen{0};
-    if (s_gs_gen.load() != _dbg_gen) { s_gs_gen.store(_dbg_gen); s_gs_dump.store(0); }
-    int n = s_gs_dump.fetch_add(1);
-    if (n < 20 && order == 0) {
-      auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
-      uint64_t first_u64 = ptr ? *((uint64_t *)((uint8_t *)ptr + offset)) : 0xDEAD;
-      pxv_info("[PWMDBG6] get_samples ts=%lld gen=%llu lbp=%p idx0=%llu idx1=%llu off=%llu ptr=%s "
-               "first_u64=0x%016llx _ring=%llu",
-               (long long)_ts, (unsigned long long)_dbg_gen, ptr,
-               (unsigned long long)index0, (unsigned long long)index1,
-               (unsigned long long)offset, ptr ? "OK" : "NULL",
-               (unsigned long long)first_u64,
-               (unsigned long long)_ring_sample_count);
-    }
-  }
-
   if (ptr == NULL) {
     // Leaf block was freed by calc_mipmap because this region has no toggles
     // (constant value). The value is encoded in _ch_data[order][index0].first
@@ -1513,18 +1387,6 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
     // so callers (export, etc.) get valid data instead of NULL.
     // 8 samples per byte, LSB-first: all-0 -> 0x00, all-1 -> 0xFF.
     bool const_val = (_ch_data[order][index0].first & (1ULL << index1)) != 0;
-    // [PWMDBG3] log NULL leaf block hits to distinguish "freed by mipmap"
-    // from "genuinely flat data". Throttle to first 20 to avoid log flood.
-    {
-      static std::atomic<int> s_null_hit_count{0};
-      int n = s_null_hit_count.fetch_add(1);
-      if (n < 20) {
-        pxv_warn("[PWMDBG3] get_samples NULL leaf: sig_index=%d order=%d idx0=%llu idx1=%llu offset=%llu const_val=%d _loop_offset=%lld",
-                 sig_index, order, (unsigned long long)index0,
-                 (unsigned long long)index1, (unsigned long long)offset,
-                 (int)const_val, (long long)_loop_offset);
-      }
-    }
     uint64_t bytes_from_offset = (end_sample - start_sample + 1 + 7) / 8;
     // Clamp to remaining bytes in this leaf block from `offset`.
     uint64_t leaf_remaining = (LeafBlockSamples / 8) - offset;
@@ -1579,23 +1441,6 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index) {
 
   if (index0 >= _ch_data[order].size())
     return false;
-
-  // [PWMDBG6] log tog/first/lbp for first few calls
-  {
-    static std::atomic<int> s_gss{0};
-    static std::atomic<uint64_t> s_gss_gen{0};
-    if (s_gss_gen.load() != _dbg_gen) { s_gss_gen.store(_dbg_gen); s_gss.store(0); }
-    int gn = s_gss.fetch_add(1);
-    if (gn < 5 && order == 0 && index0 == 0 && index1 == 0) {
-      void *_lbp = _ch_data[order][index0].lbp[index1];
-      uint64_t _uv = _lbp ? *((uint64_t *)_lbp) : 0xDEAD;
-      pxv_info("[PWMDBG6] get_sample_self idx=%llu tog=0x%llx first=0x%llx lbp=%p u64[0]=0x%016llx",
-               (unsigned long long)index,
-               (unsigned long long)_ch_data[order][index0].tog,
-               (unsigned long long)_ch_data[order][index0].first,
-               _lbp, (unsigned long long)_uv);
-    }
-  }
 
   if ((_ch_data[order][index0].tog & root_pos_mask) == 0)
     return (_ch_data[order][index0].first & root_pos_mask) != 0;

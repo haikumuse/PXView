@@ -62,7 +62,6 @@ public:
     // ---- Stats ----
     double get_disk_write_speed_mbps() const;
     size_t get_disk_write_queue_depth() const;
-    void reset_debug() { _pkt_count.store(0); } // [PWMDBG4] reset packet counter for new capture
     uint64_t get_disk_total_blocks_written() const;
     uint64_t get_async_queue_bytes() const;
 
@@ -107,7 +106,6 @@ private:
     // the physical slot in the mmap region (matches MmapAllocator addressing).
     // _max_blocks_per_channel itself stays on LogicSnapshot (cluster A).
     std::vector<bool> _mmap_slot_written;
-    std::atomic<int> _pkt_count{0}; // [PWMDBG4] packet counter, reset per capture
     std::atomic<bool> _async_busy{false}; // true while writer is processing a dequeued payload
 
     struct AsyncPayload {
