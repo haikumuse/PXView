@@ -62,6 +62,7 @@ public:
     // ---- Stats ----
     double get_disk_write_speed_mbps() const;
     size_t get_disk_write_queue_depth() const;
+    void reset_debug() { _pkt_count.store(0); } // [PWMDBG4] reset packet counter for new capture
     uint64_t get_disk_total_blocks_written() const;
     uint64_t get_async_queue_bytes() const;
 
@@ -94,7 +95,6 @@ public:
 
 private:
     void async_write_worker();  // thread function
-    void reset_debug() { _pkt_count.store(0); } // [PWMDBG4] reset packet counter for new capture
 
     pv::data::LogicSnapshot *_owner;
 
