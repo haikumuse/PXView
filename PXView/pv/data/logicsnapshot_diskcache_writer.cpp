@@ -245,7 +245,7 @@ void LogicSnapshotDiskCacheWriter::drain_queue_for_capture_end()
     while (true) {
         {
             std::lock_guard<std::mutex> lock(_async_mutex);
-            if (_async_queue.empty()) break;
+            if (_async_queue.empty() && !_async_busy.load()) break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         drain_loops++;
@@ -314,6 +314,7 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
             }
         }
 
+        _async_busy.store(true);
         sr_datafeed_logic logic;
         logic.length = payload.data.size();
         logic.data = payload.data.data();
@@ -392,5 +393,6 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
             if (old == 0.0) _async_write_speed_mbps = mbps;
             else _async_write_speed_mbps = old * 0.8 + mbps * 0.2;
         }
+        _async_busy.store(false);
     }
 }
