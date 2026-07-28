@@ -1129,6 +1129,18 @@ void LogicSnapshot::copy_from(const LogicSnapshot &src) {
       _mmap_alloc = std::make_shared<MmapAllocator>();
       _mmap_alloc->configure(false, "", src._mmap_alloc->get_total_bytes(),
                              LeafBlockSpace, _max_blocks_per_channel, _channel_num);
+      // CRITICAL FIX: stop the prefault thread immediately after configure().
+      // configure() spawns a background thread that writes zero bytes to every
+      // page in the mmap region to pre-fault them into RAM.  That thread races
+      // with the memcpy loop below: if it reaches a page AFTER memcpy has
+      // already written real data there, it overwrites the first byte of that
+      // page with 0, silently corrupting both sample data and mipmap data.
+      // This was the root cause of "first ~2ms of both channels show phantom
+      // waveform after applying glitch filter to a second channel": the second
+      // filter call invokes copy_from() to restore from backup, the prefault
+      // thread corrupts the restored data, and the glitch filter then operates
+      // on corrupted data producing wrong results for BOTH channels.
+      _mmap_alloc->stop_prefault();
   } else {
       _disk_cache_writer->clear_all_mmap_slots();
       _mmap_alloc = nullptr;
