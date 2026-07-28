@@ -73,7 +73,11 @@ private:
     int _channel_num;
 
     static constexpr uint64_t PREFAULT_AHEAD_BLOCKS = 16;
-    static constexpr uint64_t PREFAULT_PAGE_SIZE = 4096;
+#if defined(__APPLE__) && (defined(__arm64__) || defined(__aarch64__))
+    static constexpr uint64_t PREFAULT_PAGE_SIZE = 16384; // Apple Silicon page size
+#else
+    static constexpr uint64_t PREFAULT_PAGE_SIZE = 4096;   // Linux / Windows / Intel macOS
+#endif
     static constexpr uint64_t TRAILING_DECHECK_BEHIND_BLOCKS = 16;
 
     void prefault_worker();
