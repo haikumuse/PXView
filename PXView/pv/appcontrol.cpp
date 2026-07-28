@@ -179,16 +179,14 @@ bool AppControl::Init()
     }
 #elif defined(Q_OS_DARWIN)
     // macOS: .app bundle 内的 Python.framework 由 macdeployqt 打包。
-    // applicationDirPath() = .../PXView.app/Contents/MacOS
-    // Python.framework 在 .../PXView.app/Contents/Frameworks/Python.framework
-    // Python home 应该指向 framework 内的 Resources 目录 (包含 Python stdlib)。
-    // wchar_t 在 macOS 上是 4 字节(UTF-32),必须用 toStdWString() 做编码转换。
-    //
-    // 不设置 PYTHONHOME 时,srd_init() 走 Py_InitializeEx(0) 分支,
-    // 依赖系统 Python 路径。在 .app bundle 中运行时,系统 Python 路径
-    // 可能无法正确解析 bundle 内的 Python.framework,导致:
-    // - Py_InitializeEx(0) 挂起(NSApplication 已存在时可能死锁)
-    // - 或 srd_decoder_load_all() 中导入 Python 模块时崩溃
+    // Homebrew Python.framework 结构:
+    //   Python.framework/Versions/3.13/
+    //     Python               ← 共享库 (libpython3.13.dylib)
+    //     Resources/           ← Python.app + Info.plist (不是 stdlib!)
+    //     lib/python3.13/      ← stdlib (encodings/, os.py, ...)
+    // PYTHONHOME 应指向 Versions/Current (包含 lib/python3.X 的目录)。
+    // 设错(如指向 Resources)会导致 "Failed to import encodings module"。
+    // wchar_t 在 macOS 上是 4 字节(UTF-32),必须用 toStdWString()。
     {
         QString appDir = QCoreApplication::applicationDirPath();
         // appDir = .../PXView.app/Contents/MacOS
@@ -198,29 +196,47 @@ bool AppControl::Init()
 
         // 查找 Python.framework (macdeployqt 打包为 Python.framework)
         if (fwDir.cd("Python.framework")) {
-            // Python.framework/Versions/Current/Resources 包含 stdlib
             // Python home = .../Python.framework/Versions/Current
+            // (Current 是符号链接,指向如 3.13,包含 lib/python3.X/)
             QString pyHome = fwDir.absolutePath() + "/Versions/Current";
             QDir homeDir(pyHome);
             pyHome = homeDir.absolutePath();
 
-            // 验证 stdlib 是否存在
-            QString libDir = pyHome + "/lib/python";
-            QDir checkLib(libDir);
-            if (checkLib.exists()) {
-                static std::wstring pyHomeW = pyHome.toStdWString();
-                srd_set_python_home(pyHomeW.c_str());
-                pxv_info("Set Python home to: %s", pyHome.toUtf8().data());
-            } else {
-                // 尝试 Resources 目录 (framework 结构可能不同)
-                QString resHome = fwDir.absolutePath() + "/Versions/Current/Resources";
-                QDir resDir(resHome);
-                if (resDir.exists()) {
-                    static std::wstring pyHomeW = resHome.toStdWString();
+            // 验证 stdlib 是否存在: lib/python3.X/encodings/
+            // 用 glob 匹配 python3.* (与 Linux 代码相同的方式)
+            QDir libCheck(pyHome + "/lib");
+            QStringList pyDirs = libCheck.entryList(
+                QStringList() << "python3.*", QDir::Dirs, QDir::Name);
+            if (!pyDirs.isEmpty()) {
+                if (QDir(pyHome + "/lib/" + pyDirs.first() + "/encodings").exists()) {
+                    static std::wstring pyHomeW = pyHome.toStdWString();
                     srd_set_python_home(pyHomeW.c_str());
-                    pxv_info("Set Python home (Resources) to: %s", resHome.toUtf8().data());
+                    pxv_info("Set Python home to: %s", pyHome.toUtf8().data());
                 } else {
-                    pxv_warn("Python.framework found but stdlib not located, using system Python");
+                    pxv_warn("Python.framework found, encodings module missing, using system Python");
+                }
+            } else {
+                // Current 符号链接可能不存在或已损坏,直接扫描 Versions/ 目录
+                QDir versionsDir(fwDir.absolutePath() + "/Versions");
+                QStringList verDirs = versionsDir.entryList(
+                    QStringList() << "3.*", QDir::Dirs, QDir::Name);
+                if (!verDirs.isEmpty()) {
+                    QString realHome = versionsDir.absoluteFilePath(verDirs.first());
+                    QDir realLibCheck(realHome + "/lib");
+                    QStringList realPyDirs = realLibCheck.entryList(
+                        QStringList() << "python3.*", QDir::Dirs, QDir::Name);
+                    if (!realPyDirs.isEmpty() &&
+                        QDir(realHome + "/lib/" + realPyDirs.first() + "/encodings").exists()) {
+                        static std::wstring pyHomeW = realHome.toStdWString();
+                        srd_set_python_home(pyHomeW.c_str());
+                        pxv_info("Set Python home (%s) to: %s",
+                                 verDirs.first().toUtf8().data(), realHome.toUtf8().data());
+                    } else {
+                        pxv_warn("Python.framework Versions/%s found but stdlib missing, using system Python",
+                                 verDirs.first().toUtf8().data());
+                    }
+                } else {
+                    pxv_warn("Python.framework found but no version dir with stdlib, using system Python");
                 }
             }
         } else {
