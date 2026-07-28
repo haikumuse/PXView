@@ -26,6 +26,8 @@
 #include <libsigrokdecode.h>
 #include <QDir>
 #include <QCoreApplication>
+#include <QProcess>
+#include <QFile>
 #include <QWidget>
 #include <string>
 #include <assert.h>
@@ -124,6 +126,7 @@ bool AppControl::Init()
     _session->init();
 
     srd_log_set_context(pxv_log_context());
+    pxv_info("DBG: srd_log_set_context done");
 
 #if defined(_WIN32)
     // Set Python home to application directory for embedded Python
@@ -174,6 +177,76 @@ bool AppControl::Init()
             pxv_info("Python stdlib not bundled, using system Python");
         }
     }
+#elif defined(Q_OS_DARWIN)
+    // macOS: .app bundle 内的 Python.framework 由 macdeployqt 打包。
+    // applicationDirPath() = .../PXView.app/Contents/MacOS
+    // Python.framework 在 .../PXView.app/Contents/Frameworks/Python.framework
+    // Python home 应该指向 framework 内的 Resources 目录 (包含 Python stdlib)。
+    // wchar_t 在 macOS 上是 4 字节(UTF-32),必须用 toStdWString() 做编码转换。
+    //
+    // 不设置 PYTHONHOME 时,srd_init() 走 Py_InitializeEx(0) 分支,
+    // 依赖系统 Python 路径。在 .app bundle 中运行时,系统 Python 路径
+    // 可能无法正确解析 bundle 内的 Python.framework,导致:
+    // - Py_InitializeEx(0) 挂起(NSApplication 已存在时可能死锁)
+    // - 或 srd_decoder_load_all() 中导入 Python 模块时崩溃
+    {
+        QString appDir = QCoreApplication::applicationDirPath();
+        // appDir = .../PXView.app/Contents/MacOS
+        // frameworkDir = .../PXView.app/Contents/Frameworks
+        QString frameworkDir = appDir + "/../Frameworks";
+        QDir fwDir(frameworkDir);
+
+        // 查找 Python.framework (macdeployqt 打包为 Python.framework)
+        if (fwDir.cd("Python.framework")) {
+            // Python.framework/Versions/Current/Resources 包含 stdlib
+            // Python home = .../Python.framework/Versions/Current
+            QString pyHome = fwDir.absolutePath() + "/Versions/Current";
+            QDir homeDir(pyHome);
+            pyHome = homeDir.absolutePath();
+
+            // 验证 stdlib 是否存在
+            QString libDir = pyHome + "/lib/python";
+            QDir checkLib(libDir);
+            if (checkLib.exists()) {
+                static std::wstring pyHomeW = pyHome.toStdWString();
+                srd_set_python_home(pyHomeW.c_str());
+                pxv_info("Set Python home to: %s", pyHome.toUtf8().data());
+            } else {
+                // 尝试 Resources 目录 (framework 结构可能不同)
+                QString resHome = fwDir.absolutePath() + "/Versions/Current/Resources";
+                QDir resDir(resHome);
+                if (resDir.exists()) {
+                    static std::wstring pyHomeW = resHome.toStdWString();
+                    srd_set_python_home(pyHomeW.c_str());
+                    pxv_info("Set Python home (Resources) to: %s", resHome.toUtf8().data());
+                } else {
+                    pxv_warn("Python.framework found but stdlib not located, using system Python");
+                }
+            }
+        } else {
+            // 开发模式: 没有 .app bundle,使用系统 Python (Homebrew)
+            // 查找 Homebrew Python 的 prefix
+            QString brewPython = "/opt/homebrew/bin/python3"; // Apple Silicon
+            if (!QFile::exists(brewPython)) {
+                brewPython = "/usr/local/bin/python3"; // Intel
+            }
+            if (QFile::exists(brewPython)) {
+                QProcess proc;
+                proc.start(brewPython, QStringList() << "-c"
+                    << "import sys; print(sys.prefix)");
+                if (proc.waitForFinished(5000)) {
+                    QString prefix = proc.readAllStandardOutput().trimmed();
+                    if (!prefix.isEmpty()) {
+                        static std::wstring pyHomeW = prefix.toStdWString();
+                        srd_set_python_home(pyHomeW.c_str());
+                        pxv_info("Set Python home (Homebrew) to: %s", prefix.toUtf8().data());
+                    }
+                }
+            } else {
+                pxv_info("No bundled Python.framework, no Homebrew Python, using system default");
+            }
+        }
+    }
 #endif
     
     //the python script path of decoder
@@ -182,11 +255,13 @@ bool AppControl::Init()
     strcpy(path, dir.toUtf8().data());
 
     // Initialise libsigrokdecode
+    pxv_info("DBG: before srd_init, path=%s", path);
     if (srd_init(path) != SRD_OK)
-    { 
+    {
         pxv_err("ERROR: libsigrokdecode init failed.");
         return false;
     }
+    pxv_info("DBG: srd_init done");
 
     // Add C decoder search paths
     {
@@ -200,11 +275,13 @@ bool AppControl::Init()
     }
 
     // Load the protocol decoders
+    pxv_info("DBG: before srd_decoder_load_all");
     if (srd_decoder_load_all() != SRD_OK)
     {
         pxv_err("ERROR: load the protocol decoders failed.");
         return false;
     }
+    pxv_info("DBG: srd_decoder_load_all done");
  
     return true;
 }
