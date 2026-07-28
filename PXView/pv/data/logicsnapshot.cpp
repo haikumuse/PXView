@@ -1071,11 +1071,19 @@ void LogicSnapshot::capture_ended() {
 
   {
     auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
-    pxv_info("[PWMDBG6] capture_ended POST_DRAIN ts=%lld _ring=%llu ch0_lbp[0]=%p ch0_lbp[0]_first_u64=0x%016llx",
-             (long long)_ts, (unsigned long long)_ring_sample_count,
-             _ch_data.size() > 0 && _ch_data[0].size() > 0 ? _ch_data[0][0].lbp[0] : nullptr,
-             _ch_data.size() > 0 && _ch_data[0].size() > 0 && _ch_data[0][0].lbp[0] ?
-               *((uint64_t *)_ch_data[0][0].lbp[0]) : 0xDEAD);
+    void *_lbp0 = (_ch_data.size() > 0 && _ch_data[0].size() > 0) ? _ch_data[0][0].lbp[0] : nullptr;
+    uint64_t u64_0 = 0xDEAD, u64_1k = 0xDEAD, u64_10k = 0xDEAD, u64_100k = 0xDEAD;
+    if (_lbp0) {
+      uint64_t *p = (uint64_t *)_lbp0;
+      u64_0 = p[0]; u64_1k = p[1000]; u64_10k = p[10000];
+      // 100k = u64[100000], check if within leaf block raw data (LeafBlockSamples/Scale = 262144 u64s)
+      if (100000 < 262144) u64_100k = p[100000];
+    }
+    pxv_info("[PWMDBG6] capture_ended POST_DRAIN ts=%lld _ring=%llu ch0_lbp[0]=%p "
+             "u64[0]=0x%016llx u64[1k]=0x%016llx u64[10k]=0x%016llx u64[100k]=0x%016llx",
+             (long long)_ts, (unsigned long long)_ring_sample_count, _lbp0,
+             (unsigned long long)u64_0, (unsigned long long)u64_1k,
+             (unsigned long long)u64_10k, (unsigned long long)u64_100k);
   }
 
   std::lock_guard<std::mutex> lock(_mutex);
