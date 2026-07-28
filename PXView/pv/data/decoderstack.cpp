@@ -764,6 +764,53 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
   pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
 
+  // [PWMDBG] ground truth: count real bit transitions inside the channel
+  // data we just fed to the decoder. If edges here matches the waveform
+  // (~1000) but the decoder emitted only a few annotations, the loss is
+  // inside libsigrokdecode; if edges here is ~0, the snapshot/channel data
+  // itself is flat (wrong channel binding or flat capture data).
+  {
+    for (int ch_idx = 0; ch_idx < logic_di->dec_num_channels; ch_idx++) {
+      const int sig_index = logic_di->dec_channelmap[ch_idx];
+      if (sig_index == -1 || !_snapshot->has_data(sig_index))
+        continue;
+
+      uint64_t pos = 0;
+      uint64_t edges = 0;
+      uint8_t prev_tail = 0;
+      bool have_prev = false;
+      char first_hex[3 * 8 + 1];
+      first_hex[0] = '\0';
+      int first_cnt = 0;
+
+      while (pos < _sample_count) {
+        uint64_t gend = _sample_count;
+        void *lbp2 = NULL;
+        const uint8_t *p = _snapshot->get_samples(pos, gend, sig_index, &lbp2);
+        if (!p || gend <= pos)
+          break;
+        const uint64_t nbytes = (gend - pos) / 8;
+        for (uint64_t k = 0; k < nbytes; k++) {
+          const uint8_t b = p[k];
+          if (first_cnt < 8) {
+            snprintf(first_hex + first_cnt * 3, 4, "%02x ", b);
+            first_cnt++;
+          }
+          edges += (uint64_t)__builtin_popcount((unsigned)(b ^ (b >> 1)) & 0x7Fu);
+          if (have_prev && ((b & 1) != prev_tail))
+            edges++;
+          prev_tail = (uint8_t)(b >> 7);
+          have_prev = true;
+        }
+        pos = gend;
+      }
+
+      pxv_info("[PWMDBG] FED-DATA ch=%d sig_index=%d: edges=%llu over %llu samples, first8=[%s]",
+               ch_idx, sig_index, (unsigned long long)edges,
+               (unsigned long long)_sample_count, first_hex);
+    }
+  }
+
   if (error != NULL)
     g_free(error);
 
