@@ -937,14 +937,31 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
       if ((unsigned)n < _channel_num + 4 && fill_chan == 0) {
         uint64_t val = *read_ptr;
         uint64_t widx = (uint64_t)((uint8_t *)write_ptr - (uint8_t *)lbp) / 8;
-        pxv_info("[PWMDBG6] cross_write gen=%llu n=%d val=0x%016llx widx=%llu offset=%llu",
-                 (unsigned long long)_dbg_gen, n, (unsigned long long)val,
-                 (unsigned long long)widx, (unsigned long long)offset);
+        // [PlanA] read back AFTER write to verify mmap visibility
+        uint64_t readback = 0xDEAD;
+        pxv_info("[PWMDBG6] cross_write gen=%llu n=%d lbp=%p widx=%llu val=0x%016llx offset=%llu",
+                 (unsigned long long)_dbg_gen, n, lbp, (unsigned long long)widx,
+                 (unsigned long long)val, (unsigned long long)offset);
+        // We'll log readback after the write happens (see below)
       }
     }
     // mmap data write — release _mutex during page faults
     lock.unlock();
     *write_ptr++ = *read_ptr;
+    // [PlanA] immediately read back the value just written to verify mmap visibility
+    {
+      static std::atomic<int> s_rb_dump{0};
+      static std::atomic<uint64_t> s_rb_gen{0};
+      if (s_rb_gen.load() != _dbg_gen) { s_rb_gen.store(_dbg_gen); s_rb_dump.store(0); }
+      int rn = s_rb_dump.fetch_add(1);
+      if ((unsigned)rn < _channel_num + 4 && fill_chan == 0) {
+        uint64_t readback = *(write_ptr - 1);
+        uint64_t rb_widx = (uint64_t)((uint8_t *)(write_ptr-1) - (uint8_t *)lbp) / 8;
+        pxv_info("[PWMDBG6] cross_readback gen=%llu n=%d lbp=%p widx=%llu readback=0x%016llx",
+                 (unsigned long long)_dbg_gen, rn, lbp, (unsigned long long)rb_widx,
+                 (unsigned long long)readback);
+      }
+    }
     read_ptr += _channel_num;
     len -= 8;
     filled_sample += Scale;
@@ -1468,9 +1485,9 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
     if (n < 20 && order == 0) {
       auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
       uint64_t first_u64 = ptr ? *((uint64_t *)((uint8_t *)ptr + offset)) : 0xDEAD;
-      pxv_info("[PWMDBG6] get_samples ts=%lld gen=%llu idx0=%llu idx1=%llu off=%llu ptr=%s "
+      pxv_info("[PWMDBG6] get_samples ts=%lld gen=%llu lbp=%p idx0=%llu idx1=%llu off=%llu ptr=%s "
                "first_u64=0x%016llx _ring=%llu",
-               (long long)_ts, (unsigned long long)_dbg_gen,
+               (long long)_ts, (unsigned long long)_dbg_gen, ptr,
                (unsigned long long)index0, (unsigned long long)index1,
                (unsigned long long)offset, ptr ? "OK" : "NULL",
                (unsigned long long)first_u64,

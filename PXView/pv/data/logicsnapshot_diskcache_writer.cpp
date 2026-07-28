@@ -385,6 +385,23 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
         else
             _owner->append_payload_impl(logic);
 
+        // [PlanB] after first packet, dump leaf block u64[0/1/1000/10000] to verify data persisted
+        {
+            static std::atomic<int> s_pb_dump{0};
+            if (s_pb_dump.fetch_add(1) == 0) {
+                void *_lbp0 = (_owner->_ch_data.size() > 0 && _owner->_ch_data[0].size() > 0) ?
+                              _owner->_ch_data[0][0].lbp[0] : nullptr;
+                if (_lbp0) {
+                    uint64_t *p = (uint64_t *)_lbp0;
+                    pxv_info("[PWMDBG6] post_packet_dump lbp0=%p u64[0]=0x%016llx u64[1]=0x%016llx u64[1000]=0x%016llx u64[10000]=0x%016llx",
+                             _lbp0, (unsigned long long)p[0], (unsigned long long)p[1],
+                             (unsigned long long)p[1000], (unsigned long long)p[10000]);
+                } else {
+                    pxv_info("[PWMDBG6] post_packet_dump lbp0=NULL");
+                }
+            }
+        }
+
         auto end = std::chrono::steady_clock::now();
         _async_bytes_written += payload.data.size();
 
