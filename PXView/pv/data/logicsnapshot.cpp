@@ -1398,22 +1398,33 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   if (*((uint64_t *)level3_ptr) != 0) {
     _ch_data[order][index0].tog |= 1ULL << index1;
   } else if (isEnd) {
-    // [PWMDBG3] leaf block being freed — log first 20 to see if PWM data
-    // blocks are wrongly classified as "no toggles"
+    // [PWMDBG6] log leaf block being freed due to level3=0
     {
-      static std::atomic<int> s_free_count{0};
-      int n = s_free_count.fetch_add(1);
-      if (n < 20) {
-        pxv_info("[PWMDBG3] calc_mipmap FREE leaf: order=%u idx0=%u idx1=%u samples=%llu isEnd=%d level3=0x%016llx last=0x%016llx first=0x%016llx",
+      static std::atomic<int> s_free_log{0};
+      int fn = s_free_log.fetch_add(1);
+      if (fn < 10) {
+        pxv_warn("[PWMDBG6] calc_mipmap FREE leaf: order=%u idx0=%u idx1=%u samples=%llu isEnd=%d level3=0x%016llx last_count=%llu "
+                 "lbp=%p tog=0x%llx first=0x%llx",
                  order, index0, index1, (unsigned long long)samples, (int)isEnd,
-                 (unsigned long long)*((uint64_t *)level3_ptr),
-                 (unsigned long long)_ch_data[order][index0].last,
+                 (unsigned long long)*((uint64_t *)level3_ptr), (unsigned long long)last_count,
+                 lbp, (unsigned long long)_ch_data[order][index0].tog,
                  (unsigned long long)_ch_data[order][index0].first);
       }
     }
     push_to_free_list(_ch_data[order][index0].lbp[index1]);
 
     _ch_data[order][index0].lbp[index1] = NULL;
+  } else {
+    // [PWMDBG6] log when level3=0 but isEnd=false (block NOT freed, tog NOT set)
+    {
+      static std::atomic<int> s_notog_log{0};
+      int fn = s_notog_log.fetch_add(1);
+      if (fn < 10 && order == 0) {
+        pxv_info("[PWMDBG6] calc_mipmap NO_TOG: order=0 samples=%llu isEnd=%d level3=0x%016llx last_count=%llu",
+                 (unsigned long long)samples, (int)isEnd,
+                 (unsigned long long)*((uint64_t *)level3_ptr), (unsigned long long)last_count);
+      }
+    }
   }
 
   if (isEnd)
@@ -1568,6 +1579,23 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index) {
 
   if (index0 >= _ch_data[order].size())
     return false;
+
+  // [PWMDBG6] log tog/first/lbp for first few calls
+  {
+    static std::atomic<int> s_gss{0};
+    static std::atomic<uint64_t> s_gss_gen{0};
+    if (s_gss_gen.load() != _dbg_gen) { s_gss_gen.store(_dbg_gen); s_gss.store(0); }
+    int gn = s_gss.fetch_add(1);
+    if (gn < 5 && order == 0 && index0 == 0 && index1 == 0) {
+      void *_lbp = _ch_data[order][index0].lbp[index1];
+      uint64_t _uv = _lbp ? *((uint64_t *)_lbp) : 0xDEAD;
+      pxv_info("[PWMDBG6] get_sample_self idx=%llu tog=0x%llx first=0x%llx lbp=%p u64[0]=0x%016llx",
+               (unsigned long long)index,
+               (unsigned long long)_ch_data[order][index0].tog,
+               (unsigned long long)_ch_data[order][index0].first,
+               _lbp, (unsigned long long)_uv);
+    }
+  }
 
   if ((_ch_data[order][index0].tog & root_pos_mask) == 0)
     return (_ch_data[order][index0].first & root_pos_mask) != 0;
