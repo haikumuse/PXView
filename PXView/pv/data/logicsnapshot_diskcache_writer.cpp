@@ -315,6 +315,8 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
         }
 
         _async_busy.store(true);
+        auto _proc_ts = std::chrono::steady_clock::now().time_since_epoch().count();
+        pxv_info("[PWMDBG6] async_worker PROCESS_START ts=%lld pkt=%d", (long long)_proc_ts, packet_count - 1);
         sr_datafeed_logic logic;
         logic.length = payload.data.size();
         logic.data = payload.data.data();
@@ -366,7 +368,8 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
                     }
                 }
             }
-            pxv_info("[PWMDBG4] async_write_worker: pkt %d, fmt=%d, len=%llu, first32=[%s] mid_u64=[%s]",
+            pxv_info("[PWMDBG6] async_write_worker ts=%lld pkt %d, fmt=%d, len=%llu, first32=[%s] mid_u64=[%s]",
+                     (long long)std::chrono::steady_clock::now().time_since_epoch().count(),
                      packet_count, logic.format, (unsigned long long)logic.length, hexbuf, midbuf);
             s_dump_count++;
         }

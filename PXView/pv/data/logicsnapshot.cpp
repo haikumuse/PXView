@@ -323,9 +323,15 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 
   // [PWMDBG4] log stale state from previous capture + increment debug gen
   _dbg_gen++;
-  pxv_info("[PWMDBG4] first_payload this=%p gen=%llu: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
-           "_ring=%llu _sample=%llu _last_sample[0]=0x%llx _last_calc_count[0]=%llu",
-           this, (unsigned long long)_dbg_gen, _ch_fraction, _byte_fraction, _dest_ptr,
+  {
+    auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
+    pxv_info("[PWMDBG6] first_payload this=%p gen=%llu ts=%lld: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
+             "_ring=%llu _sample=%llu _last_sample[0]=0x%llx _last_calc_count[0]=%llu ch0_lbp[0]=%p",
+             this, (unsigned long long)_dbg_gen, (long long)_ts, _ch_fraction, _byte_fraction, _dest_ptr,
+             (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
+             (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0],
+             _ch_data.size() > 0 ? _ch_data[0][0].lbp[0] : nullptr);
+  }
            (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
            (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0]);
   _disk_cache_writer->reset_debug();
@@ -1065,6 +1071,15 @@ void LogicSnapshot::capture_ended() {
   // Encapsulated in drain_queue_for_capture_end() (cluster D).
   _disk_cache_writer->drain_queue_for_capture_end();
 
+  {
+    auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
+    pxv_info("[PWMDBG6] capture_ended POST_DRAIN ts=%lld _ring=%llu ch0_lbp[0]=%p ch0_lbp[0]_first_u64=0x%016llx",
+             (long long)_ts, (unsigned long long)_ring_sample_count,
+             _ch_data.size() > 0 && _ch_data[0].size() > 0 ? _ch_data[0][0].lbp[0] : nullptr,
+             _ch_data.size() > 0 && _ch_data[0].size() > 0 && _ch_data[0][0].lbp[0] ?
+               *((uint64_t *)_ch_data[0][0].lbp[0]) : 0xDEAD);
+  }
+
   std::lock_guard<std::mutex> lock(_mutex);
 
   Snapshot::capture_ended();
@@ -1440,22 +1455,22 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
 
   void *ptr = _ch_data[order][index0].lbp[index1];
 
-  // [PWMDBG4] log get_samples result for order 0 to see if leaf block is freed
+  // [PWMDBG6] log get_samples result for order 0 with timestamp
   {
     static std::atomic<int> s_gs_dump{0};
     static std::atomic<uint64_t> s_gs_gen{0};
     if (s_gs_gen.load() != _dbg_gen) { s_gs_gen.store(_dbg_gen); s_gs_dump.store(0); }
     int n = s_gs_dump.fetch_add(1);
-    if (n < 10 && order == 0) {
+    if (n < 20 && order == 0) {
+      auto _ts = std::chrono::steady_clock::now().time_since_epoch().count();
       uint64_t first_u64 = ptr ? *((uint64_t *)((uint8_t *)ptr + offset)) : 0xDEAD;
-      pxv_info("[PWMDBG4] get_samples this=%p: order=0 idx0=%llu idx1=%llu offset=%llu ptr=%s "
-               "first_u64=0x%016llx _ring=%llu sample_count=%llu",
-               this,
+      pxv_info("[PWMDBG6] get_samples ts=%lld gen=%llu idx0=%llu idx1=%llu off=%llu ptr=%s "
+               "first_u64=0x%016llx _ring=%llu",
+               (long long)_ts, (unsigned long long)_dbg_gen,
                (unsigned long long)index0, (unsigned long long)index1,
                (unsigned long long)offset, ptr ? "OK" : "NULL",
                (unsigned long long)first_u64,
-               (unsigned long long)_ring_sample_count,
-               (unsigned long long)sample_count);
+               (unsigned long long)_ring_sample_count);
     }
   }
 
