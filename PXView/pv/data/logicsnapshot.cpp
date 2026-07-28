@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <math.h>
@@ -1305,6 +1306,19 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   if (*((uint64_t *)level3_ptr) != 0) {
     _ch_data[order][index0].tog |= 1ULL << index1;
   } else if (isEnd) {
+    // [PWMDBG3] leaf block being freed — log first 20 to see if PWM data
+    // blocks are wrongly classified as "no toggles"
+    {
+      static std::atomic<int> s_free_count{0};
+      int n = s_free_count.fetch_add(1);
+      if (n < 20) {
+        pxv_info("[PWMDBG3] calc_mipmap FREE leaf: order=%u idx0=%u idx1=%u samples=%llu isEnd=%d level3=0x%016llx last=0x%016llx first=0x%016llx",
+                 order, index0, index1, (unsigned long long)samples, (int)isEnd,
+                 (unsigned long long)*((uint64_t *)level3_ptr),
+                 (unsigned long long)_ch_data[order][index0].last,
+                 (unsigned long long)_ch_data[order][index0].first);
+      }
+    }
     push_to_free_list(_ch_data[order][index0].lbp[index1]);
 
     _ch_data[order][index0].lbp[index1] = NULL;
@@ -1377,6 +1391,18 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample,
     // so callers (export, etc.) get valid data instead of NULL.
     // 8 samples per byte, LSB-first: all-0 -> 0x00, all-1 -> 0xFF.
     bool const_val = (_ch_data[order][index0].first & (1ULL << index1)) != 0;
+    // [PWMDBG3] log NULL leaf block hits to distinguish "freed by mipmap"
+    // from "genuinely flat data". Throttle to first 20 to avoid log flood.
+    {
+      static std::atomic<int> s_null_hit_count{0};
+      int n = s_null_hit_count.fetch_add(1);
+      if (n < 20) {
+        pxv_warn("[PWMDBG3] get_samples NULL leaf: sig_index=%d order=%d idx0=%llu idx1=%llu offset=%llu const_val=%d _loop_offset=%lld",
+                 sig_index, order, (unsigned long long)index0,
+                 (unsigned long long)index1, (unsigned long long)offset,
+                 (int)const_val, (long long)_loop_offset);
+      }
+    }
     uint64_t bytes_from_offset = (end_sample - start_sample + 1 + 7) / 8;
     // Clamp to remaining bytes in this leaf block from `offset`.
     uint64_t leaf_remaining = (LeafBlockSamples / 8) - offset;
