@@ -910,7 +910,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
     {
       static std::atomic<int> s_xp_dump{0};
       int n = s_xp_dump.fetch_add(1);
-      if (n < _channel_num) {
+      if ((unsigned)n < _channel_num) {
         uint64_t val = *read_ptr;
         pxv_info("[PWMDBG4] cross_payload first write: fill_chan=%u val=0x%016llx "
                  "read_ptr_offset=%lld write_ptr_u64idx=%lld offset=%llu",
