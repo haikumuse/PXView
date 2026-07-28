@@ -327,6 +327,7 @@ private:
     uint64_t _max_blocks_per_channel;
 
     std::atomic<uint64_t> _last_pf_count{0};
+    uint64_t _dbg_gen = 0; // [PWMDBG4] capture generation for resetting debug counters
     std::atomic<int64_t> _last_pf_time{0};
     std::atomic<uint64_t> _pf_per_sec{0};
 

@@ -94,6 +94,7 @@ public:
 
 private:
     void async_write_worker();  // thread function
+    void reset_debug() { _pkt_count.store(0); } // [PWMDBG4] reset packet counter for new capture
 
     pv::data::LogicSnapshot *_owner;
 
@@ -106,6 +107,7 @@ private:
     // the physical slot in the mmap region (matches MmapAllocator addressing).
     // _max_blocks_per_channel itself stays on LogicSnapshot (cluster A).
     std::vector<bool> _mmap_slot_written;
+    std::atomic<int> _pkt_count{0}; // [PWMDBG4] packet counter, reset per capture
 
     struct AsyncPayload {
         std::vector<uint8_t> data;

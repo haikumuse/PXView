@@ -312,6 +312,15 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
   // 下次 capture 的 _ring_sample_count += _loop_offset 会从错误基址开始。
   _loop_offset = 0;
 
+  // [PWMDBG4] log stale state from previous capture + increment debug gen
+  _dbg_gen++;
+  pxv_info("[PWMDBG4] first_payload gen=%llu: stale _ch_fraction=%d _byte_fraction=%d _dest_ptr=%p "
+           "_ring=%llu _sample=%llu _last_sample[0]=0x%llx _last_calc_count[0]=%llu",
+           (unsigned long long)_dbg_gen, _ch_fraction, _byte_fraction, _dest_ptr,
+           (unsigned long long)_ring_sample_count, (unsigned long long)_sample_count,
+           (unsigned long long)_last_sample[0], (unsigned long long)_last_calc_count[0]);
+  _disk_cache_writer->reset_debug();
+
   for (unsigned int i = 0; i < _channel_num; i++) {
     _last_sample[i] = 0;
     _last_calc_count[i] = 0;
@@ -906,9 +915,11 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
 
   while (len >= 8) {
-    // [PWMDBG4] log first write for each channel (first packet only)
+    // [PWMDBG4] log first write for each channel (reset per capture via _dbg_gen)
     {
       static std::atomic<int> s_xp_dump{0};
+      static std::atomic<uint64_t> s_xp_gen{0};
+      if (s_xp_gen.load() != _dbg_gen) { s_xp_gen.store(_dbg_gen); s_xp_dump.store(0); }
       int n = s_xp_dump.fetch_add(1);
       if ((unsigned)n < _channel_num) {
         uint64_t val = *read_ptr;
@@ -1216,6 +1227,8 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0,
   // [PWMDBG4] dump leaf block contents for order 0 (ch0) to see if data is flat or PWM
   {
     static std::atomic<int> s_cm_dump{0};
+    static std::atomic<uint64_t> s_cm_gen{0};
+    if (s_cm_gen.load() != _dbg_gen) { s_cm_gen.store(_dbg_gen); s_cm_dump.store(0); }
     int n = s_cm_dump.fetch_add(1);
     if (n < 8 && order == 0) {
       uint64_t *raw = (uint64_t *)lbp;

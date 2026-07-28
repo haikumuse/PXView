@@ -340,8 +340,8 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
             logic.unitsize = (uint16_t)((_owner->_channel_num + 7) / 8);
         }
 
-        static int packet_count = 0;
         static int s_dump_count = 0;
+        int packet_count = _pkt_count.fetch_add(1);
         if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
             // [PWMDBG4] dump 32 bytes (4 u64s = 256 samples of ch0) for first 5 pkts
             char hexbuf[32*3+1];
@@ -369,7 +369,6 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
                      packet_count, logic.format, (unsigned long long)logic.length, hexbuf, midbuf);
             s_dump_count++;
         }
-        packet_count++;
 
         auto start = std::chrono::steady_clock::now();
 
