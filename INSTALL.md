@@ -1,6 +1,7 @@
 # INSTALL
 
 ## Requirements
+
 - git
 - gcc (>= 9.0) or clang
 - g++
@@ -19,18 +20,31 @@
 - nlohmann-json >= 3.2.0 (header-only; auto-downloaded from GitHub if not installed)
 - sdcc >= 4.0 (optional; for building fx2lafw firmware for Cypress FX2 based logic analyzers)
 
-## Building and installing
+### Optional dependencies (NOT required for PXLogic hardware)
+
+These are NOT required for PXLogic hardware. Only install if you need the specific legacy drivers:
+
+- **libftdi1** — FTDI-based drivers (asix-sigma, chronovu-la, ftdi-la, ikalogic-scanaplus, pipistrello-ols). Without it, a warning is printed and those drivers are disabled; the rest of libsigrok builds normally.
+- **nettle** — rdtech-tc driver (AES-256 firmware decryption). Without it, that single driver is disabled.
+
+---
+
+## Linux
 
 ### Step 1: Installing the requirements
 
 #### Ubuntu / Debian (e.g. Ubuntu 22.04 / 24.04):
+
 ```bash
 sudo apt update
-sudo apt install git gcc g++ make cmake ninja-build libglib2.0-dev zlib1g-dev libusb-1.0-0-dev libboost-dev libfftw3-dev libzip-dev python3-dev libudev-dev pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev python3-pip sdcc
+sudo apt install git gcc g++ make cmake ninja-build libglib2.0-dev zlib1g-dev \
+  libusb-1.0-0-dev libboost-dev libfftw3-dev libzip-dev python3-dev libudev-dev \
+  pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev python3-pip sdcc
 ```
 
-**How to install Qt 6.11 on Ubuntu:**
+**Installing Qt 6.11 on Ubuntu:**
 The default apt repository may not provide Qt 6.11, so you must install it manually using `aqtinstall`.
+
 *Note on caching*: `aqtinstall` ("Another Qt Installer") deletes downloaded archives immediately after extraction to save space, as it was designed for CI/CD environments. To avoid re-downloading Qt every time you clean or move your project, it is highly recommended to install it to a global user directory.
 
 ```bash
@@ -40,28 +54,22 @@ aqt install-qt linux desktop 6.11.0 linux_gcc_64 --outputdir ~/Qt
 ```
 
 #### Fedora:
+
 ```bash
-sudo dnf install git gcc gcc-c++ make cmake ninja-build libtool pkgconf glib2-devel zlib-devel libudev-devel libusb1-devel python3-devel boost-devel fftw-devel libzip-devel qt6-qtbase-devel qt6-qtsvg-devel qt6-qtwebsockets-devel
+sudo dnf install git gcc gcc-c++ make cmake ninja-build libtool pkgconf \
+  glib2-devel zlib-devel libudev-devel libusb1-devel python3-devel boost-devel \
+  fftw-devel libzip-devel qt6-qtbase-devel qt6-qtsvg-devel qt6-qtwebsockets-devel
 ```
 *(Fedora typically provides recent Qt6 versions in its standard repositories)*
 
 #### Arch Linux:
+
 ```bash
-sudo pacman -S base-devel git cmake ninja glib2 zlib libusb python boost qt6-base qt6-svg qt6-websockets fftw libzip sdcc
+sudo pacman -S base-devel git cmake ninja glib2 zlib libusb python boost \
+  qt6-base qt6-svg qt6-websockets fftw libzip sdcc
 ```
 
-#### macOS (Homebrew):
-```bash
-brew install git cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config sdcc
-```
-*(Note: If the default `qt` brew formula is not 6.11.0 yet, or if it isn't automatically linked, you may need to find the brew Qt installation path, typically `/opt/homebrew/opt/qt`)*
-
-#### Optional dependencies (NOT required for PXLogic hardware)
-
-These are NOT required for PXLogic hardware. Only install if you need the specific legacy drivers:
-
-- **libftdi1** — FTDI-based drivers (asix-sigma, chronovu-la, ftdi-la, ikalogic-scanaplus, pipistrello-ols). Without it, a warning is printed and those drivers are disabled; the rest of libsigrok builds normally.
-- **nettle** — rdtech-tc driver (AES-256 firmware decryption). Without it, that single driver is disabled.
+#### Optional dependencies:
 
 ```bash
 # Ubuntu / Debian:
@@ -72,12 +80,10 @@ sudo dnf install libftdi-devel nettle-devel
 
 # Arch Linux:
 sudo pacman -S libftdi nettle
-
-# macOS:
-brew install libftdi nettle
 ```
 
 ### Step 2: Get the PXView source code
+
 ```bash
 git clone https://github.com/PXLogic/PXView
 cd PXView
@@ -85,15 +91,17 @@ cd PXView
 
 ### Step 3: Building
 
-If you installed Qt manually via `aqtinstall` (e.g. on Ubuntu) in Step 1, you must tell CMake where to find it. Otherwise, if you used system packages (Arch/Fedora/macOS), you can omit the `CMAKE_PREFIX_PATH` flag.
+If you installed Qt manually via `aqtinstall` (e.g. on Ubuntu), you must tell CMake where to find it. Otherwise, if you used system packages (Arch/Fedora), you can omit the `CMAKE_PREFIX_PATH` flag.
 
 ```bash
 mkdir build && cd build
 
 # For Ubuntu with aqtinstall (using the global ~/Qt path):
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr \
+  -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
 
-# For Arch / Fedora / macOS (System Qt):
+# For Arch / Fedora (System Qt):
 # cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 
 ninja
@@ -117,33 +125,6 @@ source ~/.bashrc
 
 `ninja install` will automatically install the MCP web client if it has been built. If the web client has not been built yet, it will be silently skipped.
 
-### Step 3b: Building the MCP web client (optional)
-
-The MCP web client provides a browser-based chat interface for controlling devices with natural language. It requires `npm` to be installed.
-
-```bash
-# Build the web client:
-ninja webui
-
-# Then re-run install to copy it:
-sudo ninja install
-
-# Or build + copy in one step:
-ninja install-webui
-```
-
-The web client files will be installed to `<prefix>/bin/webui/` and served by the MCP server at `http://127.0.0.1:10110/`.
-
-### Step 3c: Building fx2lafw firmware (optional)
-
-The fx2lafw firmware is required for Cypress FX2 USB based logic analyzers (Saleae Logic, CWAV USBee, Cypress FX2, etc.). If `sdcc` is installed, CMake will automatically build and install 15 `.fw` firmware files during `ninja install`. You can also build them manually:
-
-```bash
-bash build_fx2lafw.sh
-```
-
-If `sdcc` is not installed, CMake will silently skip firmware installation. Devices using FX2 chips will not be recognized.
-
 ### Step 4: Packaging as AppImage (Linux)
 
 AppImage bundles the application and its dependencies into a single portable file. Since AppImage is a user-space portable package, **system-level files such as udev rules, desktop entries, and documentation should not be bundled inside** — they must be installed separately.
@@ -156,12 +137,14 @@ When packaging an AppImage, use a local prefix (e.g. `../install.dir`) instead o
 mkdir build && cd build
 
 # Use a local prefix — udev rules etc. will be installed under install.dir
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../install.dir -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=../install.dir/usr \
+  -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
 ninja
 ninja install
 ```
 
-> **Note**: When `CMAKE_INSTALL_PREFIX` is `/usr` or `/usr/local`, udev rules are automatically installed to system paths (e.g. `/usr/lib/udev/rules.d`), requiring `sudo ninja install`. With a local prefix, all files are installed locally and no root privileges are needed.
+> **Note**: linuxdeploy expects AppDir to contain `usr/{bin,share,lib}`, so the install prefix is set to `../install.dir/usr` (not `../install.dir`).
 
 #### 4.2 Bundle Python standard library (required for protocol decoders)
 
@@ -182,6 +165,13 @@ cp -a /usr/lib/python$PY_VERSION/lib-dynload/* install.dir/usr/lib/python$PY_VER
 # Remove unnecessary test suite and __pycache__ to reduce size
 rm -rf install.dir/usr/lib/python$PY_VERSION/test
 find install.dir/usr/lib/python$PY_VERSION -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Verify encodings module is present
+if [ -d install.dir/usr/lib/python$PY_VERSION/encodings ]; then
+  echo "OK: encodings module found"
+else
+  echo "WARNING: encodings not found, AppImage Python may fail"
+fi
 ```
 
 #### 4.3 Build qtwayland platform plugin (optional, for Wayland support)
@@ -218,7 +208,12 @@ export QMAKE="$HOME/Qt/6.11.0/gcc_64/bin/qmake"
 export LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"
 export OUTPUT="PXView-x86_64.AppImage"
 
-./linuxdeploy-x86_64.AppImage --appdir install.dir -e install.dir/bin/PXView -d install.dir/share/applications/pxview.desktop --plugin qt --output appimage
+./linuxdeploy-x86_64.AppImage \
+  --appdir install.dir \
+  -e install.dir/usr/bin/PXView \
+  -d install.dir/usr/share/applications/pxview.desktop \
+  --plugin qt \
+  --output appimage
 ```
 
 #### 4.5 Install system-level files (outside AppImage)
@@ -227,30 +222,51 @@ The AppImage does not include the following system-level files. Users must insta
 
 **udev rules (hardware access permissions):**
 ```bash
-sudo cp install.dir/lib/udev/rules.d/60-px.rules /etc/udev/rules.d/60-px.rules
+sudo cp install.dir/usr/lib/udev/rules.d/60-px.rules /etc/udev/rules.d/60-px.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
 **Desktop entry (application menu integration):**
 ```bash
-sudo cp install.dir/share/applications/pxview.desktop /usr/share/applications/pxview.desktop
+sudo cp install.dir/usr/share/applications/pxview.desktop /usr/share/applications/pxview.desktop
 ```
 
 **Documentation and resources (optional):**
 ```bash
 # Documentation and user manuals are already included inside the AppImage at share/PXView/
 # For system-wide installation:
-sudo cp -r install.dir/share/PXView /usr/share/PXView
+sudo cp -r install.dir/usr/share/PXView /usr/share/PXView
 ```
 
 > **Tip**: You can also write an `install.sh` script to distribute alongside the AppImage, automating the installation of the system-level files above.
 
-### Step 5: Packaging as DMG (macOS)
+---
 
-DMG packaging on macOS uses `macdeployqt` to collect all dependencies into the `.app` bundle, then `codesign` for ad-hoc signing, and finally `hdiutil` to create the disk image.
+## macOS
 
-#### 5.1 Build with a local install prefix
+### Step 1: Installing the requirements (Homebrew)
+
+```bash
+brew install git cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip sdcc
+```
+
+*(Note: If the default `qt` brew formula is not 6.11.0 yet, or if it isn't automatically linked, you may need to find the brew Qt installation path, typically `/opt/homebrew/opt/qt`)*
+
+Optional dependencies:
+
+```bash
+brew install libftdi nettle
+```
+
+### Step 2: Get the PXView source code
+
+```bash
+git clone https://github.com/PXLogic/PXView
+cd PXView
+```
+
+### Step 3: Building
 
 ```bash
 mkdir build && cd build
@@ -268,7 +284,11 @@ ninja
 ninja install
 ```
 
-#### 5.2 Fix Python framework path
+### Step 4: Creating DMG
+
+DMG packaging on macOS uses `macdeployqt` to collect all dependencies into the `.app` bundle, then `codesign` for ad-hoc signing, and finally `hdiutil` to create the disk image.
+
+#### 4.1 Fix Python framework path
 
 Homebrew's `python@3.x` places the Python framework at `<prefix>/Frameworks/Python.framework`, but `macdeployqt` expects it at `<prefix>/lib/Python.framework`. Create a symlink to fix this:
 
@@ -285,7 +305,7 @@ if [ -n "$PY_PREFIX" ]; then
 fi
 ```
 
-#### 5.3 Run macdeployqt
+#### 4.2 Run macdeployqt
 
 ```bash
 MACDEPLOYQT="$(brew --prefix qt)/bin/macdeployqt"
@@ -295,7 +315,7 @@ $MACDEPLOYQT install.dir/PXView.app \
   || true   # macdeployqt returns non-zero for missing rpath, but copies most deps
 ```
 
-#### 5.4 Copy missing transitive dependencies
+#### 4.3 Copy missing transitive dependencies
 
 `macdeployqt` may fail to copy three transitive dependencies of Qt WebEngine/Pdf (even though PXView does not use them directly). Copy them manually from Homebrew:
 
@@ -317,11 +337,76 @@ for dep in libbrotlicommon.1.dylib libsharpyuv.0.dylib libwebp.7.dylib; do
 done
 ```
 
-#### 5.5 Codesign and create DMG
+#### 4.4 Copy Python standard library into bundled Python.framework
+
+`macdeployqt` only copies the framework's Mach-O binary (the Python shared library), but NOT the `lib/python3.X/` directory (which contains `encodings`, `os.py`, and other pure Python modules). Homebrew's stdlib lives inside the Python.framework, not in a separate directory. Without copying it, the app will crash with `Fatal Python error: Failed to import encodings module` on machines that don't have the same Homebrew Python installed.
+
+```bash
+BUNDLED_FW="install.dir/PXView.app/Contents/Frameworks/Python.framework"
+if [ -d "$BUNDLED_FW" ]; then
+  for ver_dir in "$BUNDLED_FW"/Versions/3.*; do
+    [ -d "$ver_dir" ] || continue
+    py_ver=$(basename "$ver_dir")
+
+    # Search for the stdlib in various Homebrew locations
+    STDLIB_SRC=""
+    for fw_base in \
+      "$PY_PREFIX/Frameworks/Python.framework" \
+      "$PY_PREFIX/lib/Python.framework" \
+      "$(brew --prefix)/Frameworks/Python.framework"; do
+      if [ -d "$fw_base/Versions/$py_ver/lib/python$py_ver/encodings" ]; then
+        STDLIB_SRC="$fw_base/Versions/$py_ver/lib/python$py_ver"
+        break
+      fi
+    done
+    # Also check brew prefix/lib (non-framework installation)
+    if [ -z "$STDLIB_SRC" ]; then
+      for candidate in "$(brew --prefix)/lib/python$py_ver" "$PY_PREFIX/lib/python$py_ver"; do
+        if [ -d "$candidate/encodings" ]; then
+          STDLIB_SRC="$candidate"
+          break
+        fi
+      done
+    fi
+
+    if [ -n "$STDLIB_SRC" ]; then
+      mkdir -p "$ver_dir/lib"
+      cp -R "$STDLIB_SRC" "$ver_dir/lib/"
+      echo "Copied Python stdlib (python$py_ver) to bundled framework"
+      if [ -d "$ver_dir/lib/python$py_ver/encodings" ]; then
+        echo "Verified: encodings module present"
+      else
+        echo "WARNING: encodings module missing after copy"
+      fi
+    else
+      echo "WARNING: Python stdlib not found for $py_ver"
+    fi
+  done
+
+  # Delete broken symlinks introduced by copying stdlib (e.g. site-packages
+  # pointing to Homebrew paths). Broken symlinks cause xattr -cr and
+  # codesign --verify to fail.
+  find "$BUNDLED_FW" -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+
+  # Create Current symlink if missing (macdeployqt may not copy it)
+  if [ ! -e "$BUNDLED_FW/Versions/Current" ]; then
+    latest_ver=$(ls -d "$BUNDLED_FW"/Versions/3.* 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest_ver" ]; then
+      ln -s "$(basename "$latest_ver")" "$BUNDLED_FW/Versions/Current"
+      echo "Created Current symlink -> $(basename "$latest_ver")"
+    fi
+  fi
+else
+  echo "WARNING: Python.framework not found in bundle"
+fi
+```
+
+#### 4.5 Codesign and create DMG
 
 ```bash
 # Remove quarantine attributes from Homebrew libraries
-xattr -cr install.dir/PXView.app
+# (|| true: tolerate any remaining broken symlinks)
+xattr -cr install.dir/PXView.app 2>/dev/null || true
 
 # Ad-hoc sign the entire .app bundle recursively
 # --deep is required: framework resource seals must be established by
@@ -336,11 +421,11 @@ hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
   -ov -format UDZO install.dir/PXView.dmg
 ```
 
-### Step 6: Building x86_64 on ARM64 Macs (Rosetta 2 cross-compilation)
+### Step 5: Building x86_64 on ARM64 Macs (Rosetta 2 cross-compilation)
 
 Apple Silicon Macs (M1/M2/M3) can build x86_64 binaries using Rosetta 2 and the x86_64 Homebrew. This produces a native x86_64 DMG without needing an Intel Mac.
 
-#### 6.1 Install Rosetta 2 and x86_64 Homebrew
+#### 5.1 Install Rosetta 2 and x86_64 Homebrew
 
 ```bash
 # Install Rosetta 2
@@ -356,11 +441,12 @@ export PATH="/usr/local/bin:$PATH"
 export HOMEBREW_NO_PATH_SHADOW_CHECK=1
 ```
 
-#### 6.2 Install dependencies and build
+#### 5.2 Install dependencies and build
 
 ```bash
 # Install x86_64 dependencies (use --overwrite to resolve symlink conflicts)
-brew install --overwrite cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip nettle libftdi sdcc
+brew install --overwrite cmake ninja gettext glib libusb zlib boost fftw \
+  python3 qt pkg-config libzip nettle libftdi sdcc
 
 # Build fx2lafw firmware
 bash build_fx2lafw.sh
@@ -382,19 +468,19 @@ ninja
 ninja install
 ```
 
-Then follow Steps 5.2–5.5 to create the DMG. When running the binary for testing, use `arch -x86_64`:
+Then follow Steps 4.1–4.5 to create the DMG. When running the binary for testing, use `arch -x86_64`:
 
 ```bash
 arch -x86_64 install.dir/PXView.app/Contents/MacOS/PXView --headless
 ```
 
-### Step 7: Building Universal Binary (macOS)
+### Step 6: Building Universal Binary (macOS)
 
 A Universal binary contains both ARM64 and x86_64 slices in a single `.app` bundle, allowing one DMG to run natively on both Apple Silicon and Intel Macs.
 
-#### 7.1 Prerequisites
+#### 6.1 Prerequisites
 
-You need both ARM64 and x86_64 DMGs built (Steps 5 and 6). Extract both `.app` bundles:
+You need both ARM64 and x86_64 DMGs built (Steps 4 and 5). Extract both `.app` bundles:
 
 ```bash
 mkdir -p arm64 x86_64 universal
@@ -410,7 +496,7 @@ cp -R /tmp/x86_64-mount/PXView.app x86_64/PXView.app
 hdiutil detach /tmp/x86_64-mount
 ```
 
-#### 7.2 Merge with lipo
+#### 6.2 Merge with lipo
 
 ```bash
 # Start from the ARM64 app as base
@@ -435,7 +521,7 @@ file universal/PXView.app/Contents/MacOS/PXView
 lipo -info universal/PXView.app/Contents/MacOS/PXView
 ```
 
-#### 7.3 Re-sign and create Universal DMG
+#### 6.3 Re-sign and create Universal DMG
 
 ```bash
 xattr -cr universal/PXView.app
@@ -445,3 +531,35 @@ codesign --verify --deep --strict universal/PXView.app
 hdiutil create -volname PXView -srcfolder universal/PXView.app \
   -ov -format UDZO universal/PXView.dmg
 ```
+
+---
+
+## Optional Features
+
+### Building the MCP web client (optional)
+
+The MCP web client provides a browser-based chat interface for controlling devices with natural language. It requires `npm` to be installed.
+
+```bash
+# Build the web client:
+ninja webui
+
+# Then re-run install to copy it:
+sudo ninja install    # Linux
+# ninja install       # macOS (local prefix, no sudo needed)
+
+# Or build + copy in one step:
+ninja install-webui
+```
+
+The web client files will be installed to `<prefix>/bin/webui/` and served by the MCP server at `http://127.0.0.1:10110/`.
+
+### Building fx2lafw firmware (optional)
+
+The fx2lafw firmware is required for Cypress FX2 USB based logic analyzers (Saleae Logic, CWAV USBee, Cypress FX2, etc.). If `sdcc` is installed, CMake will automatically build and install 15 `.fw` firmware files during `ninja install`. You can also build them manually:
+
+```bash
+bash build_fx2lafw.sh
+```
+
+If `sdcc` is not installed, CMake will silently skip firmware installation. Devices using FX2 chips will not be recognized.

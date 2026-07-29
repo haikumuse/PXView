@@ -1,6 +1,7 @@
 # 安装指南
 
 ## 系统要求
+
 - git
 - gcc (>= 9.0) 或 clang
 - g++
@@ -19,18 +20,31 @@
 - nlohmann-json >= 3.2.0（header-only，若未安装则自动从 GitHub 下载）
 - sdcc >= 4.0（可选；用于编译 fx2lafw 固件，支持基于 Cypress FX2 芯片的逻辑分析仪）
 
-## 编译与安装
+### 可选依赖（非 PXLogic 硬件所需）
+
+以下依赖**不是** PXLogic 硬件所必需的，仅在需要特定旧型号驱动时安装：
+
+- **libftdi1** — FTDI 驱动（asix-sigma、chronovu-la、ftdi-la、ikalogic-scanaplus、pipistrello-ols）。未安装时仅打印警告并禁用这些驱动，libsigrok 其余部分正常编译。
+- **nettle** — rdtech-tc 驱动（AES-256 固件解密）。未安装时仅禁用该驱动。
+
+---
+
+## Linux
 
 ### 步骤 1：安装依赖
 
 #### Ubuntu / Debian（如 Ubuntu 22.04 / 24.04）：
+
 ```bash
 sudo apt update
-sudo apt install git gcc g++ make cmake ninja-build libglib2.0-dev zlib1g-dev libusb-1.0-0-dev libboost-dev libfftw3-dev libzip-dev python3-dev libudev-dev pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev python3-pip sdcc
+sudo apt install git gcc g++ make cmake ninja-build libglib2.0-dev zlib1g-dev \
+  libusb-1.0-0-dev libboost-dev libfftw3-dev libzip-dev python3-dev libudev-dev \
+  pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev python3-pip sdcc
 ```
 
 **在 Ubuntu 上安装 Qt 6.11：**
 默认 apt 仓库可能不提供 Qt 6.11，需要使用 `aqtinstall` 手动安装。
+
 *缓存提示*：`aqtinstall`（"Another Qt Installer"）在解压后会立即删除下载的归档文件以节省空间，因为它专为 CI/CD 环境设计。为避免每次清理或移动项目时重新下载 Qt，强烈建议将其安装到全局用户目录。
 
 ```bash
@@ -40,28 +54,22 @@ aqt install-qt linux desktop 6.11.0 linux_gcc_64 --outputdir ~/Qt
 ```
 
 #### Fedora：
+
 ```bash
-sudo dnf install git gcc gcc-c++ make cmake ninja-build libtool pkgconf glib2-devel zlib-devel libudev-devel libusb1-devel python3-devel boost-devel fftw-devel libzip-devel qt6-qtbase-devel qt6-qtsvg-devel qt6-qtwebsockets-devel
+sudo dnf install git gcc gcc-c++ make cmake ninja-build libtool pkgconf \
+  glib2-devel zlib-devel libudev-devel libusb1-devel python3-devel boost-devel \
+  fftw-devel libzip-devel qt6-qtbase-devel qt6-qtsvg-devel qt6-qtwebsockets-devel
 ```
 *（Fedora 通常在标准仓库中提供较新的 Qt6 版本）*
 
 #### Arch Linux：
+
 ```bash
-sudo pacman -S base-devel git cmake ninja glib2 zlib libusb python boost qt6-base qt6-svg qt6-websockets fftw libzip sdcc
+sudo pacman -S base-devel git cmake ninja glib2 zlib libusb python boost \
+  qt6-base qt6-svg qt6-websockets fftw libzip sdcc
 ```
 
-#### macOS（Homebrew）：
-```bash
-brew install git cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config sdcc
-```
-*（注意：如果默认的 `qt` brew formula 尚未更新到 6.11.0，或未自动链接，可能需要手动查找 brew Qt 安装路径，通常为 `/opt/homebrew/opt/qt`）*
-
-#### 可选依赖（非 PXLogic 硬件所需）
-
-以下依赖**不是** PXLogic 硬件所必需的，仅在需要特定旧型号驱动时安装：
-
-- **libftdi1** — FTDI 驱动（asix-sigma、chronovu-la、ftdi-la、ikalogic-scanaplus、pipistrello-ols）。未安装时仅打印警告并禁用这些驱动，libsigrok 其余部分正常编译。
-- **nettle** — rdtech-tc 驱动（AES-256 固件解密）。未安装时仅禁用该驱动。
+#### 可选依赖：
 
 ```bash
 # Ubuntu / Debian：
@@ -72,12 +80,10 @@ sudo dnf install libftdi-devel nettle-devel
 
 # Arch Linux：
 sudo pacman -S libftdi nettle
-
-# macOS：
-brew install libftdi nettle
 ```
 
 ### 步骤 2：获取 PXView 源代码
+
 ```bash
 git clone https://github.com/PXLogic/PXView
 cd PXView
@@ -85,15 +91,17 @@ cd PXView
 
 ### 步骤 3：编译
 
-如果在步骤 1 中通过 `aqtinstall` 手动安装了 Qt（如在 Ubuntu 上），必须告诉 CMake Qt 的位置。如果使用系统包管理器安装（Arch/Fedora/macOS），可以省略 `CMAKE_PREFIX_PATH` 参数。
+如果在步骤 1 中通过 `aqtinstall` 手动安装了 Qt（如在 Ubuntu 上），必须告诉 CMake Qt 的位置。如果使用系统包管理器安装（Arch/Fedora），可以省略 `CMAKE_PREFIX_PATH` 参数。
 
 ```bash
 mkdir build && cd build
 
 # Ubuntu 使用 aqtinstall（使用全局 ~/Qt 路径）：
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr \
+  -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
 
-# Arch / Fedora / macOS（系统 Qt）：
+# Arch / Fedora（系统 Qt）：
 # cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 
 ninja
@@ -117,33 +125,6 @@ source ~/.bashrc
 
 `ninja install` 会自动安装已构建的 MCP Web 客户端。如果 Web 客户端尚未构建，则会静默跳过。
 
-### 步骤 3b：构建 MCP Web 客户端（可选）
-
-MCP Web 客户端提供基于浏览器的聊天界面，用于自然语言控制设备。需要安装 `npm`。
-
-```bash
-# 构建 Web 客户端：
-ninja webui
-
-# 重新运行 install 以复制文件：
-sudo ninja install
-
-# 或一步完成构建+复制：
-ninja install-webui
-```
-
-Web 客户端文件将安装到 `<prefix>/bin/webui/`，由 MCP 服务器在 `http://127.0.0.1:10110/` 上提供服务。
-
-### 步骤 3c：编译 fx2lafw 固件（可选）
-
-fx2lafw 固件用于基于 Cypress FX2 USB 芯片的逻辑分析仪（Saleae Logic、CWAV USBee、Cypress FX2 等）。如果已安装 `sdcc`，CMake 会在 `ninja install` 阶段自动编译并安装 15 个 `.fw` 固件文件。也可以手动编译：
-
-```bash
-bash build_fx2lafw.sh
-```
-
-如果未安装 `sdcc`，CMake 会静默跳过固件安装。使用 FX2 芯片的设备将无法识别。
-
 ### 步骤 4：打包为 AppImage（Linux）
 
 AppImage 将应用程序及其依赖打包为单个可移植文件。由于 AppImage 是用户态的便携包，**udev rules、desktop 文件、文档等系统级文件不应打包进去**，需要单独安装。
@@ -156,12 +137,14 @@ AppImage 将应用程序及其依赖打包为单个可移植文件。由于 AppI
 mkdir build && cd build
 
 # 使用本地前缀 — udev rules 等会安装到 install.dir 下
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../install.dir -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=../install.dir/usr \
+  -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
 ninja
 ninja install
 ```
 
-> **说明**：当 `CMAKE_INSTALL_PREFIX` 为 `/usr` 或 `/usr/local` 时，udev rules 会自动安装到系统路径（如 `/usr/lib/udev/rules.d`），需要 `sudo ninja install`。使用本地前缀时，所有文件都安装到本地目录，无需 root 权限。
+> **说明**：linuxdeploy 要求 AppDir 包含 `usr/{bin,share,lib}` 结构，因此安装前缀设置为 `../install.dir/usr`（而非 `../install.dir`）。
 
 #### 4.2 打包 Python 标准库（协议解码器必需）
 
@@ -182,6 +165,13 @@ cp -a /usr/lib/python$PY_VERSION/lib-dynload/* install.dir/usr/lib/python$PY_VER
 # 删除不必要的测试和 __pycache__ 以减小体积
 rm -rf install.dir/usr/lib/python$PY_VERSION/test
 find install.dir/usr/lib/python$PY_VERSION -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
+# 验证 encodings 模块存在
+if [ -d install.dir/usr/lib/python$PY_VERSION/encodings ]; then
+  echo "OK: encodings 模块已找到"
+else
+  echo "警告: encodings 未找到，AppImage 的 Python 可能无法运行"
+fi
 ```
 
 #### 4.3 编译 qtwayland 平台插件（可选，用于 Wayland 支持）
@@ -218,7 +208,12 @@ export QMAKE="$HOME/Qt/6.11.0/gcc_64/bin/qmake"
 export LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"
 export OUTPUT="PXView-x86_64.AppImage"
 
-./linuxdeploy-x86_64.AppImage --appdir install.dir -e install.dir/bin/PXView -d install.dir/share/applications/pxview.desktop --plugin qt --output appimage
+./linuxdeploy-x86_64.AppImage \
+  --appdir install.dir \
+  -e install.dir/usr/bin/PXView \
+  -d install.dir/usr/share/applications/pxview.desktop \
+  --plugin qt \
+  --output appimage
 ```
 
 #### 4.5 安装系统级文件（AppImage 外）
@@ -227,30 +222,51 @@ AppImage 不包含以下系统级文件，用户需要手动安装一次：
 
 **udev rules（硬件访问权限）：**
 ```bash
-sudo cp install.dir/lib/udev/rules.d/60-px.rules /etc/udev/rules.d/60-px.rules
+sudo cp install.dir/usr/lib/udev/rules.d/60-px.rules /etc/udev/rules.d/60-px.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
 **Desktop 文件（应用菜单集成）：**
 ```bash
-sudo cp install.dir/share/applications/pxview.desktop /usr/share/applications/pxview.desktop
+sudo cp install.dir/usr/share/applications/pxview.desktop /usr/share/applications/pxview.desktop
 ```
 
 **文档和资源（可选）：**
 ```bash
 # 文档、用户手册等已包含在 AppImage 内部的 share/PXView/ 中
 # 如需系统级安装：
-sudo cp -r install.dir/share/PXView /usr/share/PXView
+sudo cp -r install.dir/usr/share/PXView /usr/share/PXView
 ```
 
 > **提示**：也可以编写一个 `install.sh` 脚本随 AppImage 一起分发，自动完成上述系统级文件的安装。
 
-### 步骤 5：打包为 DMG（macOS）
+---
 
-macOS 上打包 DMG 使用 `macdeployqt` 收集所有依赖到 `.app` 包中，然后用 `codesign` 进行 ad-hoc 签名，最后用 `hdiutil` 创建磁盘映像。
+## macOS
 
-#### 5.1 使用本地安装前缀编译
+### 步骤 1：安装依赖（Homebrew）
+
+```bash
+brew install git cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip sdcc
+```
+
+*（注意：如果默认的 `qt` brew formula 尚未更新到 6.11.0，或未自动链接，可能需要手动查找 brew Qt 安装路径，通常为 `/opt/homebrew/opt/qt`）*
+
+可选依赖：
+
+```bash
+brew install libftdi nettle
+```
+
+### 步骤 2：获取 PXView 源代码
+
+```bash
+git clone https://github.com/PXLogic/PXView
+cd PXView
+```
+
+### 步骤 3：编译
 
 ```bash
 mkdir build && cd build
@@ -268,7 +284,11 @@ ninja
 ninja install
 ```
 
-#### 5.2 修正 Python framework 路径
+### 步骤 4：创建 DMG
+
+macOS 上打包 DMG 使用 `macdeployqt` 收集所有依赖到 `.app` 包中，然后用 `codesign` 进行 ad-hoc 签名，最后用 `hdiutil` 创建磁盘映像。
+
+#### 4.1 修正 Python framework 路径
 
 Homebrew 的 `python@3.x` 将 Python framework 放在 `<prefix>/Frameworks/Python.framework`，但 `macdeployqt` 期望在 `<prefix>/lib/Python.framework`。创建符号链接修复此问题：
 
@@ -285,7 +305,7 @@ if [ -n "$PY_PREFIX" ]; then
 fi
 ```
 
-#### 5.3 运行 macdeployqt
+#### 4.2 运行 macdeployqt
 
 ```bash
 MACDEPLOYQT="$(brew --prefix qt)/bin/macdeployqt"
@@ -295,7 +315,7 @@ $MACDEPLOYQT install.dir/PXView.app \
   || true   # macdeployqt 对找不到的 rpath 返回非零，但已复制大部分依赖
 ```
 
-#### 5.4 复制缺失的传递依赖
+#### 4.3 复制缺失的传递依赖
 
 `macdeployqt` 可能无法复制 Qt WebEngine/Pdf 的三个传递依赖（虽然 PXView 不直接使用它们）。从 Homebrew 手动复制：
 
@@ -317,11 +337,75 @@ for dep in libbrotlicommon.1.dylib libsharpyuv.0.dylib libwebp.7.dylib; do
 done
 ```
 
-#### 5.5 签名并创建 DMG
+#### 4.4 复制 Python 标准库到 bundled Python.framework
+
+`macdeployqt` 只复制 framework 的 Mach-O 二进制（Python 共享库），**不复制** `lib/python3.X/` 目录（含 `encodings`、`os.py` 等纯 Python 模块）。Homebrew 的 stdlib 位于 Python.framework 内部。如果不复制，在未安装相同 Homebrew Python 的机器上会崩溃，报 `Fatal Python error: Failed to import encodings module`。
+
+```bash
+BUNDLED_FW="install.dir/PXView.app/Contents/Frameworks/Python.framework"
+if [ -d "$BUNDLED_FW" ]; then
+  for ver_dir in "$BUNDLED_FW"/Versions/3.*; do
+    [ -d "$ver_dir" ] || continue
+    py_ver=$(basename "$ver_dir")
+
+    # 在各种 Homebrew 路径中搜索 stdlib
+    STDLIB_SRC=""
+    for fw_base in \
+      "$PY_PREFIX/Frameworks/Python.framework" \
+      "$PY_PREFIX/lib/Python.framework" \
+      "$(brew --prefix)/Frameworks/Python.framework"; do
+      if [ -d "$fw_base/Versions/$py_ver/lib/python$py_ver/encodings" ]; then
+        STDLIB_SRC="$fw_base/Versions/$py_ver/lib/python$py_ver"
+        break
+      fi
+    done
+    # 也检查 brew prefix/lib（非 framework 安装方式）
+    if [ -z "$STDLIB_SRC" ]; then
+      for candidate in "$(brew --prefix)/lib/python$py_ver" "$PY_PREFIX/lib/python$py_ver"; do
+        if [ -d "$candidate/encodings" ]; then
+          STDLIB_SRC="$candidate"
+          break
+        fi
+      done
+    fi
+
+    if [ -n "$STDLIB_SRC" ]; then
+      mkdir -p "$ver_dir/lib"
+      cp -R "$STDLIB_SRC" "$ver_dir/lib/"
+      echo "已复制 Python stdlib (python$py_ver) 到 bundled framework"
+      if [ -d "$ver_dir/lib/python$py_ver/encodings" ]; then
+        echo "验证通过: encodings 模块存在"
+      else
+        echo "警告: 复制后 encodings 模块缺失"
+      fi
+    else
+      echo "警告: 未找到 python$py_ver 的 stdlib"
+    fi
+  done
+
+  # 删除复制 stdlib 时引入的断链（如 site-packages 指向 Homebrew 路径）
+  # 断链会导致 xattr -cr 和 codesign --verify 失败
+  find "$BUNDLED_FW" -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+
+  # 创建 Current 符号链接（macdeployqt 可能不复制）
+  if [ ! -e "$BUNDLED_FW/Versions/Current" ]; then
+    latest_ver=$(ls -d "$BUNDLED_FW"/Versions/3.* 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest_ver" ]; then
+      ln -s "$(basename "$latest_ver")" "$BUNDLED_FW/Versions/Current"
+      echo "已创建 Current 符号链接 -> $(basename "$latest_ver")"
+    fi
+  fi
+else
+  echo "警告: bundle 中未找到 Python.framework"
+fi
+```
+
+#### 4.5 签名并创建 DMG
 
 ```bash
 # 清除 Homebrew 库可能带的隔离标记
-xattr -cr install.dir/PXView.app
+# （|| true: 容忍可能残留的断链）
+xattr -cr install.dir/PXView.app 2>/dev/null || true
 
 # 递归签名整个 .app 包
 # 必须用 --deep：framework 的资源封印必须由 framework 目录签名建立，
@@ -336,11 +420,11 @@ hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
   -ov -format UDZO install.dir/PXView.dmg
 ```
 
-### 步骤 6：在 ARM64 Mac 上编译 x86_64 版本（Rosetta 2 交叉编译）
+### 步骤 5：在 ARM64 Mac 上编译 x86_64 版本（Rosetta 2 交叉编译）
 
 Apple Silicon Mac（M1/M2/M3）可以通过 Rosetta 2 和 x86_64 Homebrew 编译 x86_64 二进制，无需 Intel Mac 即可生成 x86_64 DMG。
 
-#### 6.1 安装 Rosetta 2 和 x86_64 Homebrew
+#### 5.1 安装 Rosetta 2 和 x86_64 Homebrew
 
 ```bash
 # 安装 Rosetta 2
@@ -356,11 +440,12 @@ export PATH="/usr/local/bin:$PATH"
 export HOMEBREW_NO_PATH_SHADOW_CHECK=1
 ```
 
-#### 6.2 安装依赖并编译
+#### 5.2 安装依赖并编译
 
 ```bash
 # 安装 x86_64 依赖（使用 --overwrite 解决符号链接冲突）
-brew install --overwrite cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip nettle libftdi sdcc
+brew install --overwrite cmake ninja gettext glib libusb zlib boost fftw \
+  python3 qt pkg-config libzip nettle libftdi sdcc
 
 # 编译 fx2lafw 固件
 bash build_fx2lafw.sh
@@ -382,19 +467,19 @@ ninja
 ninja install
 ```
 
-然后按照步骤 5.2–5.5 创建 DMG。测试运行时使用 `arch -x86_64`：
+然后按照步骤 4.1–4.5 创建 DMG。测试运行时使用 `arch -x86_64`：
 
 ```bash
 arch -x86_64 install.dir/PXView.app/Contents/MacOS/PXView --headless
 ```
 
-### 步骤 7：编译 Universal 二进制（macOS）
+### 步骤 6：编译 Universal 二进制（macOS）
 
 Universal 二进制在一个 `.app` 包中同时包含 ARM64 和 x86_64 两个架构的代码，允许一个 DMG 在 Apple Silicon 和 Intel Mac 上原生运行。
 
-#### 7.1 前提条件
+#### 6.1 前提条件
 
-需要先分别构建 ARM64 和 x86_64 两个 DMG（步骤 5 和步骤 6）。提取两个 `.app` 包：
+需要先分别构建 ARM64 和 x86_64 两个 DMG（步骤 4 和步骤 5）。提取两个 `.app` 包：
 
 ```bash
 mkdir -p arm64 x86_64 universal
@@ -410,7 +495,7 @@ cp -R /tmp/x86_64-mount/PXView.app x86_64/PXView.app
 hdiutil detach /tmp/x86_64-mount
 ```
 
-#### 7.2 用 lipo 合并
+#### 6.2 用 lipo 合并
 
 ```bash
 # 以 ARM64 app 为基础复制
@@ -435,7 +520,7 @@ file universal/PXView.app/Contents/MacOS/PXView
 lipo -info universal/PXView.app/Contents/MacOS/PXView
 ```
 
-#### 7.3 重新签名并创建 Universal DMG
+#### 6.3 重新签名并创建 Universal DMG
 
 ```bash
 xattr -cr universal/PXView.app
@@ -445,3 +530,35 @@ codesign --verify --deep --strict universal/PXView.app
 hdiutil create -volname PXView -srcfolder universal/PXView.app \
   -ov -format UDZO universal/PXView.dmg
 ```
+
+---
+
+## 可选功能
+
+### 构建 MCP Web 客户端（可选）
+
+MCP Web 客户端提供基于浏览器的聊天界面，用于自然语言控制设备。需要安装 `npm`。
+
+```bash
+# 构建 Web 客户端：
+ninja webui
+
+# 重新运行 install 以复制文件：
+sudo ninja install    # Linux
+# ninja install       # macOS（本地前缀，无需 sudo）
+
+# 或一步完成构建+复制：
+ninja install-webui
+```
+
+Web 客户端文件将安装到 `<prefix>/bin/webui/`，由 MCP 服务器在 `http://127.0.0.1:10110/` 上提供服务。
+
+### 编译 fx2lafw 固件（可选）
+
+fx2lafw 固件用于基于 Cypress FX2 USB 芯片的逻辑分析仪（Saleae Logic、CWAV USBee、Cypress FX2 等）。如果已安装 `sdcc`，CMake 会在 `ninja install` 阶段自动编译并安装 15 个 `.fw` 固件文件。也可以手动编译：
+
+```bash
+bash build_fx2lafw.sh
+```
+
+如果未安装 `sdcc`，CMake 会静默跳过固件安装。使用 FX2 芯片的设备将无法识别。
