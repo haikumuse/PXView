@@ -2,7 +2,7 @@
 
 ; 安装程序初始定义常量
 !define PRODUCT_NAME "PXView"
-!define PRODUCT_VERSION "1.4.9"
+!define PRODUCT_VERSION "1.5.3"
 !define PRODUCT_PUBLISHER "pxview"
 !define PRODUCT_WEB_SITE "http://www.pxview.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\PXView.exe"
