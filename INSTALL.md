@@ -260,7 +260,7 @@ export CPPFLAGS="-I$(brew --prefix gettext)/include"
 export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
   -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
   -DCMAKE_INSTALL_PREFIX=../install.dir
 
@@ -374,7 +374,7 @@ export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_ARCHITECTURES=x86_64 \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
   -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
   -DCMAKE_INSTALL_PREFIX=../install.dir
 
