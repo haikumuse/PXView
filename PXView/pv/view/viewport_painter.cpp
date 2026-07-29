@@ -557,8 +557,12 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
       _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
       _viewport->_curVOffset = _viewport->_view.get_vOffset();
 
-      _viewport->_pixmap = QPixmap(pixmapSize);
-      _viewport->_pixmap.setDevicePixelRatio(dpr);
+      // Reuse the existing QPixmap when size & DPR match (avoids heap
+      // alloc/dealloc on every frame in realtime refresh mode).
+      if (pixmap_changed) {
+        _viewport->_pixmap = QPixmap(pixmapSize);
+        _viewport->_pixmap.setDevicePixelRatio(dpr);
+      }
       _viewport->_pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_viewport->_pixmap);
@@ -654,8 +658,12 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
       _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
       _viewport->_curVOffset = _viewport->_view.get_vOffset();
 
-      _viewport->_pixmap = QPixmap(pixmapSize);
-      _viewport->_pixmap.setDevicePixelRatio(dpr);
+      // Reuse the existing QPixmap when size & DPR match (avoids heap
+      // alloc/dealloc on every frame in DSO continuous mode).
+      if (pixmap_changed) {
+        _viewport->_pixmap = QPixmap(pixmapSize);
+        _viewport->_pixmap.setDevicePixelRatio(dpr);
+      }
       _viewport->_pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_viewport->_pixmap);

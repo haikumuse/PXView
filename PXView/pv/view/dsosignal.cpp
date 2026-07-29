@@ -646,6 +646,16 @@ void DsoSignal::auto_start() { _measure->auto_start(); }
 
 QRect DsoSignal::get_view_rect() {
   assert(_viewport);
+  // In MSO/LOGIC mode, the DSO signal occupies a specific area determined
+  // by v_offset (center) and totalHeight, offset by the vertical scroll.
+  // Without this, ratio2pos()/pos2ratio() calculate trigger positions
+  // based on the full viewport, making the trigger cursor drawn at the
+  // wrong position and ungrabbable when scrolled or when other traces
+  // are above this DSO signal.
+  if (_view && _view->is_logic_rendering_mode()) {
+    int top = get_v_offset() - get_totalHeight() / 2 - _view->get_vOffset();
+    return QRect(0, top, _viewport->width() - RightMargin, get_totalHeight());
+  }
   return QRect(0, UpMargin, _viewport->width() - RightMargin,
                _viewport->height() - UpMargin - DownMargin);
 }
@@ -836,16 +846,7 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
                       enabled_channels);
     }
 
-    static thread_local int _dso_path_dbg = 0;
-    if ((++_dso_path_dbg % 20) == 0) {
-      pxv_info("[DSO-PATH] spp=%.4f thr=%.2f path=%s sample_count=%lld "
-               "start=%lld end=%lld width=%d offset=%lld trig_hoff=%.2f",
-               samples_per_pixel, EnvelopeThreshold,
-               samples_per_pixel < EnvelopeThreshold ? "trace" : "per_pixel",
-               (long long)(end_sample - start_sample + 1),
-               (long long)start_sample, (long long)end_sample, width,
-               (long long)offset, _view->trig_hoff());
-    }
+    // Hot-path debug logging removed for performance — was printing every 20 frames
   }
 }
 
@@ -935,8 +936,16 @@ void DsoSignal::paint_fore(QPainter &p, int left, int right, QColor fore,
     if (_data_source->is_stopped_status())
       paint_hover_measure(p, fore, back);
 
-    // autoset
-    auto_set();
+    // autoset — throttled to every 10th frame (~3/sec at 30 FPS) to avoid
+    // cascading update() calls from zoom/go_vDial* inside auto_set().
+    // auto_set() calls _view->zoom(), _view->go_vDialNext/Pre() etc., each
+    // of which triggers _view->update(), creating a cascade of repaints
+    // when called on every single paint cycle.
+    static thread_local int _auto_set_frame_cnt = 0;
+    if (++_auto_set_frame_cnt >= 10) {
+      _auto_set_frame_cnt = 0;
+      auto_set();
+    }
   }
 }
 

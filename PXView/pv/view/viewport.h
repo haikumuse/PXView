@@ -173,6 +173,7 @@ private slots:
   void on_trigger_timer();
   void on_drag_timer();
   void applyDragFrame();
+  void on_progress_timer();
 
   void show_contextmenu(const QPoint &pos);
   void add_cursor_x();
@@ -195,6 +196,8 @@ private:
   QMenu *_cmenu;
 
   uint64_t _sample_received;
+  double _progress_displayed;  // Smoothly interpolated 0.0–1.0 for fluid progress bar
+  QTimer _progress_timer;      // 16ms timer (≈60 FPS) for smooth progress animation
   QPoint _mouse_point;
   QPoint _mouse_down_point;
   int64_t _mouse_down_offset;
