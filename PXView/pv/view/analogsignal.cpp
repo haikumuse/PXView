@@ -727,56 +727,39 @@ void AnalogSignal::paint_per_pixel(
   };
 
   if (spp < 1.0) {
-    // ---- Interpolation mode (zoomed in: spp < 1.0) ----
-    // Each sample spans multiple pixels. Linearly interpolate the sample
-    // value at each pixel position, then draw 1px-wide rects bridging
-    // adjacent pixel Y values — same visual result as drawPolyline (non-AA)
-    // but using the much faster drawRects.
-    static thread_local QVector<float> y_buf;
-    if (y_buf.size() < pixel_width + 1) y_buf.resize(pixel_width + 1);
+    // ---- Polyline mode (zoomed in: spp < 1.0) ----
+    // Use drawPolyline for smooth Bresenham diagonals on steep edges.
+    // Draw with OPAQUE color (alpha=255) to avoid per-pixel alpha blending
+    // on transparent QPixmap (same performance fix as DsoSignal).
+    static thread_local QVector<QPointF> pts;
+    if (pts.size() < pixel_width) pts.resize(pixel_width);
 
-    // Pass 1: compute interpolated Y for each pixel.
-    for (int x = 0; x <= pixel_width; x++) {
-      double sample_pos = (double)x * spp;  // offset from start_index
+    // Opaque pen — bypasses alpha blending entirely.
+    p.setPen(QPen(_colour));
+    p.setBrush(Qt::NoBrush);
+
+    int pt_count = 0;
+    for (int x = 0; x < pixel_width; x++) {
+      double sample_pos = (double)x * spp;
       uint64_t s0_offset = (uint64_t)floor(sample_pos);
       double frac = sample_pos - s0_offset;
 
-      uint64_t s0 = (start_index + s0_offset) % sample_cnt;
-      // Stop if we've gone past ring_end or visible data.
       if (s0_offset >= (uint64_t)sample_count) {
-        y_buf[x] = (x > 0) ? y_buf[x - 1] : zeroY;
+        if (pt_count > 0) break;
         continue;
       }
 
-      // Check ring boundary
+      uint64_t s0 = (start_index + s0_offset) % sample_cnt;
       uint64_t s1 = (s0 + 1) % sample_cnt;
       float y0 = read_sample_y(s0);
       float y1 = read_sample_y(s1);
       float v = y0 + (float)(y1 - y0) * frac;
-      y_buf[x] = v;
+      pts[pt_count++] = QPointF((float)(left + x), v);
 
-      // Stop at ring_end
-      if (s0 == ring_end) {
-        // Fill remaining pixels with last value
-        for (int x2 = x + 1; x2 <= pixel_width; x2++)
-          y_buf[x2] = v;
+      if (s0 == ring_end)
         break;
-      }
     }
-
-    // Pass 2: draw 1px rects bridging adjacent pixel Y values.
-    for (int x = 0; x < pixel_width; x++) {
-      float y0 = y_buf[x];
-      float y1 = y_buf[x + 1];
-      float y_top = min(y0, y1);
-      float y_bot = max(y0, y1);
-
-      if (y_bot - y_top < 1.0f)
-        y_bot = y_top + 1.0f;
-
-      r[x] = QRectF((float)(left + x), y_top, 1.0f, y_bot - y_top);
-    }
-    p.drawRects(r, pixel_width);
+    p.drawPolyline(pts.data(), pt_count);
   } else {
     // ---- Min/max mode (zoomed out: spp >= 1.0) ----
     // Multiple samples per pixel. Compute min/max over the pixel's sample
