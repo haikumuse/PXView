@@ -48,6 +48,18 @@ class QPaintEvent;
 class SigSession;
 class QAction;
 
+// Frame timing: thread-local DSO paint sub-timing, written by
+// DsoSignal::paint_mid and read by ViewportPainter::doPaint summary.
+struct DsoPaintTiming {
+    bool active = false;
+    qint64 get_samples_ms = 0;
+    qint64 paint_draw_ms = 0;
+    qint64 hw_offset_ms = 0;
+    int64_t sample_count = 0;
+    double samples_per_pixel = 0;
+};
+extern thread_local DsoPaintTiming s_dso_timing;
+
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 

@@ -1055,7 +1055,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         }
         if (!cg)
             cg = fallback_grp;
-        pxv_info("DeviceAgent::get_config: cg lookup for key=%d ch=%p -> cg=%p (name=%s)",
+        pxv_dbg("DeviceAgent::get_config: cg lookup for key=%d ch=%p -> cg=%p (name=%s)",
                  key, (void*)ch, (void*)cg,
                  cg ? (cg->name ? cg->name : "(null)") : "(none)");
     }
