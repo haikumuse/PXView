@@ -240,6 +240,18 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
             _app_work_mode = MSO;
         } else if (_driver_name == "virtual-session" || _driver_name.contains("file")) {
             _dev_type = DEV_TYPE_FILELOG;
+            // Restore work mode from the session file header.
+            // session_file.c parses "device mode = N" and stores it via
+            // SR_CONF_DEVICE_MODE on the session_driver's vdev struct.
+            // Without this, _app_work_mode defaults to LOGIC (set by
+            // release()), causing MSO files to open in logic-only mode.
+            int file_mode = 0;
+            if (get_config_int32(SR_CONF_DEVICE_MODE, file_mode) && file_mode >= 0) {
+                _app_work_mode = file_mode;
+                pxv_info("open_by_handle: file device mode = %d", file_mode);
+            } else {
+                _app_work_mode = LOGIC;
+            }
         } else {
             _dev_type = DEV_TYPE_USB;
         }
