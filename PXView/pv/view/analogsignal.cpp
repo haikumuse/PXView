@@ -73,7 +73,12 @@ QColor AnalogSignal::getSignalColor(int index) {
 //   2. 阈值=4 使 paint_trace 最坏工作量 = 4*width (4 倍降低), 悬崖帧 ~1ms。
 //   3. spp>=4 时每像素 >=4 样本, envelope 的 16 样本 min/max 矩形视觉可接受;
 //      spp<4 时用户放大看曲线细节, paint_trace 折线更平滑。
-const float AnalogSignal::EnvelopeThreshold = 4.0f;
+// Always use paint_per_pixel (drawRects) instead of paint_trace (drawPolyline).
+// drawPolyline with alpha on a transparent QPixmap is extremely slow on
+// Windows raster engine (same issue as DsoSignal). paint_per_pixel uses
+// drawRects which is ~20x faster. Dual-mode: interpolation for spp<1.0
+// (smooth lines when zoomed in), min/max for spp>=1.0 (envelope when zoomed out).
+const float AnalogSignal::EnvelopeThreshold = 0.0f;
 
 AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
@@ -555,29 +560,10 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
     return;
   }
 
-  if (samples_per_pixel < EnvelopeThreshold) {
-    static int s_path_cnt = 0;
-    if (s_path_cnt++ < 10) {
-      pxv_info("PAINT_MID TRACE ch=%d spp=%.4f thr=%.1f show_len=%lld "
-               "start_idx=%llu start_px=%d zeroY=%d height=%d top=%.1f bottom=%.1f",
-               get_index(), samples_per_pixel, EnvelopeThreshold,
-               (long long)show_length, (unsigned long long)start_index,
-               start_pixel, zeroY, height, top, bottom);
-    }
-    paint_trace(p, _data, zeroY, start_pixel, start_index, show_length,
-                samples_per_pixel, order, top, bottom, width);
-  } else {
-    static int s_env_path_cnt = 0;
-    if (s_env_path_cnt++ < 10) {
-      pxv_info("PAINT_MID ENVELOPE ch=%d spp=%.4f thr=%.1f show_len=%lld "
-               "start_idx=%llu start_px=%d zeroY=%d height=%d top=%.1f bottom=%.1f",
-               get_index(), samples_per_pixel, EnvelopeThreshold,
-               (long long)show_length, (unsigned long long)start_index,
-               start_pixel, zeroY, height, top, bottom);
-    }
-    paint_envelope(p, _data, zeroY, start_pixel, start_index, show_length,
-                   samples_per_pixel, order, top, bottom, width);
-  }
+  // Always use paint_per_pixel (drawRects — fast) regardless of spp.
+  // Dual-mode internally: interpolation for spp<1.0, min/max for spp>=1.0.
+  paint_per_pixel(p, _data, zeroY, left, right, start_index, show_length,
+                  samples_per_pixel, order, top, bottom, width);
 }
 
 void AnalogSignal::paint_fore(QPainter &p, int left, int right, QColor fore,
@@ -680,6 +666,169 @@ void AnalogSignal::paint_trace(
 
     p.drawPolyline(points, point - points);
     // 不释放 points: 复用成员缓冲 _points，由析构/resize 统一释放。
+  }
+}
+
+void AnalogSignal::paint_per_pixel(
+    QPainter &p, const pv::data::AnalogSnapshot *snapshot, int zeroY,
+    const int left, const int right, const uint64_t start_index,
+    const int64_t sample_count, const double samples_per_pixel, const int order,
+    const float top, const float bottom, const int width) {
+
+  pv::data::AnalogSnapshot *pshot =
+      const_cast<pv::data::AnalogSnapshot *>(snapshot);
+
+  const int64_t channel_num = (int64_t)pshot->get_channel_num();
+  const uint8_t unit_bytes = pshot->get_unit_bytes();
+  const uint8_t *const samples = pshot->get_samples(0);
+  if (!samples || sample_count <= 0)
+    return;
+
+  const bool is_float = pshot->is_float();
+  const uint64_t sample_cnt = pshot->get_sample_count();
+  const uint64_t ring_end = pshot->get_ring_end();
+  const uint64_t data_size = sample_cnt * channel_num * unit_bytes;
+  const int hw_offset = get_hw_offset();
+  const double spp = samples_per_pixel;
+  const int pixel_width = right - left;
+
+  if (pixel_width <= 0)
+    return;
+
+  QColor trace_colour = _colour;
+  trace_colour.setAlpha(View::ForeAlpha);
+  p.setPen(QPen(Qt::NoPen));
+  p.setBrush(trace_colour);
+
+  // Reuse member rect buffer.
+  if (!_rects || _points_cap < pixel_width) {
+    if (_rects) delete[] _rects;
+    _points_cap = pixel_width + 10;
+    _rects = new QRectF[_points_cap];
+  }
+  QRectF *r = _rects;
+
+  // Helper: read a single sample value at ring index and map to screen Y.
+  auto read_sample_y = [&](uint64_t ring_idx) -> float {
+    uint64_t idx = (ring_idx * channel_num + order) * unit_bytes;
+    if (idx + unit_bytes > data_size)
+      return zeroY;
+    float yvalue;
+    if (is_float && unit_bytes == sizeof(float)) {
+      yvalue = *reinterpret_cast<const float*>(samples + idx);
+      yvalue = zeroY - yvalue * _float_scale;
+    } else {
+      yvalue = samples[idx];
+      for (uint8_t i = 1; i < unit_bytes; i++)
+        yvalue += (samples[idx + i] << (i * 8));
+      yvalue = zeroY + (yvalue - hw_offset) * _scale;
+    }
+    return min(max(yvalue, top), bottom);
+  };
+
+  if (spp < 1.0) {
+    // ---- Interpolation mode (zoomed in: spp < 1.0) ----
+    // Each sample spans multiple pixels. Linearly interpolate the sample
+    // value at each pixel position, then draw 1px-wide rects bridging
+    // adjacent pixel Y values — same visual result as drawPolyline (non-AA)
+    // but using the much faster drawRects.
+    static thread_local QVector<float> y_buf;
+    if (y_buf.size() < pixel_width + 1) y_buf.resize(pixel_width + 1);
+
+    // Pass 1: compute interpolated Y for each pixel.
+    for (int x = 0; x <= pixel_width; x++) {
+      double sample_pos = (double)x * spp;  // offset from start_index
+      uint64_t s0_offset = (uint64_t)floor(sample_pos);
+      double frac = sample_pos - s0_offset;
+
+      uint64_t s0 = (start_index + s0_offset) % sample_cnt;
+      // Stop if we've gone past ring_end or visible data.
+      if (s0_offset >= (uint64_t)sample_count) {
+        y_buf[x] = (x > 0) ? y_buf[x - 1] : zeroY;
+        continue;
+      }
+
+      // Check ring boundary
+      uint64_t s1 = (s0 + 1) % sample_cnt;
+      float y0 = read_sample_y(s0);
+      float y1 = read_sample_y(s1);
+      float v = y0 + (float)(y1 - y0) * frac;
+      y_buf[x] = v;
+
+      // Stop at ring_end
+      if (s0 == ring_end) {
+        // Fill remaining pixels with last value
+        for (int x2 = x + 1; x2 <= pixel_width; x2++)
+          y_buf[x2] = v;
+        break;
+      }
+    }
+
+    // Pass 2: draw 1px rects bridging adjacent pixel Y values.
+    for (int x = 0; x < pixel_width; x++) {
+      float y0 = y_buf[x];
+      float y1 = y_buf[x + 1];
+      float y_top = min(y0, y1);
+      float y_bot = max(y0, y1);
+
+      if (y_bot - y_top < 1.0f)
+        y_bot = y_top + 1.0f;
+
+      r[x] = QRectF((float)(left + x), y_top, 1.0f, y_bot - y_top);
+    }
+    p.drawRects(r, pixel_width);
+  } else {
+    // ---- Min/max mode (zoomed out: spp >= 1.0) ----
+    // Multiple samples per pixel. Compute min/max over the pixel's sample
+    // range, then draw with vertical overlap to eliminate diagonal gaps.
+    static thread_local QVector<float> min_buf, max_buf;
+    if (min_buf.size() < pixel_width) { min_buf.resize(pixel_width); max_buf.resize(pixel_width); }
+
+    // Pass 1: compute min/max Y for each pixel column.
+    for (int x = 0; x < pixel_width; x++) {
+      uint64_t s_start_off = (uint64_t)floor((double)x * spp);
+      uint64_t s_end_off = (uint64_t)floor((double)(x + 1) * spp);
+      if (s_end_off <= s_start_off) s_end_off = s_start_off + 1;
+      if (s_end_off > (uint64_t)sample_count) s_end_off = (uint64_t)sample_count;
+      if (s_start_off >= (uint64_t)sample_count) {
+        if (x > 0) { min_buf[x] = min_buf[x-1]; max_buf[x] = max_buf[x-1]; }
+        else { min_buf[x] = zeroY; max_buf[x] = zeroY; }
+        continue;
+      }
+
+      uint64_t s0 = (start_index + s_start_off) % sample_cnt;
+      float y_min = read_sample_y(s0);
+      float y_max = y_min;
+
+      for (uint64_t i = 1; i < s_end_off - s_start_off; i++) {
+        uint64_t si = (start_index + s_start_off + i) % sample_cnt;
+        if (si == ring_end) break;
+        float yv = read_sample_y(si);
+        if (yv < y_min) y_min = yv;
+        if (yv > y_max) y_max = yv;
+      }
+      min_buf[x] = y_min;
+      max_buf[x] = y_max;
+    }
+
+    // Pass 2: draw rectangles with vertical overlap to adjacent pixels.
+    for (int x = 0; x < pixel_width; x++) {
+      float draw_max = max_buf[x];
+      float draw_min = min_buf[x];
+      if (x + 1 < pixel_width) {
+        draw_max = max(draw_max, min_buf[x + 1]);
+        draw_min = min(draw_min, max_buf[x + 1]);
+      }
+
+      float h = draw_max - draw_min;
+      if (h >= 0.0f && h < 1.0f)
+        h = 1.0f;
+      else if (h <= 0.0f && h > -1.0f)
+        h = -1.0f;
+
+      r[x] = QRectF((float)(left + x), draw_min, 1.0f, h);
+    }
+    p.drawRects(r, pixel_width);
   }
 }
 
