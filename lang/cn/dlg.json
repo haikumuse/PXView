@@ -89,6 +89,10 @@
         "text": "打开文件"
     },
     {
+        "id": "IDS_DLG_IMPORT_FILE",
+        "text": "导入文件"
+    },
+    {
         "id": "IDS_DLG_OPEN_SEESION",
         "text": "打开配置"
     },
@@ -1067,6 +1071,10 @@
     {
         "id": "IDS_DLG_SC_FILE_EXPORT",
         "text": "导出数据"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_IMPORT",
+        "text": "导入数据"
     },
     {
         "id": "IDS_DLG_SC_FILE_LOAD",

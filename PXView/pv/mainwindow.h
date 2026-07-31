@@ -131,6 +131,7 @@ private slots:
     void on_save();
 
     void on_export();
+    void on_import_file(QString file_name);
     bool on_load_session(QString name);  
     bool on_store_session(QString name); 
     void on_data_updated();

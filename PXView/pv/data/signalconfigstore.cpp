@@ -292,7 +292,23 @@ void SignalConfigStore::apply_signal_config() {
     }
     const ChannelConfig &cfg = *cfg_ptr;
 
-    agent->enable_probe(probe, cfg.enabled);
+    // Only restore the saved enabled state for channels whose type matches
+    // the current work mode. Channels of a different type (e.g. logic channels
+    // when in DSO mode) must remain disabled — otherwise demo_prepare_data()
+    // detects has_enabled_other and skips the SR_DF_DSO path, leaving the DSO
+    // view empty. This mirrors switch_work_mode()'s channel-type filtering.
+    bool should_enable = cfg.enabled;
+    if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC)
+      should_enable = false;
+    else if (mode == DSO && probe->type != SR_CHANNEL_DSO)
+      should_enable = false;
+    else if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG)
+      should_enable = false;
+    else if (mode == MSO && probe->type != SR_CHANNEL_LOGIC &&
+             probe->type != SR_CHANNEL_ANALOG)
+      should_enable = false;
+
+    agent->enable_probe(probe, should_enable);
 
     // Task 3: 通道名（所有模式，原 MainWindow 路径 B 写 probe->name）。
     if (!cfg.name.empty()) {

@@ -139,6 +139,7 @@ public:
   bool init(); void uninit(); void Open(); void Close();
   bool set_default_device(); bool set_device(ds_device_handle dev_handle);
   bool set_file(QString name); void close_file(unsigned long long dev_handle) override;
+  bool import_file(QString name);
   bool start_capture(bool instant = false, data::SessionDocument *owner = nullptr) override { return _capture_manager->start_capture(instant, owner); }
   bool stop_capture() override { return _capture_manager->stop_capture(); }
   bool switch_work_mode(int mode) override;

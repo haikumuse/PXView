@@ -257,6 +257,7 @@ void MainWindow::setupFileCategory() {
   _title_bar->addSeparator(_category_file_index);
 
   _title_bar->addAction(_category_file_index, _file_bar->_action_export);
+  _title_bar->addAction(_category_file_index, _file_bar->_action_import);
   _title_bar->addAction(_category_file_index, _file_bar->_action_capture);
 }
 
@@ -749,6 +750,8 @@ void MainWindow::setup_ui() {
   connect(_file_bar, &toolbars::FileBar::sig_save, this, &MainWindow::on_save);
   connect(_file_bar, &toolbars::FileBar::sig_export, this,
           &MainWindow::on_export);
+  connect(_file_bar, &toolbars::FileBar::sig_import_file, this,
+          &MainWindow::on_import_file);
   connect(_file_bar, &toolbars::FileBar::sig_screenShot, this,
           &MainWindow::on_screenShot, Qt::QueuedConnection);
   connect(_file_bar, &toolbars::FileBar::sig_load_session, this,
@@ -973,6 +976,51 @@ void MainWindow::on_load_file(QString file_name) {
 
     // 架构修复：检查 set_file 返回值，失败时不创建空白 tab
     if (!_session->set_file(file_name)) {
+      QString strMsg(
+          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
+      strMsg += file_name;
+      MsgBox::Show(strMsg);
+      // 回滚已创建的 tab
+      int idx = _tab_contexts.indexOf(ctx);
+      if (idx >= 0)
+        remove_tab(idx);
+      _session->set_default_device();
+      return;
+    }
+    ctx->make_live();
+    ctx->activate();
+    update_tab_style(_tab_contexts.indexOf(ctx));
+  } catch (QString e) {
+    QString strMsg(
+        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
+    strMsg += file_name;
+    MsgBox::Show(strMsg);
+    _session->set_default_device();
+  }
+}
+
+void MainWindow::on_import_file(QString file_name) {
+  pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
+  // phase 2: document owned by DocumentRegistry.
+  size_t new_doc_idx = _session->document_registry()->take_document(
+      std::make_unique<pv::data::SessionDocument>(_session));
+  pv::data::SessionDocument *new_doc =
+      _session->document_registry()->get_document_by_index(new_doc_idx);
+  pv::TabContext *ctx =
+      SessionManager::instance()->create_context(new_view, _session, new_doc,
+                                                 new_doc_idx,
+                                                 _session->document_registry());
+
+  QFileInfo fi(file_name);
+  ctx->set_title(fi.baseName());
+  ctx->set_file_path(file_name);
+
+  add_tab(ctx);
+
+  try {
+    // Import external data file using libsigrok input modules
+    // (VCD, CSV, binary, Saleae, etc.) — aligned with PulseView.
+    if (!_session->import_file(file_name)) {
       QString strMsg(
           L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
       strMsg += file_name;
@@ -2405,6 +2453,9 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
       break;
     case SHORTCUT_FILE_EXPORT:
       _file_bar->_action_export->trigger();
+      break;
+    case SHORTCUT_FILE_IMPORT:
+      _file_bar->_action_import->trigger();
       break;
     case SHORTCUT_FILE_LOAD:
       _file_bar->_action_load->trigger();

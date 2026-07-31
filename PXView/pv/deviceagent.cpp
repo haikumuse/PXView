@@ -150,6 +150,11 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
         QString name = QString::fromLocal8Bit(open_drv->name);
         if (name == "virtual-session" || name.contains("file"))
             is_virtual_session = true;
+    } else if (!open_drv) {
+        // Input module devices (from sr_input_new) have no driver —
+        // treat as virtual to skip sr_dev_open (which would crash).
+        is_virtual_session = true;
+        pxv_info("open_by_handle: NULL driver — treating as virtual input-module device");
     }
 
     int open_ret = SR_OK;
@@ -255,6 +260,14 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
         } else {
             _dev_type = DEV_TYPE_USB;
         }
+    } else {
+        // Input module devices (VCD, CSV, binary, etc.) have no driver.
+        // Treat as a file-backed logic device so init_signals() and
+        // the UI classify it correctly.
+        _driver_name = "input-module";
+        _dev_type = DEV_TYPE_FILELOG;
+        _app_work_mode = LOGIC;
+        pxv_info("open_by_handle: input-module device, dev_type=FILELOG, mode=LOGIC");
     }
 
     // Create upstream sr_session and add the device.

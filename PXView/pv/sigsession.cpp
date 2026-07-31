@@ -23,6 +23,8 @@
 
 #include <libsigrokdecode.h>
 #include <libusb.h>
+#include <libsigrok/libsigrok.h>
+#include <glib.h>
 
 #include "mainwindow.h"
 #include "sigsession.h"
@@ -48,6 +50,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QObject>
 #include <QString>
 #include <assert.h>
@@ -593,6 +596,166 @@ bool SigSession::set_file(QString name) {
     pxv_err("Load file error: start_capture failed for file device");
     return false;
   }
+
+  return true;
+}
+
+bool SigSession::import_file(QString name) {
+  assert(!_state->is_saving());
+  assert(!_state->is_working());
+
+  std::string file_name = pv::path::ToUnicodePath(name);
+  pxv_info("Import file: \"%s\"", file_name.c_str());
+
+  // Step 1: Detect format using sr_input_scan_file (aligned with PulseView).
+  // sr_input_scan_file reads the file header and finds the best matching
+  // input module. It creates a temporary sr_input with the header data
+  // buffered in input->buf, but receive() has NOT been called yet.
+  const struct sr_input *tmp_input = nullptr;
+  int ret = sr_input_scan_file(file_name.c_str(), &tmp_input);
+  if (ret != SR_OK || !tmp_input) {
+    pxv_err("Import file error: sr_input_scan_file failed for \"%s\"",
+            file_name.c_str());
+    return false;
+  }
+
+  // Extract the module ID, then free the temporary input instance.
+  // We create a fresh input below so we can control exactly when data
+  // is fed to the module (the temp input has up to 4MB of pre-read data
+  // in its buffer which complicates the feed sequence).
+  const struct sr_input_module *imod = sr_input_module_get(tmp_input);
+  const char *mod_id = imod ? sr_input_id_get(imod) : nullptr;
+  if (!mod_id) {
+    pxv_err("Import file error: cannot determine input module ID");
+    sr_input_free(tmp_input);
+    return false;
+  }
+  std::string mod_id_str(mod_id);
+  sr_input_free(tmp_input);
+
+  // Step 2: Create a fresh input instance.
+  // sr_input_new() calls the module's init() which creates the sdi.
+  // For header-based formats (VCD, CSV, Saleae): sdi_ready is FALSE
+  //   until enough header data is fed via sr_input_send().
+  // For headerless formats (binary): sdi_ready is TRUE immediately.
+  const struct sr_input_module *mod = sr_input_find(mod_id_str.c_str());
+  if (!mod) {
+    pxv_err("Import file error: sr_input_find failed for \"%s\"",
+            mod_id_str.c_str());
+    return false;
+  }
+  const struct sr_input *input = sr_input_new(mod, nullptr);
+  if (!input) {
+    pxv_err("Import file error: sr_input_new failed for \"%s\"",
+            mod_id_str.c_str());
+    return false;
+  }
+
+  // Step 3: Open file and feed data until the sdi becomes ready.
+  // For header-based formats, the receive() function parses the header
+  // (creates channels, sets sdi_ready=TRUE) WITHOUT sending any
+  // datafeed packets — so this is safe to do before the session is
+  // set up. After the header is parsed, remaining sample data stays
+  // in input->buf unprocessed.
+  // For headerless formats (binary), sdi_ready is TRUE immediately,
+  // so the loop exits without feeding any data.
+  // Use QFile for cross-platform Unicode path handling (g_fopen needs
+  // glib/gstdio.h which is not reliably available on all platforms).
+  QFile file(name);
+  if (!file.open(QIODevice::ReadOnly)) {
+    pxv_err("Import file error: cannot open file \"%s\"",
+            file_name.c_str());
+    sr_input_free(input);
+    return false;
+  }
+
+  GString *chunk = g_string_sized_new(65536);
+  struct sr_dev_inst *sdi = sr_input_dev_inst_get(input);
+
+  while (!sdi) {
+    qint64 n = file.read(chunk->str, 65536);
+    if (n <= 0) {
+      // EOF — check if sdi became ready on the last chunk
+      sdi = sr_input_dev_inst_get(input);
+      break;
+    }
+    chunk->len = n;
+    sr_input_send(input, chunk);
+    sdi = sr_input_dev_inst_get(input);
+  }
+
+  if (!sdi) {
+    pxv_err("Import file error: could not determine device instance "
+            "from input module \"%s\"", mod_id_str.c_str());
+    g_string_free(chunk, TRUE);
+    file.close();
+    sr_input_free(input);
+    return false;
+  }
+
+  pxv_info("Import file: input module \"%s\" ready, sdi=%p",
+           mod_id_str.c_str(), (void *)sdi);
+
+  // Step 4: Register the input sdi with DeviceAgent and set up the
+  // session (create sr_session, add device, register datafeed callback,
+  // init_signals, broadcast CurrentDeviceChanged).
+  // open_by_handle() handles NULL-driver sdi by skipping sr_dev_open.
+  ds_device_handle dev_handle =
+      _state->device_agent().set_file_device(sdi, name);
+  if (dev_handle == NULL_HANDLE) {
+    pxv_err("Import file error: set_file_device returned NULL_HANDLE");
+    g_string_free(chunk, TRUE);
+    file.close();
+    sr_input_free(input);
+    return false;
+  }
+
+  if (!set_device(dev_handle)) {
+    pxv_err("Import file error: set_device failed for input device");
+    g_string_free(chunk, TRUE);
+    file.close();
+    sr_input_free(input);
+    return false;
+  }
+
+  // Step 5: Process any remaining data in the input buffer.
+  // After header parsing, sample data from the last chunk stays in
+  // input->buf. Feeding an empty GString triggers receive() which
+  // processes this data (now that the session is set up, datafeed
+  // packets are properly routed to DataFeedParser).
+  // For headerless formats (binary), input->buf is empty, so this
+  // is a no-op except for sending the DF header packet.
+  {
+    GString *empty = g_string_new("");
+    sr_input_send(input, empty);
+    g_string_free(empty, TRUE);
+  }
+
+  // Step 6: Feed the rest of the file in chunks.
+  // sr_input_send() calls the module's receive() which processes the
+  // data and calls sr_session_send() — this directly invokes the
+  // datafeed callback (DataFeedParser::data_feed_in) which appends
+  // samples to the snapshot. No sr_session_run() is needed.
+  while (true) {
+    qint64 n = file.read(chunk->str, 65536);
+    if (n <= 0)
+      break;
+    chunk->len = n;
+    sr_input_send(input, chunk);
+  }
+
+  // Step 7: Signal end-of-data and free the input.
+  // sr_input_end() flushes any buffered samples and sends SR_DF_END,
+  // which triggers DataFeedParser's SR_DF_END handler: calls
+  // capture_ended() on all snapshot types, sets device status to
+  // ST_STOPPED, and broadcasts RevEndPacket (for LOGIC mode) which
+  // swaps the capture/view buffer and kicks off decoders.
+  sr_input_end(input);
+  sr_input_free(input);
+  g_string_free(chunk, TRUE);
+  file.close();
+
+  pxv_info("Import file complete: \"%s\"", file_name.c_str());
 
   return true;
 }

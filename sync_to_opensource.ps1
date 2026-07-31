@@ -32,9 +32,20 @@ $whitelistFiles = @(
     "PXView.icns", "README.md", "applogo.rc", "logo-win.ico",
     "mac_appbundle_template.plist.in",
     ".gitignore", ".gitmodules",
+    # 构建说明文档
+    "windows.md",
     # 构建脚本:被 .github/workflows/*.yml 引用,必须同步到开源仓库
-    # migrate_to_worktree.ps1 误把它标记为私有,实际上 Linux/mac 工作流都用
-    "build_fx2lafw.sh"
+    "build_fx2lafw.sh",
+    # 本机构建脚本 (用户自行构建用)
+    "build_linux.sh",
+    "build_macos.sh",
+    "build_windows.sh",
+    # Windows 打包脚本和 NSIS 安装程序定义
+    "window/package.sh",
+    "window/copy-deps.sh",
+    "window_nisi.nsi",
+    # GitHub Actions 工作流 (开源仓库版本)
+    ".github/workflows/build.yml"
 )
 
 Set-Location $repoRoot
