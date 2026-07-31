@@ -1072,7 +1072,7 @@ void MainWindow::save_config() {
   app.deviceOptions.lastDeviceDriver = _device_agent->driver_name();
   app.SaveDevice();
 
-  if (_device_agent->is_hardware()) {
+  if (_device_agent->is_hardware() && !_device_agent->is_demo()) {
     // Persist connection ID for hardware devices to distinguish multiple
     // devices of the same model.
     struct sr_dev_inst *sdi = _device_agent->inst();
@@ -2869,7 +2869,7 @@ void MainWindow::load_device_config() {
   int mode = _device_agent->get_work_mode();
   QString file;
 
-  if (_device_agent->is_hardware()) {
+  if (_device_agent->is_hardware() && !_device_agent->is_demo()) {
     QString ses_name = gen_config_file_path(true);
 
     bool bExist = false;

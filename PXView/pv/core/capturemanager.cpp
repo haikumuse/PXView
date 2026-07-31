@@ -175,8 +175,7 @@ bool CaptureManager::action_start_capture(bool instant,
 
     if (_state->device_agent().is_hardware()) {
       _is_stream_mode = _state->device_agent().is_stream_mode();
-    } else if (_state->device_agent().is_demo() ||
-               _state->device_agent().is_file()) {
+    } else if (_state->device_agent().is_file()) {
       _is_stream_mode = true;
     }
 
@@ -191,8 +190,7 @@ bool CaptureManager::action_start_capture(bool instant,
       }
     }
 
-    if (_state->device_agent().is_hardware() ||
-        _state->device_agent().is_demo()) {
+    if (_state->device_agent().is_hardware()) {
       bool bv = is_loop_mode() && _is_stream_mode;
       _state->device_agent().set_config_bool(SR_CONF_LOOP_MODE, bv);
     }
