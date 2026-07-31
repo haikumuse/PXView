@@ -3092,6 +3092,7 @@ void MainWindow::update_toolbar_view_status() {
 // --- Capture state group ---
 void MainWindow::on_event(const pv::interface::CaptureStateChanged &) {
   update_toolbar_view_status();
+  _protocol_widget->update_view_status();
   _device_options_widget->update_widgets_status();
 }
 void MainWindow::on_event(const pv::interface::StartCollectWork &) {
