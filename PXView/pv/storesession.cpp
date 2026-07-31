@@ -129,9 +129,16 @@ QList<QString> StoreSession::getSuportedExportFormats(){
         // of direct field access (fork libsigrok exposed ->id / ->desc).
         const char *mod_id = sr_output_id_get(*supportedModules);
         const char *mod_desc = sr_output_description_get(*supportedModules);
+        // In non-LOGIC modes (DSO/ANALOG/MSO), only CSV is supported.
+        // Use 'continue' to skip non-CSV modules instead of 'break' which
+        // would abort the entire traversal before reaching the CSV module
+        // (CSV is the 4th entry in the output module list, after
+        // ascii/binary/bits).
         if (_session->get_device()->get_work_mode() != LOGIC &&
-            strcmp(mod_id, "csv"))
-            break;
+            strcmp(mod_id, "csv")) {
+            supportedModules++;
+            continue;
+        }
         QString format(mod_desc ? mod_desc : "");
         format.append(" (*.");
         format.append(mod_id ? mod_id : "");
