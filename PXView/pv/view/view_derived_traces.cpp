@@ -449,6 +449,12 @@ void ViewDerivedTraces::sync_derived_traces() {
           lissajous_model->enabled(), snapshot, lissajous_model->x_index(),
           lissajous_model->y_index(), lissajous_model->percent());
       changed = true;
+    } else {
+      // Update parameters in case the user changed X/Y channel or percent
+      // in the LissajousOptions dialog without disabling first.
+      _view->_own_lissajous_trace->set_xIndex(lissajous_model->x_index());
+      _view->_own_lissajous_trace->set_yIndex(lissajous_model->y_index());
+      _view->_own_lissajous_trace->set_percent(lissajous_model->percent());
     }
   } else {
     if (_view->_own_lissajous_trace) {

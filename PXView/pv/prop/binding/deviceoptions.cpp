@@ -121,6 +121,8 @@ DeviceOptions::DeviceOptions(SigSession *session)
             continue;
 
 		case SR_CONF_PATTERN_MODE:
+			bind_enum(name, label, key, gvar_list, print_pattern);
+			break;
 		case SR_CONF_BUFFERSIZE:
 		case SR_CONF_TRIGGER_SOURCE:
         case SR_CONF_PROBE_EN:
@@ -406,9 +408,25 @@ QString DeviceOptions::print_timebase(GVariant *const gvar)
 
 QString DeviceOptions::print_vdiv(GVariant *const gvar)
 {
-	uint64_t p, q;
-	g_variant_get(gvar, "(tt)", &p, &q);
-	return QString(sr_voltage_string(p, q));
+uint64_t p, q;
+g_variant_get(gvar, "(tt)", &p, &q);
+return QString(sr_voltage_string(p, q));
+}
+
+QString DeviceOptions::print_pattern(GVariant *const gvar)
+{
+QString s = print_gvariant(gvar);
+if (s == "random")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_RANDOM), "Random");
+if (s == "sine")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SINE), "Sine");
+if (s == "square")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SQUARE), "Square");
+if (s == "sawtooth")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SAWTOOTH), "Sawtooth");
+if (s == "triangle")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_TRIANGLE), "Triangle");
+return s;
 }
 
 void DeviceOptions::bind_bandwidths(const QString &name, const QString label, int key,

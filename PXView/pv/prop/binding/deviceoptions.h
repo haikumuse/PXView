@@ -82,6 +82,8 @@ private:
 
 	static QString print_vdiv(GVariant *const gvar);
 
+static QString print_pattern(GVariant *const gvar);
+
     void bind_bandwidths(const QString &name, const QString label, int key,GVariant *const gvar_list,
         boost::function<QString (GVariant*)> printer = print_gvariant);
 

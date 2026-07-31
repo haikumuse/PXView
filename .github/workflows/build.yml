@@ -20,8 +20,26 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
+  audit:
+    name: Config Type Audit
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Run config key type audit
+        run: python3 tools/audit_config_types.py
+
   linux:
     name: Linux AppImage (x86_64)
     if: ${{ github.event.inputs.targets == 'linux' || github.event.inputs.targets == 'both' || github.event_name == 'push' }}

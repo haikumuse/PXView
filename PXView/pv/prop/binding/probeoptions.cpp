@@ -120,6 +120,10 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
         case SR_CONF_PROBE_MAP_DEFAULT:
             bind_bool(name, label, key);
             break;
+
+case SR_CONF_PATTERN_MODE:
+bind_enum(name, label, key, gvar_list, print_pattern);
+break;
 		}
 
 		if (gvar_list)
@@ -279,6 +283,27 @@ QString ProbeOptions::print_vdiv(GVariant *const gvar)
         p /= 1000;
     }
 	return QString(sr_voltage_string(p, q));
+}
+
+QString ProbeOptions::print_pattern(GVariant *const gvar)
+{
+QString s = print_gvariant(gvar);
+/* Translate driver pattern strings to localized display text.
+ * The driver returns lowercase English strings ("random", "sine",
+ * "square", "sawtooth", "triangle"); the Enum property stores the
+ * GVariant (raw driver value) for SET, but the display string comes
+ * from this printer, so we can freely translate it. */
+if (s == "random")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_RANDOM), "Random");
+if (s == "sine")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SINE), "Sine");
+if (s == "square")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SQUARE), "Square");
+if (s == "sawtooth")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_SAWTOOTH), "Sawtooth");
+if (s == "triangle")
+return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PATTERN_TRIANGLE), "Triangle");
+return s;
 }
 
 QString ProbeOptions::print_coupling(GVariant *const gvar)

@@ -706,6 +706,8 @@ bool SigSession::import_file(QString name) {
     pxv_err("Import file error: set_file_device returned NULL_HANDLE");
     g_string_free(chunk, TRUE);
     file.close();
+    // sdi was NOT registered (set_file_device failed), so sr_input_free
+    // is safe here — it frees the sdi along with the input.
     sr_input_free(input);
     return false;
   }
@@ -714,7 +716,12 @@ bool SigSession::import_file(QString name) {
     pxv_err("Import file error: set_device failed for input device");
     g_string_free(chunk, TRUE);
     file.close();
-    sr_input_free(input);
+    // The sdi was registered with DeviceAgent via set_file_device(),
+    // so ownership has been transferred. Use sr_input_release_sdi() to
+    // avoid freeing the sdi, then remove_device() to clean it up from
+    // _file_sdi and free it properly via sr_dev_inst_free().
+    sr_input_release_sdi(input);
+    _state->device_agent().remove_device(dev_handle);
     return false;
   }
 
@@ -744,14 +751,24 @@ bool SigSession::import_file(QString name) {
     sr_input_send(input, chunk);
   }
 
-  // Step 7: Signal end-of-data and free the input.
+  // Step 7: Signal end-of-data and release the input.
   // sr_input_end() flushes any buffered samples and sends SR_DF_END,
   // which triggers DataFeedParser's SR_DF_END handler: calls
   // capture_ended() on all snapshot types, sets device status to
   // ST_STOPPED, and broadcasts RevEndPacket (for LOGIC mode) which
   // swaps the capture/view buffer and kicks off decoders.
+  //
+  // Use sr_input_release_sdi() instead of sr_input_free() because the
+  // sdi has been registered with DeviceAgent (via set_file_device +
+  // open_by_handle). sr_input_free() would call sr_dev_inst_free() on
+  // the sdi, causing a use-after-free when the async CurrentDeviceChanged
+  // event later triggers reset_all_view() → DevMode::set_device() →
+  // get_device_mode_list(), which accesses _di (the same sdi pointer).
+  // sr_input_release_sdi() detaches the sdi from the input so it is NOT
+  // freed; DeviceAgent takes ownership and will free it via
+  // sr_dev_inst_free() in release() when the device is closed.
   sr_input_end(input);
-  sr_input_free(input);
+  sr_input_release_sdi(input);
   g_string_free(chunk, TRUE);
   file.close();
 
@@ -1041,6 +1058,38 @@ void SigSession::init_signals() {
   int channel_count = g_slist_length((GSList *)_state->device_agent().get_channels());
   pxv_info("SigSession::init_signals() start. mode=%d, channel_count=%d", mode, channel_count);
 
+  // Ensure at least one channel of the current work mode's type is enabled.
+  // If all channels are disabled (e.g., VCD file with no enabled channels,
+  // or user disabled all channels), force-enable the first matching one
+  // to prevent a blank viewport with zero signal models.
+  {
+    bool has_enabled = false;
+    for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+      sr_channel *p = (sr_channel *)l->data;
+      if (!p) continue;
+      if (mode == LOGIC && p->type != SR_CHANNEL_LOGIC) continue;
+      if (mode == DSO && p->type != SR_CHANNEL_DSO) continue;
+      if (mode == ANALOG && p->type != SR_CHANNEL_ANALOG) continue;
+      if (mode == MSO && p->type == SR_CHANNEL_DSO) continue;
+      if (p->enabled) { has_enabled = true; break; }
+    }
+    if (!has_enabled) {
+      for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+        sr_channel *p = (sr_channel *)l->data;
+        if (!p) continue;
+        if (mode == LOGIC && p->type != SR_CHANNEL_LOGIC) continue;
+        if (mode == DSO && p->type != SR_CHANNEL_DSO) continue;
+        if (mode == ANALOG && p->type != SR_CHANNEL_ANALOG) continue;
+        if (mode == MSO && p->type == SR_CHANNEL_DSO) continue;
+        _state->device_agent().enable_probe(p, true);
+        pxv_warn("init_signals: no enabled channel for mode %d, "
+                 "force-enabling channel index=%d name=%s",
+                 mode, p->index, p->name ? p->name : "null");
+        break;
+      }
+    }
+  }
+
   for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
     if (!probe) {
@@ -1185,6 +1234,37 @@ void SigSession::reload() {
   int mode = _state->device_agent().get_work_mode();
   int channel_count = g_slist_length((GSList *)_state->device_agent().get_channels());
   pxv_info("SigSession::reload() start. mode=%d, channel_count=%d", mode, channel_count);
+
+  // Ensure at least one channel of the current work mode's type is enabled.
+  // Mirrors init_signals() — if all channels are disabled, force-enable the
+  // first matching one to prevent a blank viewport with zero signal models.
+  {
+    bool has_enabled = false;
+    for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+      sr_channel *p = (sr_channel *)l->data;
+      if (!p) continue;
+      if (mode == LOGIC && p->type != SR_CHANNEL_LOGIC) continue;
+      if (mode == DSO && p->type != SR_CHANNEL_DSO) continue;
+      if (mode == ANALOG && p->type != SR_CHANNEL_ANALOG) continue;
+      if (mode == MSO && p->type == SR_CHANNEL_DSO) continue;
+      if (p->enabled) { has_enabled = true; break; }
+    }
+    if (!has_enabled) {
+      for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+        sr_channel *p = (sr_channel *)l->data;
+        if (!p) continue;
+        if (mode == LOGIC && p->type != SR_CHANNEL_LOGIC) continue;
+        if (mode == DSO && p->type != SR_CHANNEL_DSO) continue;
+        if (mode == ANALOG && p->type != SR_CHANNEL_ANALOG) continue;
+        if (mode == MSO && p->type == SR_CHANNEL_DSO) continue;
+        _state->device_agent().enable_probe(p, true);
+        pxv_warn("reload: no enabled channel for mode %d, "
+                 "force-enabling channel index=%d name=%s",
+                 mode, p->index, p->name ? p->name : "null");
+        break;
+      }
+    }
+  }
 
   uint64_t sr = _state->device_agent().get_sample_rate();
   uint64_t sl = _state->device_agent().get_sample_limit();

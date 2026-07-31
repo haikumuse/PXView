@@ -22,6 +22,7 @@
 
 #include "deviceagent.h"
 #include <assert.h>
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <future>
@@ -87,7 +88,17 @@ void DeviceAgent::remove_device(ds_device_handle handle)
     if (handle > (ds_device_handle)scanned_count) {
         int file_idx = (int)handle - scanned_count - 1;
         if (file_idx >= 0 && file_idx < (int)_file_sdi.size()) {
+            struct sr_dev_inst *sdi = _file_sdi[file_idx];
             _file_sdi.erase(_file_sdi.begin() + file_idx);
+
+            // If this is NOT the currently active device, the sdi is owned
+            // solely by _file_sdi and must be freed now. If it IS the current
+            // device, release() will free it when set_device() is called.
+            if (handle != _dev_handle && sdi) {
+                sr_dev_inst_free(sdi);
+                pxv_info("remove_device: freed sdi %p for file device handle %llu",
+                         (void *)sdi, (unsigned long long)handle);
+            }
         }
     }
 }
@@ -337,6 +348,19 @@ void DeviceAgent::release()
 
     if (_di) {
         sr_dev_close(_di);
+
+        // File devices (loaded via sr_session_load_file_device or
+        // sr_input_release_sdi) have their sdi ownership transferred to
+        // DeviceAgent. Free the sdi here and remove it from _file_sdi to
+        // prevent both a memory leak and dangling pointers.
+        if (_dev_type == DEV_TYPE_FILELOG) {
+            auto it = std::find(_file_sdi.begin(), _file_sdi.end(), _di);
+            if (it != _file_sdi.end())
+                _file_sdi.erase(it);
+            sr_dev_inst_free(_di);
+            pxv_info("release: freed sdi %p for file device", (void *)_di);
+        }
+
         _di = nullptr;
     }
 

@@ -227,9 +227,17 @@ void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
     (void)probe;
     // Update the model field regardless of probe override.
     _trig_value = value;
-    // Fork libsigrok's sr_channel had a `trig_value` field; upstream
-    // libsigrok does not. Hardware sync above is sufficient — model state
-    // is tracked in _trig_value.
+    /* Send the trigger level to the driver so that trigger detection
+     * (e.g. demo_send_dso_packet edge crossing) uses the correct threshold.
+     * Without this, the driver keeps the default trigger value and the
+     * waveform does not respond to cursor movement. */
+    struct sr_channel *ch = probe ? probe : _sr_channel;
+    if (ch && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_int32(SR_CONF_TRIGGER_VALUE, (int)value, ch, NULL);
+        }
+    }
 }
 
 bool SignalModel::commit_trig()

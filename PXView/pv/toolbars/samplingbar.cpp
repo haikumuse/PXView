@@ -1019,8 +1019,16 @@ double SamplingBar::commit_hori_res() {
   connect(_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SamplingBar::on_samplerate_sel);
 
-  if (sample_rate != _device_agent->get_sample_rate())
+  if (sample_rate != _device_agent->get_sample_rate()) {
     _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
+    // 同步更新 DSO 快照的 samplerate。采集期间 hori_knob → commit_hori_res
+    // 只更新了驱动层 cur_samplerate，但 DsoSnapshot::_samplerate 仍为采集
+    // 开始时的旧值。后续 timebase_changed() → set_scale_offset(new_scale)
+    // 会用新比例尺重绘，paint_mid 计算 samples_per_pixel =
+    // _data->samplerate() * scale 时，旧采样率与新比例尺不匹配，导致可见
+    // 采样范围极小甚至为空，波形"闪消"。此处同步快照采样率即可消除闪烁。
+    _session->apply_samplerate();
+  }
 
   // Only SET TIMEBASE if the value actually changed. Unconditional SET
   // triggers config_changed() -> broadcast_async<SampleCountUpdated> ->

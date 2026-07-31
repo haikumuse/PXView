@@ -73,6 +73,7 @@ private:
 
 	static QString print_vdiv(GVariant *const gvar);
     static QString print_coupling(GVariant *const gvar);
+    static QString print_pattern(GVariant *const gvar);
 
 protected:
 	struct sr_channel *const _probe;

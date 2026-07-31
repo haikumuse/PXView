@@ -224,7 +224,7 @@ void MainWindow::setupSideBar() {
   _side_bar->addItem("search.svg", S_ID(IDS_TOOLBAR_SEARCH), "Search",
                      widgets::SideBar::DockItem, _drawer_page_search);
   _side_bar->addItem("function.svg", S_ID(IDS_TOOLBAR_FUNCTION), "Function",
-                     widgets::SideBar::DockItem);
+                     widgets::SideBar::ActionItem);
   _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
   _side_bar->addItem("workflow.svg", S_ID(IDS_TOOLBAR_MCP), "MCP",
@@ -1184,6 +1184,11 @@ bool MainWindow::able_to_close() {
 
   save_config();
 
+  // Check if the user has disabled the save prompt on exit
+  if (!AppConfig::Instance().appOptions.promptSaveOnExit) {
+    return true;
+  }
+
   if (confirm_to_store_data()) {
     on_save();
     return false;
@@ -1234,13 +1239,6 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     current_view()->show_search_cursor(true);
     drawerPage = _drawer_page_search;
     break;
-  case SIDEBAR_FUNCTION: {
-    // Show function menu (FFT/Math) at the sidebar button position
-    auto btn = _side_bar->getItem(SIDEBAR_FUNCTION)->button;
-    QPoint pos = btn->mapToGlobal(QPoint(btn->width(), 0));
-    _trig_bar->_function_menu->popup(pos);
-    break;
-  }
   case SIDEBAR_OPTIONS:
     _device_options_widget->update_view();
     drawerPage = _drawer_page_device_options;
@@ -1277,6 +1275,17 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
 
 void MainWindow::on_side_bar_action_clicked(int index) {
   switch (index) {
+  case SIDEBAR_FUNCTION: {
+    // Show function menu (FFT/Math/Lissajous) at the sidebar button position.
+    // Using ActionItem instead of DockItem so the button doesn't toggle
+    // check state (which caused the menu to only appear every other click).
+    auto info = _side_bar->getItem(SIDEBAR_FUNCTION);
+    if (!info || !info->button)
+      break;
+    QPoint pos = info->button->mapToGlobal(QPoint(info->button->width(), 0));
+    _trig_bar->_function_menu->popup(pos);
+    break;
+  }
   case SIDEBAR_RUNSTOP:
     if (_session->is_working()) {
       _session->stop_capture();
@@ -3058,6 +3067,8 @@ void MainWindow::update_toolbar_view_status() {
   _side_bar->setItemEnabled(SIDEBAR_SEARCH, bEnable);
   _side_bar->setItemEnabled(SIDEBAR_FUNCTION, bEnable);
   _side_bar->setItemEnabled(SIDEBAR_OPTIONS, bEnable);
+  _side_bar->setItemEnabled(SIDEBAR_MCP, bEnable);
+  _side_bar->setItemEnabled(SIDEBAR_LOG, bEnable);
   _side_bar->setItemEnabled(SIDEBAR_RUNSTOP, true);
   _side_bar->setItemEnabled(SIDEBAR_INSTANT, true);
 
@@ -3077,6 +3088,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, true);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_MCP, true);
     _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
@@ -3087,6 +3099,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_MCP, true);
     _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, false);
@@ -3097,6 +3110,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, true);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_MCP, true);
     _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
