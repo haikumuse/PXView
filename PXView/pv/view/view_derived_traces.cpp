@@ -455,6 +455,10 @@ void ViewDerivedTraces::sync_derived_traces() {
       _view->_own_lissajous_trace->set_xIndex(lissajous_model->x_index());
       _view->_own_lissajous_trace->set_yIndex(lissajous_model->y_index());
       _view->_own_lissajous_trace->set_percent(lissajous_model->percent());
+      // Refresh the DsoSnapshot pointer — reload() may have rebuilt the
+      // snapshot, leaving the old pointer dangling. Without this, paint_mid
+      // would dereference a freed DsoSnapshot (UAF) or find it empty.
+      _view->_own_lissajous_trace->set_data(source->get_dso_snapshot());
     }
   } else {
     if (_view->_own_lissajous_trace) {

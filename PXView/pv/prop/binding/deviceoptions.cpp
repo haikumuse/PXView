@@ -121,6 +121,16 @@ DeviceOptions::DeviceOptions(SigSession *session)
             continue;
 
 		case SR_CONF_PATTERN_MODE:
+			/* DSO mode: per-channel pattern is already bound via
+			 * ProbeOptions (devopts_cg_dso_channel[] + probe_configs[]).
+			 * Showing a device-level pattern dropdown here would
+			 * duplicate the per-channel one and, worse, the device-level
+			 * config_set writes ALL dso_pattern[] entries to the same
+			 * value — overriding per-channel selections. Skip it.
+			 * LOGIC/ANALOG modes keep the device-level binding because
+			 * there is no per-channel pattern path for those modes. */
+			if (_device_agent->get_work_mode() == DSO)
+				continue;
 			bind_enum(name, label, key, gvar_list, print_pattern);
 			break;
 		case SR_CONF_BUFFERSIZE:

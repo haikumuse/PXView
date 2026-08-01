@@ -82,6 +82,7 @@
 #include "dock/deviceoptionsdock.h"
 #include "dock/logdock.h"
 #include "dock/mcpcontroldock.h"
+#include "dock/functiondock.h"
 #include "dock/measuredock.h"
 #include "dock/protocoldock.h"
 #include "dock/searchdock.h"
@@ -224,7 +225,7 @@ void MainWindow::setupSideBar() {
   _side_bar->addItem("search.svg", S_ID(IDS_TOOLBAR_SEARCH), "Search",
                      widgets::SideBar::DockItem, _drawer_page_search);
   _side_bar->addItem("function.svg", S_ID(IDS_TOOLBAR_FUNCTION), "Function",
-                     widgets::SideBar::ActionItem);
+                     widgets::SideBar::DockItem, _drawer_page_function);
   _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
   _side_bar->addItem("workflow.svg", S_ID(IDS_TOOLBAR_MCP), "MCP",
@@ -548,8 +549,18 @@ void MainWindow::setup_ui() {
   _log_widget = new dock::LogDock(_log_dock);
   _log_dock->setWidget(_log_widget);
 
-  // MCP control dock
-  _mcp_control_widget = new dock::McpControlDock(AppControl::Instance(), this);
+// MCP control dock
+_mcp_control_widget = new dock::McpControlDock(AppControl::Instance(), this);
+
+// Function dock (FFT / Math / Lissajous inline controls)
+_function_dock = new QDockWidget(
+    L_S(STR_PAGE_DLG, S_ID(IDS_TOOLBAR_FUNCTION), "Function"), this);
+_function_dock->setObjectName("function_dock");
+_function_dock->setFeatures(QDockWidget::DockWidgetMovable);
+_function_dock->setAllowedAreas(Qt::RightDockWidgetArea);
+_function_dock->setVisible(false);
+_function_widget = new dock::FunctionDock(_function_dock, _session);
+_function_dock->setWidget(_function_widget);
 
   // Do NOT add dock widgets to the main window layout.
   // They are hidden containers; content is shown via SlidingDrawer instead.
@@ -558,8 +569,9 @@ void MainWindow::setup_ui() {
   _dso_trigger_dock->setVisible(false);
   _measure_dock->setVisible(false);
   _search_dock->setVisible(false);
-  _device_options_dock->setVisible(false);
-  _log_dock->setVisible(false);
+_device_options_dock->setVisible(false);
+_log_dock->setVisible(false);
+_function_dock->setVisible(false);
 
   // --- Create SlidingDrawer (overlay child of _central_widget, push via
   // margin) ---
@@ -614,6 +626,12 @@ void MainWindow::setup_ui() {
   _drawer_page_mcp = _sliding_drawer->addPage(
       _mcp_control_widget,
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MCP_DOCK_TITLE), "MCP Server"));
+
+  // Function (FFT / Math / Lissajous)
+  _function_dock->setWidget(nullptr);
+  _drawer_page_function = _sliding_drawer->addPage(
+      _function_widget,
+      L_S(STR_PAGE_DLG, S_ID(IDS_TOOLBAR_FUNCTION), "Function"));
 
   _drawer_current_page = -1;
 
@@ -946,6 +964,9 @@ void MainWindow::retranslateUi() {
     _sliding_drawer->setPageTitle(
         _drawer_page_log,
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
+    _sliding_drawer->setPageTitle(
+        _drawer_page_function,
+        L_S(STR_PAGE_DLG, S_ID(IDS_TOOLBAR_FUNCTION), "Function"));
   }
 
   Ribbon_retranslateUi();
@@ -1239,6 +1260,10 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     current_view()->show_search_cursor(true);
     drawerPage = _drawer_page_search;
     break;
+  case SIDEBAR_FUNCTION:
+    _function_widget->reload();
+    drawerPage = _drawer_page_function;
+    break;
   case SIDEBAR_OPTIONS:
     _device_options_widget->update_view();
     drawerPage = _drawer_page_device_options;
@@ -1275,17 +1300,6 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
 
 void MainWindow::on_side_bar_action_clicked(int index) {
   switch (index) {
-  case SIDEBAR_FUNCTION: {
-    // Show function menu (FFT/Math/Lissajous) at the sidebar button position.
-    // Using ActionItem instead of DockItem so the button doesn't toggle
-    // check state (which caused the menu to only appear every other click).
-    auto info = _side_bar->getItem(SIDEBAR_FUNCTION);
-    if (!info || !info->button)
-      break;
-    QPoint pos = info->button->mapToGlobal(QPoint(info->button->width(), 0));
-    _trig_bar->_function_menu->popup(pos);
-    break;
-  }
   case SIDEBAR_RUNSTOP:
     if (_session->is_working()) {
       _session->stop_capture();
@@ -1708,8 +1722,12 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
         gvar_opts, &num_opts, sizeof(int32_t));
 
     for (unsigned int i = 0; i < num_opts; i++) {
+      /* SR_CONF_DEVICE_SESSIONS returns bare keys (no capability flags).
+       * We cannot check SR_CONF_SET here, so we attempt set_config and
+       * silently skip GET-only keys that reject the SET. */
+      const int key = options[i];
       const struct sr_config_info *info =
-          _device_agent->get_config_info(options[i]);
+          _device_agent->get_config_info(key);
 
       if (!info || !info->name)
         continue;
@@ -1775,8 +1793,12 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
 
       bool bFlag = _device_agent->set_config(info->key, gvar);
       if (!bFlag) {
-        pxv_err("Set device config option failed, id:%d, code:%d", info->key,
-                id);
+        /* GET-only keys (SR_CONF_REF_MAX, SR_CONF_MAX_DSO_SAMPLERATE,
+         * SR_CONF_LOAD_DECODER, SR_CONF_HAVE_ZERO, SR_CONF_MAX_DSO_SAMPLELIMITS)
+         * are listed in SR_CONF_DEVICE_SESSIONS but don't support SET.
+         * Silently skip — the driver keeps its default value. */
+        pxv_dbg("load_config: key '%s' (id=%d) rejected SET, skipping",
+                info->name, info->key);
       }
     }
     g_variant_unref(gvar_opts);
@@ -1795,6 +1817,9 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
       for (unsigned int i = 0; i < num_opts; i++) {
         /* Mask off capability bits — see gen_config_json() for details. */
         const int key = (int)(options[i] & 0x1fffffff);
+        /* Skip GET-only keys — SR_CONF_SET bit is bit 30. */
+        if (!(options[i] & SR_CONF_SET))
+          continue;
         const struct sr_config_info *info =
             _device_agent->get_config_info(key);
 
@@ -3130,6 +3155,8 @@ void MainWindow::update_toolbar_view_status() {
       should_close = !_side_bar->isItemVisible(SIDEBAR_DECODE);
     else if (cp == _drawer_page_search)
       should_close = !_side_bar->isItemVisible(SIDEBAR_SEARCH);
+    else if (cp == _drawer_page_function)
+      should_close = !_side_bar->isItemVisible(SIDEBAR_FUNCTION);
     if (should_close) {
       _sliding_drawer->close();
       _side_bar->clearAllChecked();

@@ -65,6 +65,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/dock/logdock.cpp
     PXView/pv/dock/deviceoptionsdock.cpp
     PXView/pv/dock/mcpcontroldock.cpp
+    PXView/pv/dock/functiondock.cpp
     PXView/pv/dock/protocolitemlayer.cpp
     PXView/pv/dock/keywordlineedit.cpp
     PXView/pv/dock/searchcombobox.cpp
@@ -187,6 +188,7 @@ set(PXView_HEADERS
     PXView/pv/dock/logdock.h
     PXView/pv/dock/deviceoptionsdock.h
     PXView/pv/dock/mcpcontroldock.h
+    PXView/pv/dock/functiondock.h
     PXView/pv/toolbars/logobar.h
     PXView/pv/dialogs/about.h
     PXView/pv/dialogs/search.h
