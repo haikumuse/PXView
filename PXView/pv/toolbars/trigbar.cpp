@@ -38,7 +38,7 @@
 #include "../ui/fn.h"
 #include "../ui/dockfonts.h"
 #include "../ui/iconcache.h"
-#include "../dsvdef.h"
+#include "../pxvdef.h"
 
 namespace pv {
 namespace toolbars {

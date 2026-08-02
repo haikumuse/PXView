@@ -263,7 +263,7 @@ set(PXView_HEADERS
     PXView/pv/ui/toast.h
     PXView/pv/ui/dscombobox.h
     PXView/pv/ui/dsspinbox.h
-    PXView/pv/dsvdef.h
+    PXView/pv/pxvdef.h
     PXView/pv/dialogs/applicationpardlg.h
     PXView/pv/dock/keywordlineedit.h
     PXView/pv/dock/searchcombobox.h
@@ -309,7 +309,7 @@ set(PXView_HEADERS_NO_MOC
     PXView/pv/data/decode/annotationrestable.h
     PXView/pv/data/decode/decoderstatus.h
     PXView/pv/ui/msgbox.h
-    PXView/pv/dsvdef.h
+    PXView/pv/pxvdef.h
     PXView/pv/utility/encoding.h
     PXView/pv/utility/path.h
     PXView/pv/utility/array.h

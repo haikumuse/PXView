@@ -21,7 +21,7 @@
  */
 
 #include "deviceagent.h"
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -130,7 +130,7 @@ struct sr_dev_inst* DeviceAgent::find_sdi_by_handle(ds_device_handle handle)
 bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx)
 {
     if (handle == NULL_HANDLE) {
-        pxv_warn("%s", "DeviceAgent::open_by_handle: handle is NULL");
+        pxv_warn("%s", "DeviceAgent::open_by_handle: handle is nullptr");
         return false;
     }
 
@@ -165,7 +165,7 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
         // Input module devices (from sr_input_new) have no driver —
         // treat as virtual to skip sr_dev_open (which would crash).
         is_virtual_session = true;
-        pxv_info("open_by_handle: NULL driver — treating as virtual input-module device");
+        pxv_info("open_by_handle: nullptr driver — treating as virtual input-module device");
     }
 
     int open_ret = SR_OK;
@@ -437,7 +437,7 @@ void DeviceAgent::set_datafeed_callback(sr_datafeed_callback cb, void *user_data
 struct sr_dev_inst* DeviceAgent::inst()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::inst: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::inst: _dev_handle is nullptr");
         return nullptr;
     }
     return _di;
@@ -448,7 +448,7 @@ struct sr_dev_inst* DeviceAgent::inst()
 bool DeviceAgent::enable_probe(const sr_channel *probe, bool enable)
 {
     if (!_dev_handle || !probe) {
-        pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle or probe is NULL");
+        pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle or probe is nullptr");
         return false;
     }
 
@@ -462,7 +462,7 @@ bool DeviceAgent::enable_probe(const sr_channel *probe, bool enable)
 bool DeviceAgent::enable_probe(int probe_index, bool enable)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle is nullptr");
         return false;
     }
 
@@ -483,7 +483,7 @@ bool DeviceAgent::enable_probe(int probe_index, bool enable)
 bool DeviceAgent::set_channel_name(int ch_index, const char *name)
 {
     if (!_dev_handle || !name) {
-        pxv_warn("%s", "DeviceAgent::set_channel_name: _dev_handle or name is NULL");
+        pxv_warn("%s", "DeviceAgent::set_channel_name: _dev_handle or name is nullptr");
         return false;
     }
 
@@ -527,7 +527,7 @@ int DeviceAgent::get_channel_count()
 bool DeviceAgent::have_enabled_channel()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::have_enabled_channel: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::have_enabled_channel: _dev_handle is nullptr");
         return false;
     }
     for (const GSList *l = get_channels(); l; l = l->next) {
@@ -543,11 +543,11 @@ bool DeviceAgent::have_enabled_channel()
 uint64_t DeviceAgent::get_sample_limit()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_sample_limit: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_sample_limit: _dev_handle is nullptr");
         return 0;
     }
     uint64_t v = 0;
-    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, nullptr, nullptr);
     if (gvar) {
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -569,11 +569,11 @@ uint64_t DeviceAgent::get_sample_limit()
 uint64_t DeviceAgent::get_driver_sample_limit()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_driver_sample_limit: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_driver_sample_limit: _dev_handle is nullptr");
         return 0;
     }
     uint64_t v = 0;
-    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, nullptr, nullptr);
     if (gvar) {
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -584,7 +584,7 @@ uint64_t DeviceAgent::get_driver_sample_limit()
 uint64_t DeviceAgent::get_ring_sample_count()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_ring_sample_count: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_ring_sample_count: _dev_handle is nullptr");
         return 0;
     }
     // Ring buffer 大小用于 LogicSnapshot/AnalogSnapshot 的 mmap 内存分配。
@@ -593,7 +593,7 @@ uint64_t DeviceAgent::get_ring_sample_count()
     //   _app_stream_mem_buff(GB) 计算 ring buffer 大小。取 max(mem_buff_samples,
     //   one_sec_samples) 确保至少能容纳 1 秒数据。
     uint64_t driver_limit = 0;
-    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_LIMIT_SAMPLES, nullptr, nullptr);
     if (gvar) {
         driver_limit = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -640,11 +640,11 @@ uint64_t DeviceAgent::get_ring_sample_count()
 uint64_t DeviceAgent::get_hw_depth()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_hw_depth: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_hw_depth: _dev_handle is nullptr");
         return 0;
     }
     uint64_t v = 0;
-    GVariant *gvar = get_config(SR_CONF_HW_DEPTH, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_HW_DEPTH, nullptr, nullptr);
     if (gvar) {
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -655,11 +655,11 @@ uint64_t DeviceAgent::get_hw_depth()
 uint64_t DeviceAgent::get_sample_rate()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_sample_rate: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_sample_rate: _dev_handle is nullptr");
         return 0;
     }
     uint64_t v = 0;
-    GVariant *gvar = get_config(SR_CONF_SAMPLERATE, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_SAMPLERATE, nullptr, nullptr);
     if (gvar) {
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -670,11 +670,11 @@ uint64_t DeviceAgent::get_sample_rate()
 uint64_t DeviceAgent::get_time_base()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_time_base: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_time_base: _dev_handle is nullptr");
         return 0;
     }
     uint64_t v = 0;
-    GVariant *gvar = get_config(SR_CONF_TIMEBASE, NULL, NULL);
+    GVariant *gvar = get_config(SR_CONF_TIMEBASE, nullptr, nullptr);
     if (gvar) {
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
@@ -685,7 +685,7 @@ uint64_t DeviceAgent::get_time_base()
 double DeviceAgent::get_sample_time()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_sample_time: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_sample_time: _dev_handle is nullptr");
         return 0;
     }
     uint64_t sample_rate = get_sample_rate();
@@ -728,7 +728,7 @@ void DeviceAgent::set_work_mode(int mode)
 const GSList* DeviceAgent::get_device_mode_list()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_device_mode_list: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_device_mode_list: _dev_handle is nullptr");
         return nullptr;
     }
 
@@ -832,7 +832,7 @@ bool DeviceAgent::detect_stream_mode()
     // in stream mode — hwdriver.c rejects setting it to 0, so the only way to
     // keep streaming is to leave the driver default untouched.
     if (is_hardware()) {
-        GVariant *gvar = get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+        GVariant *gvar = get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
         if (gvar) {
             GVariantIter iter;
             g_variant_iter_init(&iter, gvar);
@@ -875,7 +875,7 @@ bool DeviceAgent::check_firmware_version()
 QString DeviceAgent::get_demo_operation_mode()
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: _dev_handle is nullptr");
         return QString();
     }
     if (!is_demo()) {
@@ -929,7 +929,7 @@ bool DeviceAgent::start()
     // GMainLoop bound to that context and runs g_main_loop_run(). If start()
     // runs on the GUI thread but run() on a worker thread, the main context
     // belongs to the wrong thread — on Windows this causes
-    // libusb_get_pollfds() to fail (NULL) and USB event sources are never
+    // libusb_get_pollfds() to fail (nullptr) and USB event sources are never
     // properly dispatched, resulting in incomplete or no data capture.
     //
     // Use std::promise to synchronize the start result back to the caller.
@@ -996,7 +996,7 @@ bool DeviceAgent::is_collecting()
 
 // --- Config (via sdi->driver->config_get/set/list) ---
 
-// Fork-only config keys are defined in dsvdef.h range 60020-60088 (PXLogic
+// Fork-only config keys are defined in pxvdef.h range 60020-60088 (PXLogic
 // ext keys + analog probe keys + DSO residual stubs). Upstream libsigrok does
 // not know about them — querying returns SR_ERR_ARG ("Invalid key 600XX") and
 // floods the log on non-DSL devices (demo/fx2lafw). Block these queries at the
@@ -1036,7 +1036,7 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
     if (!drv)
         return nullptr;
 
-    GVariant *data = NULL;
+    GVariant *data = nullptr;
     int ret = sr_config_list(drv, _di, group, (uint32_t)key, &data);
     if (ret != SR_OK) {
         // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理避免日志噪音
@@ -1044,7 +1044,7 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
             pxv_detail("%s%d", "WARNING: Failed to get config list, key:", key);
         if (data) {
             g_variant_unref(data);
-            data = NULL;
+            data = nullptr;
         }
     }
     return data;
@@ -1070,7 +1070,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         return nullptr;
     }
 
-    // For per-channel config keys, if cg is NULL but ch is provided,
+    // For per-channel config keys, if cg is nullptr but ch is provided,
     // find the channel group that contains ch so the driver can identify
     // the channel. This is needed because upstream sr_config_get only takes
     // cg (not ch), but PXView's DeviceAgent passes ch for per-channel config.
@@ -1098,7 +1098,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
             cg = fallback_grp;
         pxv_dbg("DeviceAgent::get_config: cg lookup for key=%d ch=%p -> cg=%p (name=%s)",
                  key, (void*)ch, (void*)cg,
-                 cg ? (cg->name ? cg->name : "(null)") : "(none)");
+                 cg ? (cg->name ? cg->name : "(nullptr)") : "(none)");
     }
 
     // App-layer C-class keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF,
@@ -1139,7 +1139,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
      * 典型场景：PROBE_CONFIGS(60062) 只有 demo 驱动声明，PXLogic 未声明，
      * 但某些代码路径仍尝试 get_config(PROBE_CONFIGS)。 */
     if (is_fork_only_key(key) && is_dsl_device()) {
-        GVariant *gvar_devopts = get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+        GVariant *gvar_devopts = get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
         bool devopt_has_get = false;
         if (gvar_devopts) {
             gsize n;
@@ -1162,7 +1162,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
     if (!drv)
         return nullptr;
 
-    GVariant *data = NULL;
+    GVariant *data = nullptr;
     int ret = sr_config_get(drv, _di, cg, (uint32_t)key, &data);
     if (ret != SR_OK) {
         // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key（libsigrok 对"选项不可用"
@@ -1171,7 +1171,7 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
             pxv_err("%s%d", "ERROR:DeviceAgent::get_config, Failed to get value of config id:", key);
         if (data) {
             g_variant_unref(data);
-            data = NULL;
+            data = nullptr;
         }
     }
     (void)ch;  // upstream sr_config_get does not take a channel parameter
@@ -1223,7 +1223,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
             AppConfig::Instance().SaveDevice();
             break;
         case SR_CONF_DISK_CACHE_PATH:
-            _app_disk_cache_path = QString::fromUtf8(g_variant_get_string(data, NULL));
+            _app_disk_cache_path = QString::fromUtf8(g_variant_get_string(data, nullptr));
             AppConfig::Instance().deviceOptions.diskCachePath = _app_disk_cache_path;
             AppConfig::Instance().SaveDevice();
             break;
@@ -1254,7 +1254,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     // the OPERATION_MODE dropdown addition).
     if (key == SR_CONF_OPERATION_MODE &&
         is_hardware()) {
-        const gchar *mode_str = g_variant_get_string(data, NULL);
+        const gchar *mode_str = g_variant_get_string(data, nullptr);
         if (mode_str) {
             // Accept both short ("Stream"/"Buffer") and full
             // ("Stream Mode"/"Buffer Mode") names so the MCP API (which
@@ -1292,7 +1292,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
     // config_set() (both fall through to g_variant_unref). The check_key()
     // early-return path leaks data instead (no unref), but we must not rely
     // on which path was taken.
-    char type_buf[8] = "(null)";
+    char type_buf[16] = "(nullptr)";
     const GVariantType *gvt_pre = data ? g_variant_get_type(data) : nullptr;
     if (gvt_pre) {
         const gchar *ts = g_variant_type_peek_string(gvt_pre);
@@ -1374,7 +1374,7 @@ bool DeviceAgent::get_config_int32(int key, int &value, const sr_channel *ch, co
 bool DeviceAgent::set_config_int32(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_int32: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_int32: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_int32(value);
@@ -1385,7 +1385,7 @@ bool DeviceAgent::get_config_string(int key, QString &value, const sr_channel *c
 {
     GVariant *gvar = get_config(key, ch, cg);
     if (gvar) {
-        const gchar *s = g_variant_get_string(gvar, NULL);
+        const gchar *s = g_variant_get_string(gvar, nullptr);
         value = QString::fromLocal8Bit(s);
         g_variant_unref(gvar);
         return true;
@@ -1396,11 +1396,11 @@ bool DeviceAgent::get_config_string(int key, QString &value, const sr_channel *c
 bool DeviceAgent::set_config_string(int key, const char *value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!value) {
-        pxv_warn("%s", "DeviceAgent::set_config_string: value is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_string: value is nullptr");
         return false;
     }
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_string: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_string: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_string(value);
@@ -1422,7 +1422,7 @@ bool DeviceAgent::get_config_bool(int key, bool &value, const sr_channel *ch, co
 bool DeviceAgent::set_config_bool(int key, bool value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_bool: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_bool: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_boolean(value);
@@ -1443,7 +1443,7 @@ bool DeviceAgent::get_config_uint64(int key, uint64_t &value, const sr_channel *
 bool DeviceAgent::set_config_uint64(int key, uint64_t value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_uint64: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_uint64: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_uint64(value);
@@ -1464,7 +1464,7 @@ bool DeviceAgent::get_config_uint16(int key, int &value, const sr_channel *ch, c
 bool DeviceAgent::set_config_uint16(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_uint16: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_uint16: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_uint16(value);
@@ -1485,7 +1485,7 @@ bool DeviceAgent::get_config_uint32(int key, uint32_t &value, const sr_channel *
 bool DeviceAgent::set_config_uint32(int key, uint32_t value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_uint32: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_uint32: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_uint32(value);
@@ -1506,7 +1506,7 @@ bool DeviceAgent::get_config_int16(int key, int &value, const sr_channel *ch, co
 bool DeviceAgent::set_config_int16(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_int16: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_int16: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_int16(value);
@@ -1527,7 +1527,7 @@ bool DeviceAgent::get_config_byte(int key, int &value, const sr_channel *ch, con
 bool DeviceAgent::set_config_byte(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_byte: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_byte: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_byte((uint8_t)value);
@@ -1548,7 +1548,7 @@ bool DeviceAgent::get_config_double(int key, double &value, const sr_channel *ch
 bool DeviceAgent::set_config_double(int key, double value, const sr_channel *ch, const sr_channel_group *cg)
 {
     if (!_dev_handle) {
-        pxv_warn("%s", "DeviceAgent::set_config_double: _dev_handle is NULL");
+        pxv_warn("%s", "DeviceAgent::set_config_double: _dev_handle is nullptr");
         return false;
     }
     GVariant *gvar = g_variant_new_double(value);
@@ -1593,8 +1593,8 @@ int DeviceAgent::option_value_to_code(int mode, int key, const char *value)
      * DSO channel group (per-probe SR_T_LIST keys used by DSO configs are
      * cg-scoped in the demo/DSL drivers); otherwise fall back to the first
      * available group so device-level list keys still resolve. */
-    const struct sr_channel_group *cg = NULL;
-    const struct sr_channel_group *first_cg = NULL;
+    const struct sr_channel_group *cg = nullptr;
+    const struct sr_channel_group *first_cg = nullptr;
     for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
         const struct sr_channel_group *grp =
             (const struct sr_channel_group *)l->data;
@@ -1618,7 +1618,7 @@ int DeviceAgent::option_value_to_code(int mode, int key, const char *value)
     if (!gvar)
         return -1;
 
-    /* g_variant_get_strv returns a freshly-allocated NULL-terminated array
+    /* g_variant_get_strv returns a freshly-allocated nullptr-terminated array
      * of pointers into the GVariant's internal buffer. The array must be
      * g_free'd; the variant must be g_variant_unref'd after we are done
      * with the strings. */
@@ -1686,39 +1686,39 @@ bool DeviceAgent::get_ref_max(uint32_t &v) {
 
 bool DeviceAgent::get_probe_vdiv(uint64_t &v, sr_channel *probe) {
     if (!is_dsl_device()) { v = 0; return false; }
-    return get_config_uint64(SR_CONF_PROBE_VDIV, v, probe, NULL);
+    return get_config_uint64(SR_CONF_PROBE_VDIV, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
     if (!is_dsl_device()) return false;
-    return get_config_uint64(SR_CONF_PROBE_FACTOR, v, probe, NULL);
+    return get_config_uint64(SR_CONF_PROBE_FACTOR, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
     if (!is_dsl_device()) { v = 0; return false; }
     /* demo 驱动 GET 返回 int32 ("i"), 匹配 sr_key_info_config SR_T_INT32。
      * (DSL 驱动 GET 返回 string, 此方法对 DSL 本就不工作 — DSL 硬件已 dropped) */
-    return get_config_int32(SR_CONF_PROBE_COUPLING, v, probe, NULL);
+    return get_config_int32(SR_CONF_PROBE_COUPLING, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {
     if (!is_dsl_device()) return false;
-    return get_config_uint16(SR_CONF_PROBE_OFFSET, v, probe, NULL);
+    return get_config_uint16(SR_CONF_PROBE_OFFSET, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_probe_hw_offset(int &v, sr_channel *probe) {
     if (!is_dsl_device()) return false;
-    return get_config_uint16(SR_CONF_PROBE_HW_OFFSET, v, probe, NULL);
+    return get_config_uint16(SR_CONF_PROBE_HW_OFFSET, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_probe_map_default(bool &v, sr_channel *probe) {
     if (!is_dsl_device()) return false;
-    return get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, v, probe, NULL);
+    return get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, v, probe, nullptr);
 }
 
 bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
     if (!is_dsl_device()) { v = 0; return false; }
-    return get_config_int32(SR_CONF_TRIGGER_VALUE, v, probe, NULL);
+    return get_config_int32(SR_CONF_TRIGGER_VALUE, v, probe, nullptr);
 }
 
 uint64_t DeviceAgent::get_trigger_pos() const {
@@ -1740,7 +1740,7 @@ QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
     /* SR_CONF_PROBE_VDIV is a per-channel-group key in the demo driver.
      * Find the first DSO channel's group so sr_config_list reaches the
      * cg branch that actually returns the vdiv list. */
-    const struct sr_channel_group *cg = NULL;
+    const struct sr_channel_group *cg = nullptr;
     for (GSList *l = sr_dev_inst_channel_groups_get(_di); l; l = l->next) {
         const struct sr_channel_group *grp =
             (const struct sr_channel_group *)l->data;

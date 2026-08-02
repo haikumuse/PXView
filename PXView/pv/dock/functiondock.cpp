@@ -24,7 +24,7 @@
 
 #include <QHBoxLayout>
 #include <QIcon>
-#include <math.h>
+#include <cmath>
 
 #include "../sigsession.h"
 #include "../data/lissajousmodel.h"
@@ -34,7 +34,7 @@
 #include "../ui/langresource.h"
 #include "../ui/dockfonts.h"
 #include "../config/appconfig.h"
-#include "../dsvdef.h"
+#include "../pxvdef.h"
 #include "../log.h"
 
 namespace pv {

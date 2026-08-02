@@ -2,7 +2,7 @@
  * This file is part of the PXView project.
  * PXView is based on DSView.
  * PXView is based on PulseView.
- * 
+ *
  * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,34 +20,28 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include "dsvdef.h" 
-#include <string.h>
+#include "pxvdef.h"
+#include <cstring>
 
 #ifdef DS_DEBUG_TRACE
-#include <stdio.h>
-    void ds_print(const char *s){
-        printf(s);
-    }     
+#include <cstdio>
+void ds_print(const char *s) {
+    std::printf("%s", s);
+}
 #endif
 
-namespace DecoderDataFormat
-{
-      int Parse(const char *name){
-        if (strcmp(name, "dec") == 0){
-            return (int)dec;
-        }
-        if (strcmp(name, "hex") == 0){
-            return (int)hex;
-        }
-        if (strcmp(name, "oct") == 0){
-            return (int)oct;
-        }
-        if (strcmp(name, "bin") == 0){
-            return (int)bin;
-        }
-        if (strcmp(name, "ascii") == 0){
-            return (int)ascii;
-        }
-        return (int)hex;
+// NOTE: kDevModeLogic / kDevModeAnalog / kDevModeDso / kDevModeMso are
+// defined in deviceagent.cpp (not here) to avoid multiple definition errors.
+
+// --- DecoderDataFormat::Parse ---
+
+namespace DecoderDataFormat {
+    int Parse(const char *name) {
+        if (std::strcmp(name, "dec") == 0)   return static_cast<int>(dec);
+        if (std::strcmp(name, "hex") == 0)   return static_cast<int>(hex);
+        if (std::strcmp(name, "oct") == 0)   return static_cast<int>(oct);
+        if (std::strcmp(name, "bin") == 0)   return static_cast<int>(bin);
+        if (std::strcmp(name, "ascii") == 0) return static_cast<int>(ascii);
+        return static_cast<int>(hex);
     }
 }

@@ -21,11 +21,11 @@
  */
 
  
-#include <math.h>
+#include <cmath>
 #include <QTimer>
 
 #include "view.h"
-#include "../dsvdef.h"
+#include "../pxvdef.h"
 #include "lissajoustrace.h"
 #include "../data/dsosnapshot.h"
 #include "../sigsession.h"

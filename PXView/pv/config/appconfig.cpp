@@ -25,7 +25,7 @@
 #include <QSettings>
 #include <QLocale>
 #include <QDir> 
-#include <assert.h>
+#include <cassert>
 #include <QStandardPaths>
 #include "../log.h"
   
@@ -408,8 +408,8 @@ AppConfig::~AppConfig()
 
  AppConfig& AppConfig::Instance()
  {
-     static AppConfig *ins = NULL;
-     if (ins == NULL){
+     static AppConfig *ins = nullptr;
+     if (ins == nullptr){
          ins = new AppConfig();
      }
      return *ins;
@@ -620,7 +620,7 @@ std::string AppConfig::GetProtocolFormat(const std::string &protocolName)
 void AppConfig::GetFontSizeRange(float *minSize, float *maxSize)
 {
     if (!minSize || !maxSize) {
-        pxv_warn("%s", "AppConfig::GetFontSizeRange: minSize or maxSize is NULL");
+        pxv_warn("%s", "AppConfig::GetFontSizeRange: minSize or maxSize is nullptr");
         return;
     }
     assert(minSize);

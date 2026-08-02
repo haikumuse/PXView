@@ -100,7 +100,7 @@ void DsoTriggerConfig::set_trig_ratio(double ratio, bool delta_change) {
       DeviceAgent *device = _signal->_data_source->device();
       if (device && device->have_instance()) {
         device->set_config_int32(SR_CONF_TRIGGER_VALUE,
-                                 (int)_signal->_trig_value, probe, NULL);
+                                 (int)_signal->_trig_value, probe, nullptr);
       }
     }
   }

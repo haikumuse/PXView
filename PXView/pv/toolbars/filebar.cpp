@@ -279,7 +279,7 @@ void FileBar::on_actionDefault_triggered()
 { 
     QDir dir(GetFirmwareDir());
     if (!dir.exists()) { 
-          MsgBox::Show(NULL, L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NOT_FOND_DEFAULT_PROFILE),
+          MsgBox::Show(nullptr, L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NOT_FOND_DEFAULT_PROFILE),
              "Cannot find default profile for this device!"), this);
           return;
     }
