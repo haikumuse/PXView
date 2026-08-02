@@ -23,7 +23,7 @@ $gitdir = "$repoRoot/.git/worktrees/PXView-sync"
 
 # 白名单(与 migrate_to_worktree.ps1 保持一致)
 $whitelistDirs = @(
-    "CMake", "PXView", "common", "debian", "doc", "lang", "web",
+    "CMake", "PXView", "common", "debian", "doc", "lang", "tools", "web",
     "libsigrok", "libsigrokdecode", "libusb",
     "sigrok-firmware", "sigrok-firmware-fx2lafw", "sigrok-util"
 )
