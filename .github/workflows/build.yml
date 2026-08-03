@@ -205,14 +205,15 @@ jobs:
 
       - name: Create AppImage using linuxdeploy
         run: |
+          # linuxdeploy 的 mksquashfs 需要可写的 TMPDIR
+          export TMPDIR="$HOME/tmp"
+          mkdir -p "$TMPDIR"
           wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/${{ env.LINUXDEPLOY_VERSION }}/linuxdeploy-x86_64.AppImage"
           wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/${{ env.LINUXDEPLOY_VERSION }}/linuxdeploy-plugin-qt-x86_64.AppImage"
           chmod +x linuxdeploy*.AppImage
           export QMAKE="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/bin/qmake"
           export LD_LIBRARY_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/gcc_64/lib:$LD_LIBRARY_PATH"
           export OUTPUT="PXView-Linux-x86_64-AppImage-${{ steps.version.outputs.value }}.AppImage"
-          # 使用绝对路径的 OUTPUT,避免 linuxdeploy 在当前目录写入失败
-          export OUTPUT="$(pwd)/$OUTPUT"
           ./linuxdeploy-x86_64.AppImage \
             --appdir install.dir \
             -e install.dir/usr/bin/PXView \
