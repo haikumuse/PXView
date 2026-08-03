@@ -83,6 +83,34 @@ foreach ($f in $whitelistFiles) {
 }
 Write-Host "   [OK] 白名单文件已同步" -ForegroundColor Green
 
+# 步骤 2.5:修复 worktree 子模块 index 文件缺失
+# Git 2.55 worktree + submodule bug:git submodule update --init 对没有 branch
+# 配置的上游子模块(sigrok-firmware 等),当 clone 的 HEAD 已与 gitlink SHA
+# 一致时会跳过 checkout 步骤,导致 index 文件缺失。没有 index,子模块全部
+# 文件显示为 staged deletion(dirty),污染 git status 输出。
+# 对比:有 branch 配置的自定义子模块(libsigrok 等)会执行 checkout(分离
+# HEAD),index 文件正常创建。
+$submoduleDirs = @(
+    "sigrok-firmware", "sigrok-firmware-fx2lafw", "sigrok-util",
+    "libsigrok", "libsigrokdecode", "libusb"
+)
+foreach ($sm in $submoduleDirs) {
+    $smPath = Join-Path $worktreePath $sm
+    if (Test-Path $smPath) {
+        $smSt = git -C $smPath status --short 2>&1
+        if ($smSt) {
+            $needFix = $false
+            foreach ($line in $smSt) {
+                if ($line -match "^D ") { $needFix = $true; break }
+            }
+            if ($needFix) {
+                Write-Host "   修复子模块 index: $sm" -ForegroundColor DarkGray
+                git -C $smPath checkout HEAD -- . 2>&1 | Out-Null
+            }
+        }
+    }
+}
+
 # 步骤 3:检查是否有变更
 Write-Host ""
 Write-Host " [3/4] 检查变更..." -ForegroundColor Yellow
