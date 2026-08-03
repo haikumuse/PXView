@@ -756,7 +756,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install.dir
 
       - name: Build and Install Web UI (optional)
-        run: cd build && ninja install-webui || echo "WARNING: Web UI skipped"
+        run: |
+          cd build && ninja install-webui || echo "WARNING: Web UI skipped"
 
       - name: Build PXView
         run: cd build && ninja -j $(nproc)
