@@ -29,7 +29,7 @@ on:
 jobs:
   audit:
     name: Config Type Audit
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
   linux:
     name: Linux AppImage (x86_64)
     if: ${{ github.event.inputs.targets == 'linux' || github.event.inputs.targets == 'both' || github.event_name == 'push' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       QT_PREFIX: ${{ github.workspace }}/Qt
       QT_VERSION: "6.11.0"
@@ -67,9 +67,11 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
             echo "value=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+          else
+            echo "value=1.5.4" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout PXView repo
@@ -81,18 +83,10 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          # Install GCC 14 from Ubuntu Toolchain PPA (required for C++23 <expected>)
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          # Ubuntu 24.04 自带 GCC 14,无需 PPA
           sudo apt-get update
-          sudo apt-get install -y gcc-14 g++-14
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-          echo "CC=gcc-14" >> $GITHUB_ENV
-          echo "CXX=g++-14" >> $GITHUB_ENV
-          gcc --version
-          g++ --version
           sudo apt-get install -y \
-            git make cmake ninja-build pkg-config \
+            git gcc g++ make cmake ninja-build pkg-config \
             libglib2.0-dev zlib1g-dev libusb-1.0-0-dev libudev-dev \
             libboost-dev libfftw3-dev libssl-dev \
             python3-dev python3-pip \
@@ -104,6 +98,8 @@ jobs:
             libwayland-dev libwayland-egl1 libwayland-client0 libwayland-cursor0 \
             libzip-dev nettle-dev libftdi1-dev \
             sdcc wget zip
+          gcc --version
+          g++ --version
 
       - name: Setup Node.js (for Web UI)
         uses: actions/setup-node@v4
@@ -175,37 +171,34 @@ jobs:
           echo "Bundled Python stdlib size:"
           du -sh install.dir/usr/lib/python$PY_VERSION
 
-      - name: Bundle GCC 14 runtime libraries into AppDir
+      - name: Bundle GCC runtime libraries into AppDir
         run: |
-          # GCC 14 的 libstdc++.so.6 和 libgcc_s.so.1 比系统 GCC 12 的版本更高,
-          # 必须打包进 AppImage,否则在其他 Ubuntu 22.04 (只有 GCC 12) 上会因
-          # GLIBCXX_3.4.33 等符号缺失而无法启动。
-          echo "=== Bundling GCC 14 runtime libraries ==="
+          # Ubuntu 24.04 自带 GCC 14,但目标用户可能在 Ubuntu 22.04 上运行,
+          # 那里只有 GCC 12。打包 libstdc++.so.6 和 libgcc_s.so.1 确保
+          # GLIBCXX_3.4.33 等符号在旧系统上可用。
+          echo "=== Bundling GCC runtime libraries ==="
           mkdir -p install.dir/usr/lib
-          # libstdc++.so.6
-          STDCPP_SRC=$(gcc-14 -print-file-name=libstdc++.so.6)
+          STDCPP_SRC=$(gcc -print-file-name=libstdc++.so.6)
           if [ -f "$STDCPP_SRC" ]; then
             cp -f "$STDCPP_SRC" install.dir/usr/lib/
             echo "  libstdc++.so.6: $STDCPP_SRC -> install.dir/usr/lib/"
           else
             echo "  WARNING: libstdc++.so.6 not found"
           fi
-          # libgcc_s.so.1
-          LIBGCC_SRC=$(gcc-14 -print-file-name=libgcc_s.so.1)
+          LIBGCC_SRC=$(gcc -print-file-name=libgcc_s.so.1)
           if [ -f "$LIBGCC_SRC" ]; then
             cp -f "$LIBGCC_SRC" install.dir/usr/lib/
             echo "  libgcc_s.so.1: $LIBGCC_SRC -> install.dir/usr/lib/"
           else
             echo "  WARNING: libgcc_s.so.1 not found"
           fi
-          # 验证版本
           echo "=== Bundled library versions ==="
           strings install.dir/usr/lib/libstdc++.so.6 | grep GLIBCXX | tail -5
           ls -la install.dir/usr/lib/libstdc++.so.6 install.dir/usr/lib/libgcc_s.so.1
 
       - name: Create AppImage using linuxdeploy
         run: |
-          # linuxdeploy 的 mksquashfs 需要可写的 TMPDIR
+          # linuxdeploy 的 mksquashfs 需要可写的 TMPDIR (GitHub Actions 默认 /tmp 可能空间不足)
           export TMPDIR="$HOME/tmp"
           mkdir -p "$TMPDIR"
           wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/${{ env.LINUXDEPLOY_VERSION }}/linuxdeploy-x86_64.AppImage"
@@ -301,16 +294,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   mac:
-    name: macOS (${{ matrix.arch }})
+    name: macOS (ARM64)
     if: ${{ github.event.inputs.targets == 'mac' || github.event.inputs.targets == 'both' || github.event_name == 'push' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: ARM64
-            cross_compile: false
-          - arch: x86_64
-            cross_compile: true
     runs-on: macos-14
     steps:
       - name: Resolve ref
@@ -327,9 +312,11 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
             echo "value=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+          else
+            echo "value=1.5.4" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout PXView repo
@@ -339,37 +326,10 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Setup x86_64 cross-compilation (Rosetta 2)
-        if: matrix.cross_compile
-        run: |
-          softwareupdate --install-rosetta --agree-to-license || true
-          if [ ! -f /usr/local/bin/brew ]; then
-            NONINTERACTIVE=1 arch -x86_64 /bin/bash -c \
-              "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          fi
-          echo "HOMEBREW_NO_PATH_SHADOW_CHECK=1" >> $GITHUB_ENV
-          echo "HOMEBREW_NO_ENV_HINTS=1" >> $GITHUB_ENV
-          echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
-          echo "/usr/local/bin" >> $GITHUB_PATH
-          echo "=== x86_64 Homebrew 验证 ==="
-          /usr/local/bin/brew --version
-          BREW_CORE="/usr/local/Homebrew/bin/brew"
-          if [ -f "$BREW_CORE" ]; then
-            echo "brew binary 架构:"
-            file "$BREW_CORE"
-            lipo -info "$BREW_CORE" 2>/dev/null || true
-          fi
-          echo "BREW_PREFIX=$(/usr/local/bin/brew --prefix)"
-
       - name: Install dependencies via Homebrew
         run: |
           brew update
-          if [ "${{ matrix.cross_compile }}" = "true" ]; then
-            BREW_OVERWRITE="--overwrite"
-          else
-            BREW_OVERWRITE=""
-          fi
-          brew install $BREW_OVERWRITE cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip nettle libftdi sdcc
+          brew install cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config libzip nettle libftdi sdcc
 
       - name: Setup Node.js (for Web UI)
         uses: actions/setup-node@v4
@@ -386,15 +346,7 @@ jobs:
           export LDFLAGS="-L$(brew --prefix gettext)/lib"
           export CPPFLAGS="-I$(brew --prefix gettext)/include"
           export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          if [ "${{ matrix.cross_compile }}" = "true" ]; then
-            OSX_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=x86_64"
-            echo "配置: x86_64 交叉编译 (Rosetta 2)"
-          else
-            OSX_ARCH_FLAG=""
-            echo "配置: ARM64 原生编译"
-          fi
           cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            $OSX_ARCH_FLAG \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
             -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
             -DCMAKE_INSTALL_PREFIX=../install.dir
@@ -559,7 +511,7 @@ jobs:
           echo "=== hdiutil (DMG 生成) ==="
           SECS_HD=$SECONDS
           hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
-            -ov -format UDZO "install.dir/PXView-macOS-${{ matrix.arch }}-${{ steps.version.outputs.value }}.dmg"
+            -ov -format UDZO "install.dir/PXView-macOS-ARM64-${{ steps.version.outputs.value }}.dmg"
           echo "hdiutil 耗时: $((SECONDS - SECS_HD))s"
           ls -la install.dir/*.dmg
 
@@ -567,7 +519,7 @@ jobs:
         run: |
           set -e
 
-          hdiutil attach "install.dir/PXView-macOS-${{ matrix.arch }}-${{ steps.version.outputs.value }}.dmg" -nobrowse -mountpoint /tmp/vrf-mount
+          hdiutil attach "install.dir/PXView-macOS-ARM64-${{ steps.version.outputs.value }}.dmg" -nobrowse -mountpoint /tmp/vrf-mount
           rm -rf /tmp/PXView-vrf.app
           cp -R /tmp/vrf-mount/PXView.app /tmp/PXView-vrf.app
           hdiutil detach /tmp/vrf-mount
@@ -631,13 +583,7 @@ jobs:
           echo ""
           echo "启动 PXView --headless,等待 15 秒..."
 
-          if [ "${{ matrix.cross_compile }}" = "true" ]; then
-            echo "运行模式: x86_64 (via Rosetta 2 on ARM64 runner)"
-            arch -x86_64 "$APP_BIN" --headless -l 4 > /tmp/pxv-headless.log 2>&1 &
-          else
-            echo "运行模式: ARM64 (native)"
-            "$APP_BIN" --headless -l 4 > /tmp/pxv-headless.log 2>&1 &
-          fi
+          "$APP_BIN" --headless -l 4 > /tmp/pxv-headless.log 2>&1 &
           PID=$!
           sleep 15
 
@@ -674,12 +620,12 @@ jobs:
           fi
 
           echo ""
-          echo "=== ✅ DMG 验证通过 (${{ matrix.arch }}) ==="
+          echo "=== ✅ DMG 验证通过 (ARM64) ==="
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PXView-macOS-${{ matrix.arch }}-${{ steps.version.outputs.value }}
+          name: PXView-macOS-ARM64-${{ steps.version.outputs.value }}
           path: install.dir/*.dmg
           if-no-files-found: error
 
