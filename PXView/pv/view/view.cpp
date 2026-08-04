@@ -94,16 +94,10 @@ const QString View::Unknown_Str = "########";
 
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
            QWidget *parent)
-    : QScrollArea(parent), _sampling_bar(sampling_bar), _scale(10),
-      _preScale(1e-6), _maxscale(1e9), _minscale(1e-15), _offset(0),
-      _preOffset(0), _vOffset(0), _signalHeightScale(MaxHeightUnit),
-      _lastWidth(-1), _updating_scroll(false), _trig_hoff(0),
-      _show_cursors(false), _search_hit(false), _show_xcursors(false),
+    : QScrollArea(parent), _sampling_bar(sampling_bar),
+      _trig_hoff(0), _signalHeightScale(MaxHeightUnit),
       _hover_point(-1, -1), _dso_auto(true), _show_lissajous(false),
       _back_ready(false) {
-  _trig_cursor = nullptr;
-  _search_cursor = nullptr;
-
   _session = session;
   _data_source = session;
   _document = nullptr;
@@ -214,16 +208,16 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _ruler->setObjectName("ViewArea_ruler");
   _header->setObjectName("ViewArea_header");
 
-  QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
-  fore.setAlpha(View::BackAlpha);
+QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
+fore.setAlpha(View::BackAlpha);
 
-  _show_trig_cursor = false;
-  _trig_cursor = new Cursor(*this, -1, 0);
-  _trig_cursor->set_colour(View::LightRed);
-  _show_search_cursor = false;
-  _search_pos = 0;
-  _search_cursor = new Cursor(*this, -1, _search_pos);
-  _search_cursor->set_colour(fore);
+_cursors->_show_trig_cursor = false;
+_cursors->_trig_cursor = new Cursor(*this, -1, 0);
+_cursors->_trig_cursor->set_colour(View::LightRed);
+_cursors->_show_search_cursor = false;
+_cursors->_search_pos = 0;
+_cursors->_search_cursor = new Cursor(*this, -1, _cursors->_search_pos);
+_cursors->_search_cursor->set_colour(fore);
 
   connect(_time_viewport, &Viewport::measure_updated, this,
           &View::on_measure_updated);
@@ -320,21 +314,11 @@ View::~View() {
     _glitch_filter_popup = nullptr;
   }
 
-  // Clean up cursors (View owns the storage; ViewCursors delegate only
-  // manages behaviour). Without this, cursor objects leak on View destruction.
-  for (auto c : _logic_cursors)
-    delete c;
-  _logic_cursors.clear();
-  for (auto c : _dso_cursors)
-    delete c;
-  _dso_cursors.clear();
-  for (auto x : _xcursorList)
-    delete x;
-  _xcursorList.clear();
-
-  DESTROY_OBJECT(_trig_cursor);
-  DESTROY_OBJECT(_search_cursor);
-  REMOVE_UI(this);
+// Cursor state is now owned by ViewCursors. The delegate's destructor
+// (invoked when _cursors is destroyed) cleans up the cursor objects.
+DESTROY_OBJECT(_cursors->_trig_cursor);
+DESTROY_OBJECT(_cursors->_search_cursor);
+REMOVE_UI(this);
 }
 
 void View::set_data_source(pv::data::DataSource *source) {
@@ -409,7 +393,7 @@ QColor View::get_trace_card_color(Trace *trace) {
 
 void View::timebase_changed() { _data_sync->timebase_changed(); }
 
-void View::set_preScale_preOffset() { set_scale_offset(_preScale, _preOffset); }
+void View::set_preScale_preOffset() { set_scale_offset(_layout->_preScale, _layout->_preOffset); }
 
 void View::schedule_visible_range_notify() {
   if (_viewport_change_timer) {
@@ -499,7 +483,7 @@ void View::resizeEvent(QResizeEvent *event) {
 }
 
 void View::v_scroll_value_changed(int value) {
-  _vOffset = value;
+  _layout->_vOffset = value;
   _header->update();
   viewport_update();
 }

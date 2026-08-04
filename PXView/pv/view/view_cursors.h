@@ -40,15 +40,24 @@ class View;
 
 // ViewCursors — delegate for View's cursor / xcursor responsibilities.
 // Extracted from the View God-class during Phase E of the
-// modernize-view-layer-v2 spec. All cursor state (_logic_cursors /
-// _dso_cursors / _trig_cursor / _search_cursor / _show_cursors /
-// _show_trig_cursor / _show_search_cursor / _search_pos / _search_hit /
-// _xcursorList / _show_xcursors) still lives on View; this class only owns
-// the *behaviour*. View declares `friend class ViewCursors;` so the delegate
-// can read and mutate those private members directly.
+// modernize-view-layer-v2 spec. Since the Phase 1 state migration,
+// cursor state (_logic_cursors / _dso_cursors / _trig_cursor /
+// _search_cursor / _show_cursors / _show_trig_cursor /
+// _show_search_cursor / _search_pos / _search_hit / _xcursorList /
+// _show_xcursors) lives here, not on View. View's public cursor API
+// (cursors_shown, trig_cursor_shown, etc.) forwards to this delegate.
 class ViewCursors {
 public:
   explicit ViewCursors(View *view) : _view(view) {}
+
+  // Destructor cleans up all owned cursor objects (trig/search cursors are
+  // deleted by View's destructor before _cursors is destroyed; the lists
+  // are cleaned here).
+  ~ViewCursors() {
+    for (auto c : _logic_cursors) delete c;
+    for (auto c : _dso_cursors) delete c;
+    for (auto x : _xcursorList) delete x;
+  }
 
   // -- visibility toggles ------------------------------------------------
   void show_cursors(bool show = true);
@@ -103,6 +112,22 @@ public:
 
 private:
   View *_view;
+
+  // ---- Cursor state (migrated from View) ----
+  bool _show_cursors = false;
+  std::list<Cursor *> _logic_cursors;
+  std::list<Cursor *> _dso_cursors;
+  Cursor *_trig_cursor = nullptr;
+  bool _show_trig_cursor = false;
+  Cursor *_search_cursor = nullptr;
+  bool _show_search_cursor = false;
+  uint64_t _search_pos = 0;
+  bool _search_hit = false;
+  bool _show_xcursors = false;
+  std::list<XCursor *> _xcursorList;
+
+  // Allow View to construct the trig/search cursors (they need a View& ref)
+  friend class View;
 };
 
 } // namespace view

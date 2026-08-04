@@ -281,9 +281,8 @@ pv::data::DataSource *ViewDataSync::document_snapshot_source() {
 }
 
 void ViewDataSync::frame_began() {
-  _view->_search_hit = false;
-  _view->_search_pos = 0;
-  _view->set_search_pos(_view->_search_pos, _view->_search_hit);
+  // Reset search state via the public View API (forwards to ViewCursors)
+  _view->set_search_pos(0, false);
 }
 
 void ViewDataSync::receive_end() {
@@ -527,10 +526,10 @@ void ViewDataSync::capture_init() {
 
   double sampletime = _view->document_snapshot_source()->cur_sampletime();
   if (sampletime > 0) {
-    _view->_maxscale = sampletime / (width * View::MaxViewRate);
+    _view->_layout->_maxscale = sampletime / (width * View::MaxViewRate);
 
     if (mode == ANALOG) {
-      _view->set_scale_offset(_view->_maxscale, 0);
+      _view->set_scale_offset(_view->_layout->_maxscale, 0);
     }
   }
 
@@ -554,7 +553,7 @@ void ViewDataSync::show_region(uint64_t start, uint64_t end, bool keep) {
     const double ideal_scale = (end - start) * 2.0 /
                                _view->document_snapshot_source()->cur_snap_samplerate() /
                                width;
-    const double new_scale = max(min(ideal_scale, _view->_maxscale), _view->_minscale);
+    const double new_scale = max(min(ideal_scale, _view->_layout->_maxscale), _view->_layout->_minscale);
     const double new_off =
         (start + end) * 0.5 /
             (_view->document_snapshot_source()->cur_snap_samplerate() * new_scale) -
@@ -594,13 +593,13 @@ void ViewDataSync::mode_changed() {
   // Reset DSO user zoom factor on mode transition — entering DSO should
   // start at fit-frame (1.0), and leaving DSO shouldn't carry a stale
   // factor back in if the user later re-enters DSO.
-  _view->_dso_zoom_factor = 1.0;
+  _view->_layout->_dso_zoom_factor = 1.0;
   if (_view->_device_agent->is_virtual()) {
     uint64_t samplerate = _view->document_snapshot_source()->cur_snap_samplerate();
     if (samplerate > 0)
-      _view->set_scale_offset(View::WellSamplesPerPixel * 1.0 / samplerate, _view->_offset);
+      _view->set_scale_offset(View::WellSamplesPerPixel * 1.0 / samplerate, _view->_layout->_offset);
   }
-  _view->set_scale_offset(max(min(_view->_scale, _view->_maxscale), _view->_minscale), _view->_offset);
+  _view->set_scale_offset(max(min(_view->_layout->_scale, _view->_layout->_maxscale), _view->_layout->_minscale), _view->_layout->_offset);
 }
 
 void ViewDataSync::auto_set_max_scale() {
@@ -608,8 +607,8 @@ void ViewDataSync::auto_set_max_scale() {
   const int width = _view->get_view_width();
 
   if (width > 0) {
-    _view->_maxscale = limitTime / (width * View::MaxViewRate);
-    _view->set_scale(_view->_maxscale);
+    _view->_layout->_maxscale = limitTime / (width * View::MaxViewRate);
+    _view->set_scale(_view->_layout->_maxscale);
   }
 }
 
@@ -658,7 +657,7 @@ int64_t ViewDataSync::get_logic_lst_data_offset() {
   int width = _view->get_view_width();
   assert(width > 0);
 
-  return ceil((_view->_data_source->get_logic_data_view_time() / _view->_scale) -
+  return ceil((_view->_data_source->get_logic_data_view_time() / _view->_layout->_scale) -
               (width * View::MaxViewRate));
 }
 
@@ -706,10 +705,10 @@ bool ViewDataSync::eventFilter(QObject *object, QEvent *event) {
     const QMouseEvent *const mouse_event = (QMouseEvent *)event;
     if (object == _view->_ruler || object == _view->_time_viewport ||
         object == _view->_fft_viewport) {
-      double cur_periods = (mouse_event->position().toPoint().x() + _view->_offset) *
-                           _view->_scale / _view->_ruler->get_min_period();
+      double cur_periods = (mouse_event->position().toPoint().x() + _view->_layout->_offset) *
+                           _view->_layout->_scale / _view->_ruler->get_min_period();
       int integer_x =
-          round(cur_periods) * _view->_ruler->get_min_period() / _view->_scale - _view->_offset;
+          round(cur_periods) * _view->_ruler->get_min_period() / _view->_layout->_scale - _view->_layout->_offset;
       double cur_deviate_x =
           qAbs(mouse_event->position().toPoint().x() - integer_x);
       if (_view->is_logic_rendering_mode() && cur_deviate_x < 10)
@@ -738,8 +737,8 @@ void ViewDataSync::resizeEvent(QResizeEvent *event) {
     return;
   }
 
-  bool widthChanged = (_view->_lastWidth != width);
-  _view->_lastWidth = width;
+  bool widthChanged = (_view->_layout->_lastWidth != width);
+  _view->_layout->_lastWidth = width;
 
   if (!widthChanged && _view->get_work_mode() != DSO) {
     _view->setViewportMargins(_view->headerWidth(), View::RulerHeight, 0, 0);
@@ -756,17 +755,17 @@ void ViewDataSync::resizeEvent(QResizeEvent *event) {
   _view->signals_changed(nullptr);
 
   if (_view->get_work_mode() == DSO) {
-    _view->set_scale_offset(_view->_data_source->cur_view_time() / width, _view->_offset);
+    _view->set_scale_offset(_view->_data_source->cur_view_time() / width, _view->_layout->_offset);
   }
 
   if (_view->get_work_mode() != DSO) {
-    _view->_maxscale =
+    _view->_layout->_maxscale =
         _view->document_snapshot_source()->cur_sampletime() / (width * View::MaxViewRate);
-    if (_view->_scale > _view->_maxscale) {
-      _view->set_scale_offset(_view->_maxscale, _view->_offset);
+    if (_view->_layout->_scale > _view->_layout->_maxscale) {
+      _view->set_scale_offset(_view->_layout->_maxscale, _view->_layout->_offset);
     }
   } else {
-    _view->_maxscale = 1e9;
+    _view->_layout->_maxscale = 1e9;
   }
 
   _view->_ruler->update();

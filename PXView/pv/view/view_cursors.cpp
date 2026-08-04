@@ -22,14 +22,11 @@
  */
 
 // Phase E (modernize-view-layer-v2): cursor / xcursor behaviour extracted
-// from the View God-class. ViewCursors is declared a friend of View so it
-// can touch the private cursor state (_logic_cursors / _dso_cursors /
-// _trig_cursor / _search_cursor / _show_cursors / _show_trig_cursor /
-// _show_search_cursor / _search_pos / _search_hit / _xcursorList /
-// _show_xcursors) and emit the protected Qt signals cursor_update() /
-// xcursor_update(). Cross-method calls that remain on View (e.g.
-// set_scale_offset, get_view_width, document_snapshot_source) go through
-// _view->… so the public View API is unchanged.
+// from the View God-class. Since Phase 1 state migration, cursor state
+// lives on ViewCursors directly (not on View). Cross-method calls that
+// remain on View (e.g. set_scale_offset, get_view_width,
+// document_snapshot_source) go through _view->… so the public View API is
+// unchanged.
 
 #include "view_cursors.h"
 
@@ -54,19 +51,19 @@ namespace pv {
 namespace view {
 
 void ViewCursors::show_cursors(bool show) {
-  _view->_show_cursors = show;
+  _show_cursors = show;
   _view->_ruler->update();
   _view->viewport_update();
 }
 
 void ViewCursors::show_trig_cursor(bool show) {
-  _view->_show_trig_cursor = show;
+  _show_trig_cursor = show;
   _view->_ruler->update();
   _view->viewport_update();
 }
 
 void ViewCursors::show_search_cursor(bool show) {
-  _view->_show_search_cursor = show;
+  _show_search_cursor = show;
   _view->_ruler->update();
   _view->viewport_update();
 }
@@ -74,7 +71,7 @@ void ViewCursors::show_search_cursor(bool show) {
 void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
   const double time =
       trig_pos * 1.0 / _view->document_snapshot_source()->cur_snap_samplerate();
-  _view->_trig_cursor->set_index(trig_pos);
+  _trig_cursor->set_index(trig_pos);
 
   int width = _view->get_view_width();
   assert(width > 0);
@@ -100,7 +97,7 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
 
   if (trigger_enabled || _view->_device_agent->is_virtual() ||
       _view->get_work_mode() == DSO) {
-    _view->_show_trig_cursor = true;
+    _show_trig_cursor = true;
 
     // DSO 持续采集时每帧都会调用 set_trig_cursor_posistion() (经由
     // receive_trigger -> ViewDataSync::receive_trigger)。如果此处也调用
@@ -112,7 +109,7 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
     // 路径或首次进入 DSO 时由其他逻辑处理居中。
     if (app.appOptions.trigPosDisplayInMid &&
         _view->get_work_mode() != DSO) {
-      _view->set_scale_offset(_view->_scale, (time / _view->_scale) - (width / 2));
+      _view->set_scale_offset(_view->scale(), (time / _view->scale()) - (width / 2));
     }
   }
 
@@ -126,16 +123,16 @@ void ViewCursors::set_search_pos(uint64_t search_pos, bool hit) {
 
   const double time =
       search_pos * 1.0 / _view->document_snapshot_source()->cur_snap_samplerate();
-  _view->_search_pos = search_pos;
-  _view->_search_hit = hit;
-  _view->_search_cursor->set_index(search_pos);
-  _view->_search_cursor->set_colour(hit ? View::Blue : fore);
+  _search_pos = search_pos;
+  _search_hit = hit;
+  _search_cursor->set_index(search_pos);
+  _search_cursor->set_colour(hit ? View::Blue : fore);
 
   int width = _view->get_view_width();
   assert(width);
 
   if (hit) {
-    _view->set_scale_offset(_view->_scale, (time / _view->_scale) - (width / 2));
+    _view->set_scale_offset(_view->scale(), (time / _view->scale()) - (width / 2));
     _view->_ruler->update();
     _view->viewport_update();
   }
@@ -143,9 +140,9 @@ void ViewCursors::set_search_pos(uint64_t search_pos, bool hit) {
 
 std::list<Cursor *> &ViewCursors::get_cursorList() {
   if (_view->is_logic_rendering_mode()) {
-    return _view->_logic_cursors;
+    return _logic_cursors;
   } else {
-    return _view->_dso_cursors;
+    return _dso_cursors;
   }
 }
 
@@ -225,17 +222,17 @@ void ViewCursors::set_cursor_middle(int index) {
   }
 
   _view->set_scale_offset(
-      _view->_scale,
+      _view->scale(),
       (*i)->index() /
           (_view->document_snapshot_source()->cur_snap_samplerate() *
-           _view->_scale) -
+           _view->scale()) -
           (width / 2));
 }
 
 void ViewCursors::add_xcursor(double value0, double value1) {
   static int lastXCursorOrder = 1;
   XCursor *newXCursor = new XCursor(*_view, lastXCursorOrder++, value0, value1);
-  _view->_xcursorList.push_back(newXCursor);
+  _xcursorList.push_back(newXCursor);
   make_cursors_order();
   _view->xcursor_update();
 }
@@ -243,7 +240,7 @@ void ViewCursors::add_xcursor(double value0, double value1) {
 void ViewCursors::del_xcursor(XCursor *xcursor) {
   assert(xcursor);
 
-  _view->_xcursorList.remove(xcursor);
+  _xcursorList.remove(xcursor);
   delete xcursor;
   make_cursors_order();
   _view->xcursor_update();

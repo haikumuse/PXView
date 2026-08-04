@@ -1126,9 +1126,9 @@ void ViewSignalSync::normalize_layout() {
   // signals_changed() call — including during waveform height dragging.
   // The final scrollbar position is clamped to the valid range by
   // update_scroll() which is called shortly after via header_updated().
-  _view->_vOffset = max(0, _view->_vOffset + delta);
-  _view->verticalScrollBar()->setSliderPosition(_view->_vOffset);
-  _view->v_scroll_value_changed(_view->_vOffset);
+  _view->_layout->_vOffset = max(0, _view->_layout->_vOffset + delta);
+  _view->verticalScrollBar()->setSliderPosition(_view->_layout->_vOffset);
+  _view->v_scroll_value_changed(_view->_layout->_vOffset);
 }
 
 void ViewSignalSync::zoom_vertical(double steps) {

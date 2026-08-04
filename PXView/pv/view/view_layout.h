@@ -33,14 +33,23 @@ class View;
 
 // ViewLayout — delegate for View's scale / offset / scroll / margin
 // responsibilities. Extracted from the View God-class during Phase E of the
-// modernize-view-layer-v2 spec. All state (_scale / _offset / _minscale /
-// _maxscale / _preScale / _preOffset / _updating_scroll / _vOffset /
-// _signalHeightScale / _lastWidth …) still lives on View; this class only
-// owns the *behaviour*. View declares `friend class ViewLayout;` so the
-// delegate can read and mutate those private members directly.
+// modernize-view-layer-v2 spec. Since Phase 1 state migration, scale/offset
+// state (_scale / _offset / _minscale / _maxscale / _preScale / _preOffset /
+// _updating_scroll / _vOffset / _dso_zoom_factor) lives here. Other delegates
+// (ViewCursors, ViewDataSync, ViewSignalSync) access this state via View's
+// public API (scale(), offset(), set_scale_offset(), etc.) which forward to
+// this delegate.
 class ViewLayout {
 public:
   explicit ViewLayout(View *view) : _view(view) {}
+
+  // ---- Public state accessors (for other delegates) ----
+  inline double scale() const { return _scale; }
+  inline int64_t offset() const { return _offset; }
+  inline double maxscale() const { return _maxscale; }
+  inline double minscale() const { return _minscale; }
+  inline double dso_zoom_factor() const { return _dso_zoom_factor; }
+  inline void set_dso_zoom_factor(double f) { _dso_zoom_factor = f; }
 
   // -- scale / offset mutators -------------------------------------------
   void set_scale_offset(double scale, int64_t offset);
@@ -67,6 +76,25 @@ public:
 
 private:
   View *_view;
+
+  // ---- Scale / offset state (migrated from View) ----
+  double _scale = 10;
+  double _preScale = 1e-6;
+  double _maxscale = 1e9;
+  double _minscale = 1e-15;
+  double _dso_zoom_factor = 1.0;
+  int64_t _offset = 0;
+  int64_t _preOffset = 0;
+  int _vOffset = 0;
+  int _lastWidth = -1;
+  bool _updating_scroll = false;
+
+  // Allow View to access state directly (for inline accessors and init)
+  friend class View;
+  // Allow other delegates to access scale/offset state
+  friend class ViewCursors;
+  friend class ViewDataSync;
+  friend class ViewSignalSync;
 };
 
 } // namespace view

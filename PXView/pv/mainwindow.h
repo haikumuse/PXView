@@ -27,6 +27,7 @@
 
 #include <list>
 #include <vector>
+#include <memory>
 #include <QMainWindow>
 #include <QTranslator> 
 #include "dialogs/dsmessagebox.h"
@@ -203,6 +204,12 @@ private:
     QJsonArray get_decoder_json_from_data_file(QString file, bool &bSucesss);
     void check_config_file_version(); 
     void load_demo_decoder_config(QString optname);
+
+    // ---- MainWindowConfigIO delegate ----
+    // Phase 2: config I/O extracted to a delegate class (~1000 lines).
+    // The delegate is a friend of MainWindow so it can access private
+    // members directly. MainWindow's config methods now forward here.
+    std::unique_ptr<class MainWindowConfigIO> _config_io;
 
   
 private:
@@ -400,6 +407,8 @@ private:
     int _category_file_index;
     int _category_display_index;
     int _category_help_index;
+
+    friend class MainWindowConfigIO;
 
     QMenuBar      *_menu_bar;
     QMenu         *_category_file;

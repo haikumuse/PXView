@@ -10,6 +10,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/application.cpp
     PXView/pv/appcontrol.cpp
     PXView/pv/mainwindow.cpp
+    PXView/pv/mainwindow_config_io.cpp
     PXView/pv/mainframe.cpp
     PXView/pv/submainframe.cpp
     # View layer rendering objects
@@ -160,6 +161,7 @@ set(PXView_HEADERS
     PXView/pv/sessionmanager.h
     PXView/pv/interface/icontextaware.h
     PXView/pv/mainwindow.h
+    PXView/pv/mainwindow_config_io.h
     PXView/pv/dialogs/deviceoptions.h
     PXView/pv/prop/property.h
     PXView/pv/prop/int.h

@@ -39,6 +39,7 @@
 #include "dock_ui_state.h"
 #include "view_cursors.h"
 #include "view_glitch_filter.h"
+#include "view_layout.h"
 
 // Forward declarations (replaces the former includes of signal.h, viewport.h,
 // cursor.h, xcursor.h, viewstatus.h, view_derived_traces.h, view_layout.h,
@@ -196,18 +197,18 @@ public:
   /**
    * Returns the view time scale in seconds per pixel.
    */
-  inline double scale() { return _scale; }
+  inline double scale() { return _layout->_scale; }
 
-  inline double get_minscale() { return _minscale; }
+  inline double get_minscale() { return _layout->_minscale; }
 
-  inline double get_maxscale() { return _maxscale; }
+  inline double get_maxscale() { return _layout->_maxscale; }
 
   void auto_set_max_scale();
 
   /**
    * Returns the pixels offset of the left edge of the view
    */
-  inline int64_t offset() { return _offset; }
+  inline int64_t offset() { return _layout->_offset; }
 
   /**
    * trigger position fix
@@ -242,11 +243,11 @@ public:
   /**
    * Returns true if cursors are displayed. false otherwise.
    */
-  inline bool cursors_shown() { return _show_cursors; }
+  inline bool cursors_shown() { return _cursors->_show_cursors; }
 
-  inline bool trig_cursor_shown() { return _show_trig_cursor; }
+  inline bool trig_cursor_shown() { return _cursors->_show_trig_cursor; }
 
-  inline bool search_cursor_shown() { return _show_search_cursor; }
+  inline bool search_cursor_shown() { return _cursors->_show_search_cursor; }
 
   /**
    * Shows or hides the cursors.
@@ -266,8 +267,8 @@ public:
 
   inline int get_signalHeight() { return _signalHeight; }
 
-  inline int get_vOffset() { return _vOffset; }
-  inline void set_vOffset(int offset) { _vOffset = offset; }
+  inline int get_vOffset() { return _layout->_vOffset; }
+  inline void set_vOffset(int offset) { _layout->_vOffset = offset; }
   void zoom_vertical(double steps);
   void compute_signal_groups();
   inline const std::vector<SignalGroup> &get_signal_groups() {
@@ -298,7 +299,7 @@ public:
   void clear_cursors();
   void set_cursor_middle(int index);
 
-  inline Cursor *get_trig_cursor() { return _trig_cursor; }
+  inline Cursor *get_trig_cursor() { return _cursors->_trig_cursor; }
 
   Cursor *get_cursor_by_index(int index);
 
@@ -312,24 +313,24 @@ public:
   // while headless appear once the View is created.
   void sync_cursors_from_core();
 
-  inline Cursor *get_search_cursor() { return _search_cursor; }
+  inline Cursor *get_search_cursor() { return _cursors->_search_cursor; }
 
-  inline bool get_search_hit() { return _search_hit; }
+  inline bool get_search_hit() { return _cursors->_search_hit; }
 
   void set_search_pos(uint64_t search_pos, bool hit);
 
-  inline uint64_t get_search_pos() { return _search_pos; }
+  inline uint64_t get_search_pos() { return _cursors->_search_pos; }
 
   void scroll_to_logic_last_data_time();
 
   /*
    * horizental cursors
    */
-  inline bool xcursors_shown() { return _show_xcursors; }
+  inline bool xcursors_shown() { return _cursors->_show_xcursors; }
 
-  inline void show_xcursors(bool show) { _show_xcursors = show; }
+  inline void show_xcursors(bool show) { _cursors->_show_xcursors = show; }
 
-  inline std::list<XCursor *> &get_xcursorList() { return _xcursorList; }
+  inline std::list<XCursor *> &get_xcursorList() { return _cursors->_xcursorList; }
 
   // ---- Viewport update ----
   void set_update(Viewport *viewport, bool need_update);
@@ -761,31 +762,14 @@ private:
   bool _header_collapsed;
 
   // ---- Scale / offset ----
-  /// The view time scale in seconds per pixel.
-  double _scale;
-  double _preScale;
-  double _maxscale;
-  double _minscale;
-  /// DSO user zoom factor (1.0 = fit one frame to viewport width).
-  /// DSO mode update_scale_offset() forces _scale = cur_view_time/width
-  /// every frame (called from data_updated()). To let the user zoom in
-  /// and pan horizontally like LOGIC mode, we keep this factor separate
-  /// and reapply it: _scale = base_scale * _dso_zoom_factor. zoom() only
-  /// mutates this factor; data frames re-derive _scale from it. Reset to
-  /// 1.0 on mode change (ViewDataSync::mode_changed).
-  double _dso_zoom_factor = 1.0;
-
-  /// The pixels offset of the left edge of the view
-  int64_t _offset;
-  int64_t _preOffset;
+  // Scale/offset state migrated to ViewLayout delegate (Phase 1).
+  // Remaining layout-related state still on View (not yet migrated).
+  double _trig_hoff;
   int _spanY;
   int _signalHeight;
-  int _vOffset;
   int _signalHeightScale;
-  int _lastWidth;
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
-  bool _updating_scroll;
 
   // ---- Visible-range notify debounce ----
   // Single-shot 100ms timer coalescing bursts of scale/offset/resize changes
@@ -793,22 +777,10 @@ private:
   // QObject) so it is destroyed automatically.
   QTimer *_viewport_change_timer = nullptr;
 
-  // trigger position fix
-  double _trig_hoff;
+  // (trigger position fix _trig_hoff is declared above in the layout section)
 
   // ---- Cursors ----
-  bool _show_cursors;
-  std::list<Cursor *> _logic_cursors;
-  std::list<Cursor *> _dso_cursors;
-  Cursor *_trig_cursor;
-  bool _show_trig_cursor;
-  Cursor *_search_cursor;
-  bool _show_search_cursor;
-  uint64_t _search_pos;
-  bool _search_hit;
-
-  bool _show_xcursors;
-  std::list<XCursor *> _xcursorList;
+  // Cursor state migrated to ViewCursors delegate (Phase 1).
 
   // ---- Misc ----
   QPoint _hover_point;
