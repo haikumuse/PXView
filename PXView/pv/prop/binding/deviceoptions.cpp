@@ -170,9 +170,19 @@ DeviceOptions::DeviceOptions(SigSession *session)
 
 		case SR_CONF_RLE:
         case SR_CONF_CLOCK_TYPE:
-        case SR_CONF_CLOCK_EDGE:
 		case SR_CONF_TRIGGER_OUT:
             bind_bool(name, label, key);
+            break;
+
+        case SR_CONF_CLOCK_EDGE:
+            /* If the driver advertises SR_CONF_LIST for CLOCK_EDGE, bind as a
+             * string dropdown (rising/falling) instead of a boolean checkbox.
+             * DSLogic and PXLogic drivers both support the list; older or
+             * upstream-only drivers without LIST fall back to bind_bool. */
+            if (gvar_list)
+                bind_list(name, label, key, gvar_list);
+            else
+                bind_bool(name, label, key);
             break;
         case SR_CONF_PWM0_EN:
             bind_bool(name, "PWM0 EN", key);

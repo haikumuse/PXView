@@ -49,6 +49,7 @@
 #include "../pxvdef.h"
 #include "../interface/icallbacks.h"
 #include "../log.h"
+#include "../prop/enum.h"
 #include "../prop/property.h"
 #include "../prop/string.h"
 #include "../sigsession.h"
@@ -1770,6 +1771,27 @@ QJsonObject DeviceOptionsDock::get_session() {
     obj["demo_operation_mode"] = _device_agent->get_demo_operation_mode();
   }
 
+  /* Save Mode section device-level config keys (SR_CONF_FILTER,
+   * SR_CONF_CLOCK_EDGE, SR_CONF_VTH, SR_CONF_RLE, SR_CONF_TRIGGER_OUT, etc.)
+   * so they survive tab switches. Without this, update_view() in
+   * set_session() rebuilds the Mode section from driver state, but if
+   * the driver getter has any edge-case failure (returns nullptr), the
+   * Enum combo box defaults to index 0 and the user's selection is lost. */
+  if (_device_options_binding) {
+    QJsonObject mode_props;
+    const auto &props = _device_options_binding->properties();
+    for (auto p : props) {
+      GVariant *gvar = p->get_value();
+      if (!gvar)
+        continue;
+      gchar *text = g_variant_print(gvar, FALSE);
+      mode_props[p->name()] = QString::fromUtf8(text);
+      g_free(text);
+      g_variant_unref(gvar);
+    }
+    obj["mode_props"] = mode_props;
+  }
+
   return obj;
 }
 
@@ -1821,6 +1843,51 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
         }
       }
       idx++;
+    }
+  }
+
+  /* Restore Mode section device-level config keys after update_view()
+   * rebuilt the Mode section. The new binding's getters read the driver
+   * state, but we also push the saved values back to ensure consistency
+   * (e.g. if the driver state was reset by a mode switch).
+   * We use DeviceAgent::set_config_string directly for string-type keys
+   * (the most common type in the Mode section: FILTER, CLOCK_EDGE,
+   * OPERATION_MODE, etc.) and set_config_bool for boolean keys. */
+  if (obj.contains("mode_props")) {
+    QJsonObject mode_props = obj["mode_props"].toObject();
+    if (_device_options_binding) {
+      const auto &props = _device_options_binding->properties();
+      for (auto p : props) {
+        QString key = p->name();
+        if (mode_props.contains(key)) {
+          QString val_str = mode_props[key].toString();
+          /* Try to find the matching GVariant in the property's value list
+           * (Enum properties). If found, call commit with that value. */
+          /* For Enum properties, search the values list for a match. */
+          pv::prop::Enum *enum_prop = dynamic_cast<pv::prop::Enum *>(p);
+          if (enum_prop) {
+            /* Use get_widget to ensure the selector is created, then
+             * find the matching item and call commit. */
+            enum_prop->select_value(val_str);
+          } else {
+            /* For non-Enum properties (Bool, Double, Int, String),
+             * try parsing as boolean or double and set via the setter. */
+            GVariant *gvar = nullptr;
+            if (val_str == "true" || val_str == "false") {
+              gvar = g_variant_new_boolean(val_str == "true");
+            } else {
+              bool ok;
+              double dval = val_str.toDouble(&ok);
+              if (ok)
+                gvar = g_variant_new_double(dval);
+            }
+            if (gvar) {
+              p->set_value(gvar);
+              g_variant_unref(gvar);
+            }
+          }
+        }
+      }
     }
   }
 

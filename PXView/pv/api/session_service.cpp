@@ -3566,6 +3566,16 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
                 continue;
 
             uint64_t count = actual_end - start + 1;
+            // CRITICAL FIX: get_samples() extends actual_end up to the enclosing
+            // leaf-block boundary (8 samples = 1 byte), so for captures that do
+            // not end exactly on a leaf boundary `count` can exceed the real
+            // valid range (get_ring_sample_count) by up to 1 byte of stale /
+            // zero-padded data. Trim `count` to the actual captured sample range
+            // so the exported binary matches the saved .pxc L-<ch> length exactly.
+            uint64_t valid = snapshot->get_ring_sample_count();
+            uint64_t max_count = (valid > start) ? (valid - start) : 0;
+            if (count > max_count)
+                count = max_count;
             // Logic: 1 bit per channel per sample, packed into bytes
             size_t byte_count = static_cast<size_t>((count + 7) / 8);
             file.write(reinterpret_cast<const char*>(data), byte_count);

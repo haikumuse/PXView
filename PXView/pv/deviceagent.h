@@ -28,6 +28,7 @@
 #include <libsigrok/libsigrok.h>
 #include <QString>
 #include <QVector>
+#include <map>
 #include <thread>
 #include <vector>
 
@@ -354,6 +355,15 @@ private:
     // Tracked devices: scanned (from sr_driver_scan) + file-loaded.
     std::vector<struct sr_dev_inst*> _scanned_sdi;
     std::vector<struct sr_dev_inst*> _file_sdi;
+
+    // Stable file-device handle registry. File handles are assigned from a
+    // monotonic counter (never reused, never reordered) and looked up via
+    // this map. This decouples handle identity from _file_sdi array position,
+    // which previously broke repeated set_file() loads: set_device()->release()
+    // erases the active sdi from _file_sdi, shifting the remaining entries and
+    // invalidating any handle computed as scanned_count + file_index + 1.
+    std::map<ds_device_handle, struct sr_dev_inst*> _file_handles;
+    ds_device_handle _next_file_handle = 0;
 
     // --- App-layer config state (C-class keys, not driver-backed) ---
     // These keys (DISK_CACHE_ENABLE/PATH, STREAM_BUFF/STREAM_MEM_BUFF) are

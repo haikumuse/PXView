@@ -74,26 +74,41 @@ ds_device_handle DeviceAgent::set_file_device(struct sr_dev_inst *sdi, const QSt
     _file_sdi.push_back(sdi);
     (void)name;  // name is derived from sdi in update()
 
-    // Compute handle: scanned_count + file_index + 1
+    // Assign a STABLE file handle from a monotonic counter. The handle must
+    // NOT depend on _file_sdi array position: set_device()->release() erases
+    // the active sdi from _file_sdi, which would otherwise shift the
+    // remaining entries and invalidate any position-based handle. Register
+    // the sdi in _file_handles so lookup is immune to array reordering.
+    // Start file handles above the scanned range: handle = scanned_count + k
+    // where k is a monotonic file index (1, 2, 3, ...) — distinct from
+    // scanned devices (handles 1..scanned_count) and stable across releases.
     int scanned_count = (int)_scanned_sdi.size();
-    int file_idx = (int)_file_sdi.size() - 1;
-    return (ds_device_handle)(scanned_count + file_idx + 1);
+    ds_device_handle handle = (ds_device_handle)(scanned_count + (++_next_file_handle));
+    _file_handles[handle] = sdi;
+    return handle;
 }
 
 void DeviceAgent::remove_device(ds_device_handle handle)
 {
-    // File devices are tracked by index; handle = scanned_count + file_index + 1.
-    // Remove from _file_sdi if the handle maps to a file device.
+    // File devices are tracked by stable handle in _file_handles. Look up the
+    // sdi via the registry (not array index) so removal is immune to _file_sdi
+    // reordering. Also drop it from _file_sdi (used only for listing).
     int scanned_count = (int)_scanned_sdi.size();
     if (handle > (ds_device_handle)scanned_count) {
-        int file_idx = (int)handle - scanned_count - 1;
-        if (file_idx >= 0 && file_idx < (int)_file_sdi.size()) {
-            struct sr_dev_inst *sdi = _file_sdi[file_idx];
-            _file_sdi.erase(_file_sdi.begin() + file_idx);
+        auto it = _file_handles.find(handle);
+        if (it != _file_handles.end()) {
+            struct sr_dev_inst *sdi = it->second;
+            _file_handles.erase(it);
+
+            // Remove from the listing vector (linear scan, small N).
+            auto vit = std::find(_file_sdi.begin(), _file_sdi.end(), sdi);
+            if (vit != _file_sdi.end())
+                _file_sdi.erase(vit);
 
             // If this is NOT the currently active device, the sdi is owned
-            // solely by _file_sdi and must be freed now. If it IS the current
-            // device, release() will free it when set_device() is called.
+            // solely by _file_handles/_file_sdi and must be freed now. If it
+            // IS the current device, release() will free it when set_device()
+            // is called.
             if (handle != _dev_handle && sdi) {
                 sr_dev_inst_free(sdi);
                 pxv_info("remove_device: freed sdi %p for file device handle %llu",
@@ -117,6 +132,14 @@ struct sr_dev_inst* DeviceAgent::find_sdi_by_handle(ds_device_handle handle)
         return _scanned_sdi[idx];
     }
 
+    // File devices: resolve via the stable handle registry first. This is the
+    // authoritative lookup and survives array reordering in _file_sdi.
+    auto fit = _file_handles.find(handle);
+    if (fit != _file_handles.end())
+        return fit->second;
+
+    // Fallback (legacy position-based) for any handle minted before the
+    // registry existed.
     int file_idx = idx - scanned_count;
     if (file_idx >= 0 && file_idx < (int)_file_sdi.size()) {
         return _file_sdi[file_idx];
@@ -351,12 +374,21 @@ void DeviceAgent::release()
 
         // File devices (loaded via sr_session_load_file_device or
         // sr_input_release_sdi) have their sdi ownership transferred to
-        // DeviceAgent. Free the sdi here and remove it from _file_sdi to
-        // prevent both a memory leak and dangling pointers.
+        // DeviceAgent. Free the sdi here and remove it from the handle
+        // registry + listing vector to prevent both a memory leak and
+        // dangling pointers. Removal is by value (not array index) so it does
+        // NOT shift other file devices' handles — those remain valid for
+        // subsequent set_file() loads.
         if (_dev_type == DEV_TYPE_FILELOG) {
-            auto it = std::find(_file_sdi.begin(), _file_sdi.end(), _di);
-            if (it != _file_sdi.end())
-                _file_sdi.erase(it);
+            for (auto it = _file_handles.begin(); it != _file_handles.end();) {
+                if (it->second == _di)
+                    it = _file_handles.erase(it);
+                else
+                    ++it;
+            }
+            auto vit = std::find(_file_sdi.begin(), _file_sdi.end(), _di);
+            if (vit != _file_sdi.end())
+                _file_sdi.erase(vit);
             sr_dev_inst_free(_di);
             pxv_info("release: freed sdi %p for file device", (void *)_di);
         }

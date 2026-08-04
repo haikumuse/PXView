@@ -110,9 +110,36 @@ void Enum::commit()
 	emit committed();
 }
 
+GVariant* Enum::get_value()
+{
+	return _getter ? _getter() : nullptr;
+}
+
 void Enum::on_current_item_changed(int)
 {
     commit();
+}
+
+void Enum::select_value(const QString &val_str)
+{
+    if (!_selector)
+        return;
+
+    for (unsigned int i = 0; i < _values.size(); i++) {
+        GVariant *gvar = _values[i].first;
+        if (!gvar)
+            continue;
+        gchar *text = g_variant_print(gvar, FALSE);
+        QString printed = QString::fromUtf8(text);
+        g_free(text);
+        if (printed == val_str) {
+            _selector->setCurrentIndex(i);
+            commit();
+            return;
+        }
+    }
+    pxv_warn("Enum::select_value: no match for '%s' in property '%s'",
+             val_str.toUtf8().constData(), name().toUtf8().constData());
 }
 
 } // prop

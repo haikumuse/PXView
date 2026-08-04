@@ -48,7 +48,15 @@ protected:
     QWidget* get_widget(QWidget *parent, bool auto_commit) override;
 public:
 
+	GVariant* get_value();
+
 	void commit();
+
+	/* Select the combo box item whose GVariant prints to val_str.
+	 * Used by DeviceOptionsDock::set_session() to restore Mode section
+	 * properties from saved JSON state. Calls commit() to write the value
+	 * to the driver. */
+	void select_value(const QString &val_str);
 
 private slots:
     void on_current_item_changed(int);

@@ -1265,7 +1265,12 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     drawerPage = _drawer_page_function;
     break;
   case SIDEBAR_OPTIONS:
-    _device_options_widget->update_view();
+    /* Don't call update_view() here — it does a full nuke-and-rebuild that
+     * can lose Mode section selections (e.g. SR_CONF_FILTER resets to
+     * default because the Enum combo box defaults to index 0 when the
+     * driver getter returns nullptr during rebuild). The UI is already
+     * built; mode_check_timeout() timer detects operation_mode changes
+     * and rebuilds when needed. */
     drawerPage = _drawer_page_device_options;
     break;
   case SIDEBAR_MCP:
@@ -2192,7 +2197,6 @@ void MainWindow::restore_dock() {
       _drawer_current_page = _drawer_page_search;
     } else if (opt->deviceOptionsDock) {
       _side_bar->setItemChecked(SIDEBAR_OPTIONS, true);
-      _device_options_widget->update_view();
       _sliding_drawer->open(_drawer_page_device_options);
       _drawer_current_page = _drawer_page_device_options;
     } else if (opt->logDock) {
