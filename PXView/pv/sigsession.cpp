@@ -438,7 +438,35 @@ bool SigSession::set_default_device() {
   // This is more stable than picking the last scanned device (USB scan order
   // is not guaranteed). Falls back to last scanned device if no match.
   const auto &devOpt = AppConfig::Instance().deviceOptions;
-  ds_device_handle dev_handle = (array + count - 1)->handle; // fallback: last scanned
+
+  // Determine fallback device: last scanned device that is NOT an input-module
+  // device with empty channels. Input-module devices (VCD, CSV, binary) may
+  // have been left in _file_sdi from a previous import that was released.
+  // Their sdi may have NULL channels (e.g., VCD whose header was never parsed,
+  // or the sdi was freed and recreated). Selecting such a device causes
+  // init_signals() to see channel_count=0, leaving the UI in a broken state.
+  ds_device_handle dev_handle = 0;
+  for (int i = count - 1; i >= 0; i--) {
+    ds_device_handle h = array[i].handle;
+    struct sr_dev_inst *sdi = _state->device_agent().find_sdi_by_handle(h);
+    if (!sdi)
+      continue;
+    struct sr_dev_driver *drv = sr_dev_inst_driver_get(sdi);
+    if (!drv) {
+      // Input-module device — check if it has channels.
+      GSList *chans = sr_dev_inst_channels_get(sdi);
+      if (!chans) {
+        pxv_info("set_default_device: skipping input-module device "
+                 "with no channels (handle=%llu)",
+                 (unsigned long long)h);
+        continue;
+      }
+    }
+    dev_handle = h;
+    break;
+  }
+  if (!dev_handle)
+    dev_handle = (array + count - 1)->handle; // ultimate fallback
 
   if (!devOpt.lastDeviceDriver.isEmpty()) {
     bool found = false;

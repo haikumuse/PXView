@@ -1018,8 +1018,18 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         }
     } restorer(_session->get_device()->get_channels(), _export_channels);
 
+    // Binary output format must be written as raw bytes — using QTextStream
+    // or QString::fromUtf8() corrupts binary data in three ways:
+    //   1. QString::fromUtf8(str) without length stops at the first 0x00 byte
+    //      (C-string convention), truncating the output.
+    //   2. Invalid UTF-8 sequences in binary data get replaced/dropped.
+    //   3. QIODevice::Text on Windows converts 0x0A to 0x0D 0x0A, inserting
+    //      spurious bytes that corrupt the unitsize alignment.
+    // For binary format, open in raw mode and use file.write() directly.
+    bool is_binary_output = (_suffix == "binary");
+
     QFile file(_file_name);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::WriteOnly | (is_binary_output ? QIODevice::OpenModeFlag(0) : QIODevice::Text))) {
         pxv_err("Failed to open export file: %s", _file_name.toUtf8().data());
         _has_error = true;
         _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR3),
@@ -1081,7 +1091,10 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     sr_output_send(output, &p, &data_out);
 
     if(data_out){
-        out << QString::fromUtf8((char*) data_out->str);
+        if (is_binary_output)
+            file.write(data_out->str, data_out->len);
+        else
+            out << QString::fromUtf8((char*) data_out->str);
         g_string_free(data_out,TRUE);
     }
     for (GSList *l = meta.config; l; l = l->next) {
@@ -1091,7 +1104,11 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     g_slist_free(meta.config);
 
     if (channel_type == SR_CHANNEL_LOGIC) {
-        _unit_count = logic_snapshot->get_ring_sample_count();
+        // Use get_sample_count() (the true captured length) rather than
+        // get_ring_sample_count(), which can be short by up to one byte's
+        // worth of samples. This keeps the saved byte count consistent with
+        // the binary export path and makes the load→save round-trip lossless.
+        _unit_count = logic_snapshot->get_sample_count();
         int blk_num = logic_snapshot->get_block_num();
         bool sample;
         std::vector<uint8_t *> buf_vec;
@@ -1131,8 +1148,25 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             _unit_count = end_index;
         }
 
+        // Total bytes that must be written per channel (= ceil(unit_count/8)).
+        // get_block_size() floors to whole bytes, so a trailing partial byte in
+        // the last block would be dropped, shifting every following block on
+        // reload and corrupting the round-trip. Clamp the final block to the
+        // exact remaining byte count.
+        uint64_t total_out_bytes = (_unit_count + 7) / 8;
+        uint64_t written_bytes = 0;
+
         for (int blk = 0; !_canceled  &&  blk < blk_num; blk++) {
-            uint64_t buf_sample_num = logic_snapshot->get_block_size(blk) * 8;
+            uint64_t blk_bytes = logic_snapshot->get_block_size(blk);
+            uint64_t buf_sample_num = blk_bytes * 8;
+            if (written_bytes + blk_bytes > total_out_bytes) {
+                // Last (partial) block: write only the remaining valid bytes.
+                uint64_t remain = total_out_bytes - written_bytes;
+                if (remain == 0)
+                    break;
+                buf_sample_num = remain * 8;
+            }
+            written_bytes += buf_sample_num / 8;
             buf_vec.clear();
             buf_sample.clear();
 
@@ -1189,7 +1223,10 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                 sr_output_send(output, &p, &data_out);
 
                 if(data_out){
-                    out << QString::fromUtf8((char*) data_out->str);
+                    if (is_binary_output)
+                        file.write(data_out->str, data_out->len);
+                    else
+                        out << QString::fromUtf8((char*) data_out->str);
                     g_string_free(data_out,TRUE);
                 }
 
@@ -1256,7 +1293,10 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             sr_output_send(output, &p, &data_out);
 
             if(data_out){
-                out << (char*) data_out->str;
+                if (is_binary_output)
+                    file.write(data_out->str, data_out->len);
+                else
+                    out << (char*) data_out->str;
                 g_string_free(data_out,TRUE);
             }
 
@@ -1362,7 +1402,10 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                 sr_output_send(output, &p, &data_out);
 
                 if(data_out){
-                    out << (char*) data_out->str;
+                    if (is_binary_output)
+                        file.write(data_out->str, data_out->len);
+                    else
+                        out << (char*) data_out->str;
                     g_string_free(data_out,TRUE);
                 }           
 

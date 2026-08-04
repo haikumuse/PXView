@@ -467,6 +467,23 @@ class McpClient:
         args["analogDownsampleRatio"] = analog_downsample_ratio
         return self._call_tool("export_raw_data_binary", args, timeout=timeout)
 
+    def export_raw_data(self, format: str, directory: str,
+                        digital_channels: Optional[List[int]] = None,
+                        analog_channels: Optional[List[int]] = None,
+                        analog_downsample_ratio: int = 1,
+                        iso8601_timestamp: bool = False,
+                        timeout: Optional[float] = None) -> Any:
+        """Export raw capture data in a chosen format: csv, binary, vcd, hex, bits."""
+        args: dict = {"format": format,
+                      "directory": _to_windows_path(directory)}
+        if digital_channels is not None:
+            args["digitalChannels"] = digital_channels
+        if analog_channels is not None:
+            args["analogChannels"] = analog_channels
+        args["analogDownsampleRatio"] = analog_downsample_ratio
+        args["iso8601Timestamp"] = iso8601_timestamp
+        return self._call_tool("export_raw_data", args, timeout=timeout)
+
     def export_data_table_csv(self, filepath: str,
                               analyzers: Optional[List[dict]] = None,
                               iso8601_timestamp: bool = False,

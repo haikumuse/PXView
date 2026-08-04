@@ -270,6 +270,17 @@ public:
         int radix_type = 0,
         bool iso8601_timestamp = false) override;
 
+    // Unified raw-data export. `format` maps to an sr_output module id
+    // (csv/binary/vcd/hex/bits); the file suffix is derived from it so the
+    // existing StoreSession export path picks the right module.
+    Result<void> export_raw_data(
+        const std::string &format,
+        const std::string &directory,
+        const std::vector<int32_t> &digital_channels,
+        const std::vector<int32_t> &analog_channels,
+        int analog_downsample_ratio = 1,
+        bool iso8601_timestamp = false) override;
+
     // ---- ISessionService: 19. View control ----
     Result<void> show_region(uint64_t start_sample, uint64_t end_sample) override;
     Result<void> zoom_fit() override;

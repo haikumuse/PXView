@@ -616,6 +616,7 @@ Result<int> SessionService::configure_and_start(
     const std::string& operation_mode,
     const std::string& buffer_options,
     const std::string& digital_filter,
+    const std::string& pattern,
     int capture_ratio,
     double repeat_interval_seconds,
     uint64_t sample_count) {
@@ -3886,6 +3887,78 @@ Result<void> SessionService::export_data_table_csv(
     }
 
     return export_decoder_table(filepath, analyzers, iso8601_timestamp);
+}
+
+Result<void> SessionService::export_raw_data(
+    const std::string &format,
+    const std::string &directory,
+    const std::vector<int32_t> &digital_channels,
+    const std::vector<int32_t> &analog_channels,
+    int analog_downsample_ratio,
+    bool iso8601_timestamp) {
+    if (!_session)
+        return Result<void>::Fail(ErrorCode::InternalError,
+                                  "Session is nullptr");
+
+    // Normalize format -> sr_output module id + file suffix.
+    // binary has no sr_output exts, but id "binary" still resolves via
+    // sr_output_find(), so we keep the suffix consistent with the module id.
+    std::string fmt = format;
+    std::string suffix;
+    if (fmt == "csv")              suffix = "csv";
+    else if (fmt == "binary")      suffix = "bin";
+    else if (fmt == "vcd")         suffix = "vcd";
+    else if (fmt == "hex")         suffix = "hex";
+    else if (fmt == "bits")        suffix = "bits"; // module id (matched against sr_output_id, not file ext)
+    else
+        return Result<void>::Fail(ErrorCode::ExportFailed,
+                                  "Unsupported export format: " + fmt +
+                                  " (supported: csv, binary, vcd, hex, bits)");
+
+    // binary uses its own dedicated writer (raw bytes, no sr_output module)
+    if (fmt == "binary")
+        return export_raw_data_binary(directory, digital_channels,
+                                      analog_channels, analog_downsample_ratio);
+
+    QDir dir(QString::fromStdString(directory));
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            return Result<void>::Fail(ErrorCode::ExportFailed,
+                                      "Failed to create output directory");
+        }
+    }
+
+    for (int32_t ch : digital_channels) {
+        ExportConfig config;
+        config.output_path = directory + "/channel_" + std::to_string(ch) + "." + suffix;
+        config.channels = {ch};
+        config.is_logic = true;
+        config.include_headers = true;
+        config.analog_downsample_ratio = static_cast<uint64_t>(analog_downsample_ratio);
+        config.iso8601_timestamp = iso8601_timestamp;
+
+        auto r = export_data(config);
+        if (!r)
+            return r;
+    }
+
+    for (int32_t ch : analog_channels) {
+        ExportConfig config;
+        config.output_path = directory + "/analog_" + std::to_string(ch) + "." + suffix;
+        config.channels = {ch};
+        config.is_logic = false;
+        config.include_headers = true;
+        config.analog_downsample_ratio = static_cast<uint64_t>(analog_downsample_ratio);
+        config.iso8601_timestamp = iso8601_timestamp;
+
+        auto r = export_data(config);
+        if (!r)
+            return r;
+    }
+
+    broadcast_event(ServiceEvent::ExportComplete,
+                    {{"path", directory}, {"format", fmt}});
+    return Result<void>::Success();
 }
 
 // ===========================================================================

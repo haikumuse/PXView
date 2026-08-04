@@ -277,6 +277,13 @@ public:
         const std::string& analyzer_id,
         int radix_type = 0,
         bool iso8601_timestamp = false) = 0;
+    virtual Result<void> export_raw_data(
+        const std::string& format,
+        const std::string& directory,
+        const std::vector<int32_t>& digital_channels,
+        const std::vector<int32_t>& analog_channels,
+        int analog_downsample_ratio = 1,
+        bool iso8601_timestamp = false) = 0;
 
     // 19. View control
     virtual Result<void> show_region(uint64_t start_sample, uint64_t end_sample) = 0;

@@ -651,6 +651,46 @@ json RpcDispatcher::get_tool_schemas() {
                 {"required", json::array({"directory"})}
             }}
         },
+        // 11b. export_raw_data (unified multi-format)
+        {
+            {"name", "export_raw_data"},
+            {"description", "Export raw capture data in a chosen format: csv, binary, vcd, hex, or bits. Requires a completed capture. Use after wait_capture. Each channel is written to its own file (channel_N.<ext> / analog_N.<ext>)."},
+            {"inputSchema", {
+                {"type", "object"},
+                {"properties", {
+                    {"format", {
+                        {"type", "string"},
+                        {"description", "Export format: csv | binary | vcd | hex | bits"},
+                        {"default", "csv"}
+                    }},
+                    {"directory", {
+                        {"type", "string"},
+                        {"description", "Output directory for the exported files"}
+                    }},
+                    {"digitalChannels", {
+                        {"type", "array"},
+                        {"items", {{"type", "integer"}}},
+                        {"description", "Digital channel indices to export"}
+                    }},
+                    {"analogChannels", {
+                        {"type", "array"},
+                        {"items", {{"type", "integer"}}},
+                        {"description", "Analog channel indices to export"}
+                    }},
+                    {"analogDownsampleRatio", {
+                        {"type", "integer"},
+                        {"description", "Downsample ratio for analog channels"},
+                        {"default", 1}
+                    }},
+                    {"iso8601Timestamp", {
+                        {"type", "boolean"},
+                        {"description", "Use ISO8601 timestamps in CSV output"},
+                        {"default", false}
+                    }}
+                }},
+                {"required", json::array({"format", "directory"})}
+            }}
+        },
         // 12. export_data_table_csv
         {
             {"name", "export_data_table_csv"},
@@ -1552,6 +1592,7 @@ JsonRpcResponse RpcDispatcher::dispatch_mcp_tool(int id, const std::string& tool
     if (tool_name == "get_analyzer_options")   return on_get_analyzer_options(id, args);
     if (tool_name == "export_raw_data_csv")    return on_export_raw_data_csv(id, args);
     if (tool_name == "export_raw_data_binary") return on_export_raw_data_binary(id, args);
+    if (tool_name == "export_raw_data")       return on_export_raw_data(id, args);
     if (tool_name == "export_data_table_csv")  return on_export_data_table_csv(id, args);
     if (tool_name == "get_capture_status")     return on_get_capture_status(id, args);
     if (tool_name == "get_channels")           return on_get_channels(id, args);
@@ -2225,6 +2266,38 @@ JsonRpcResponse RpcDispatcher::on_export_raw_data_binary(int id, const json& par
     return wrap_void(id, session->export_raw_data_binary(
         directory, digital_channels, analog_channels,
         analog_downsample_ratio));
+}
+
+JsonRpcResponse RpcDispatcher::on_export_raw_data(int id, const json& params) {
+    auto session = app_svc_->get_active_session();
+    if (!session)
+        return error_resp(id, static_cast<int>(ErrorCode::MissingDevice),
+                          "No active session");
+
+    if (!params.contains("format"))
+        return error_resp(id, static_cast<int>(ErrorCode::InvalidRequest),
+                          "Missing 'format' parameter (csv/binary/vcd/hex/bits)");
+    if (!params.contains("directory"))
+        return error_resp(id, static_cast<int>(ErrorCode::InvalidRequest),
+                          "Missing 'directory' parameter");
+
+    std::string format = params["format"].get<std::string>();
+    std::string directory = params["directory"].get<std::string>();
+    std::vector<int32_t> digital_channels;
+    std::vector<int32_t> analog_channels;
+    int analog_downsample_ratio = params.value("analogDownsampleRatio", 1);
+    bool iso8601_timestamp = params.value("iso8601Timestamp", false);
+
+    if (params.contains("digitalChannels"))
+        for (auto& ch : params["digitalChannels"])
+            digital_channels.push_back(ch.get<int32_t>());
+    if (params.contains("analogChannels"))
+        for (auto& ch : params["analogChannels"])
+            analog_channels.push_back(ch.get<int32_t>());
+
+    return wrap_void(id, session->export_raw_data(
+        format, directory, digital_channels, analog_channels,
+        analog_downsample_ratio, iso8601_timestamp));
 }
 
 JsonRpcResponse RpcDispatcher::on_export_data_table_csv(int id, const json& params) {
