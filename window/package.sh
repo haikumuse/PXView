@@ -51,6 +51,7 @@ else
     # Extract stdlib .pyc files so Python can load modules without zlib
     mkdir -p "lib/python${PY_VER}"
     unzip -q "$PY_ZIP" -d "lib/python${PY_VER}/"
+    rm -f "$PY_ZIP"
 
     # Copy MinGW's compiled extension modules (.pyd) if the version matches
     if [ -d "/mingw64/lib/python${PY_VER}/lib-dynload" ]; then
