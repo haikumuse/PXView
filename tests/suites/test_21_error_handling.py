@@ -15,7 +15,7 @@ class TestErrorHandling:
     def test_invalid_device_id(self, mcp: McpClient, cleanup_after_test):
         """start_capture with invalid deviceId returns error."""
         with pytest.raises(McpError):
-            mcp.start_capture("invalid_device_99999")
+            mcp.start_capture("99999")
 
     def test_capture_already_running(self, mcp: McpClient, device_id: str,
                                      cleanup_after_test):

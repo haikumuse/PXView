@@ -173,23 +173,16 @@ cd "$SCRIPT_DIR"
 echo "   [OK] 安装完成"
 echo ""
 
-# ── 步骤 7: 下载 Python embed + 打包 ──────────────────────────────────────
+# ── 步骤 7: 打包 ─────────────────────────────────────────────────────────
 if [ "$BUILD_PACKAGE" = true ]; then
     echo " [7/${TOTAL_STEPS}] 打包..."
 
-    # 下载 Python embeddable package (与 CI 一致)
-    PYVER=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")')
-    echo "   MSYS2 Python 版本: $PYVER"
-    URL="https://www.python.org/ftp/python/$PYVER/python-$PYVER-embed-amd64.zip"
-    echo "   下载 Python embed: $URL"
-    mkdir -p python
-    curl -L -o python/python-embed.zip "$URL"
-    cd python
-    unzip -o python-embed.zip
-    rm -f python-embed.zip
-    cd "$SCRIPT_DIR"
-    echo "   [OK] Python embed 准备完成"
-    echo ""
+    # Python runtime is bundled entirely from MSYS2 (see window/package.sh):
+    #   - python3XX.dll / libffi-8.dll via copy-deps.sh (ldd of PXView.exe)
+    #   - .pyd extension modules from /mingw64/lib/pythonX.Y/lib-dynload
+    #   - stdlib from /mingw64/lib/pythonX.Y
+    # We intentionally do NOT pull python.org embeddable zip, because its
+    # libffi build is incompatible with MinGW's _ctypes.pyd (breaks ctypes).
 
     # 打包 (收集 DLL 和资源)
     echo "   运行 window/package.sh..."

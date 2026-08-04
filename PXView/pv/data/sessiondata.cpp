@@ -26,6 +26,9 @@
 namespace pv {
 
 SessionData::SessionData() {
+  _logic = std::make_shared<data::LogicSnapshot>();
+  _analog = std::make_shared<data::AnalogSnapshot>();
+  _dso = std::make_shared<data::DsoSnapshot>();
   _cur_snap_samplerate = 0;
   _cur_samplelimits = 0;
   _trig_pos = 0;
@@ -36,9 +39,14 @@ SessionData::SessionData() {
 }
 
 void SessionData::clear() {
-  logic.clear();
-  analog.clear();
-  dso.clear();
+  // Reset to fresh snapshot instances. If SessionDocument also holds a
+  // shared_ptr to the previous snapshot (via copy_data_to_document's
+  // zero-copy share), the previous data stays alive — ref count > 0.
+  // This is the key difference from the old in-place clear(): the document's
+  // data is not affected by this reset.
+  _logic = std::make_shared<data::LogicSnapshot>();
+  _analog = std::make_shared<data::AnalogSnapshot>();
+  _dso = std::make_shared<data::DsoSnapshot>();
   _trig_pos = 0;
   if (_logic_backup) {
     delete _logic_backup;

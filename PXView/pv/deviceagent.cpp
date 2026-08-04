@@ -919,6 +919,45 @@ bool DeviceAgent::start()
     // If one is somehow still alive, join it before starting a new run.
     stop_session_thread();
 
+    // Input module devices (VCD, CSV, binary, Saleae, etc.) have no driver
+    // (sdi->driver == NULL). sr_session_start() calls sr_config_commit(sdi)
+    // which requires a driver, so it would fail/crash for these devices.
+    //
+    // PulseView handles this by making InputFile::start() a no-op — data is
+    // fed directly via sr_input_send() in InputFile::run(), which calls
+    // sr_session_send() internally (bypassing sr_session_start/run entirely).
+    //
+    // PXView's import_file() also feeds data directly via sr_input_send().
+    // When CurrentDeviceChanged fires 100ms later and triggers start_capture(),
+    // we must NOT call sr_session_start/run for input module devices — the
+    // data has already been fed and SR_DF_END has already been sent.
+    //
+    // Start a minimal thread that immediately calls DeviceSessionStopped() so
+    // the CaptureManager lifecycle completes normally (ST_RUNNING → SessionStopped
+    // → release guard → EndCollectWork). The SessionStopped event is broadcast
+    // async, so it won't be processed until exec_capture() returns and sets
+    // ST_RUNNING — no race condition.
+    struct sr_dev_driver *drv = _di ? sr_dev_inst_driver_get(_di) : nullptr;
+    if (!drv) {
+        pxv_info("DeviceAgent::start: input-module device (no driver), "
+                 "skipping sr_session_start/run — data already fed by import_file");
+        std::promise<bool> start_promise;
+        std::future<bool> start_future = start_promise.get_future();
+        _session_thread = std::thread([this, &start_promise]() {
+            start_promise.set_value(true);
+            // Immediately notify that the "session" has stopped.
+            // Data was already fed by import_file, so there's nothing to run.
+            if (_callback) {
+                _callback->DeviceSessionStopped();
+            }
+        });
+        bool ok = start_future.get();
+        if (!ok) {
+            stop_session_thread();
+        }
+        return ok;
+    }
+
     // CRITICAL: Both sr_session_start() and sr_session_run() MUST execute in
     // the SAME thread. This is how PulseView does it (sample_thread_proc calls
     // device_->start() then device_->run() sequentially).

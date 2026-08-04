@@ -72,6 +72,17 @@ def device_id(demo_device: dict) -> str:
     return demo_device["id"]
 
 
+@pytest.fixture(autouse=False)
+def ensure_device_connected(mcp: McpClient, device_id: str):
+    """Ensure the demo device is connected before the test.
+    Use this fixture when a test requires an active device session."""
+    try:
+        mcp.connect_device(device_id)
+    except Exception:
+        pass  # May already be connected
+    yield
+
+
 # ---- Function-scoped fixtures ----
 
 @pytest.fixture
@@ -88,28 +99,37 @@ def tmp_pxc_file(tmp_capture_dir: str) -> str:
     return os.path.join(tmp_capture_dir, "test_capture.pxc")
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def cleanup_after_test(mcp: McpClient):
     """Ensure clean state before and after each test."""
-    # Pre-test cleanup
-    try:
-        mcp.clear_all_decoders()
-    except Exception:
-        pass
-    try:
-        mcp.close_capture()
-    except Exception:
-        pass
+    # Pre-test: ensure server is responsive
+    mcp.wait_for_server(timeout=30, interval=2.0)
+    # Pre-test cleanup — use short timeouts and fewer retries
+    orig_retries = mcp.max_retries
+    mcp.max_retries = 2
+    for cleanup_fn in [
+        lambda: mcp._call_tool("stop_capture", {}, timeout=5.0),
+        lambda: mcp._call_tool("clear_all_decoders", {}, timeout=5.0),
+        lambda: mcp._call_tool("close_capture", {}, timeout=5.0),
+    ]:
+        try:
+            cleanup_fn()
+        except Exception:
+            pass
     yield
-    # Post-test cleanup
-    try:
-        mcp.clear_all_decoders()
-    except Exception:
-        pass
-    try:
-        mcp.close_capture()
-    except Exception:
-        pass
+    # Post-test cleanup — same short timeouts
+    for cleanup_fn in [
+        lambda: mcp._call_tool("stop_capture", {}, timeout=5.0),
+        lambda: mcp._call_tool("clear_all_decoders", {}, timeout=5.0),
+        lambda: mcp._call_tool("close_capture", {}, timeout=5.0),
+    ]:
+        try:
+            cleanup_fn()
+        except Exception:
+            pass
+    mcp.max_retries = orig_retries
+    # Post-test: ensure server is responsive for next test
+    mcp.wait_for_server(timeout=30, interval=2.0)
 
 
 @pytest.fixture

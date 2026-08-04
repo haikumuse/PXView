@@ -302,32 +302,10 @@ bool CaptureManager::exec_capture() {
     return false;
   }
 
-  // Wait for background copy_data_to_document to complete before
-  // starting a new capture, to prevent source data from being cleared.
-  // In double-buffer mode (bSwapBuffer=true), the copy reads from view_data
-  // while the new capture goes to capture_data (a different buffer), so
-  // there's no conflict and we can skip the wait. This eliminates the
-  // main-thread lag at each capture end in stream mode + repeat mode.
-  bool will_swap_buffer = false;
-  {
-    int mode = _state->device_agent().get_work_mode();
-    if (mode != DSO && mode != ANALOG) {
-      if (is_repeat_mode()) {
-        if (_is_stream_mode) {
-          if (_capture_times > 1)
-            will_swap_buffer = true;
-        } else {
-          will_swap_buffer = true;
-        }
-      }
-    }
-  }
-  if (_state->document_registry()->is_copy_in_progress() && !will_swap_buffer) {
-    pxv_info("Waiting for background copy_data_to_document to complete...");
-    while (_state->document_registry()->is_copy_in_progress()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-  }
+  // copy_data_to_document is now zero-copy (shared_ptr sharing, instant).
+  // No need to wait for a background copy thread — is_copy_in_progress()
+  // always returns false. The old wait loop and will_swap_buffer calculation
+  // have been removed.
 
   if (_state->device_agent().have_enabled_channel() == false) {
     QString err_str(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NO_ENABLED_CHANNEL),
@@ -355,6 +333,18 @@ bool CaptureManager::exec_capture() {
     if (is_single_mode()) {
       if (_is_stream_mode)
         bAddDecoder = true;
+      // Single capture must use SINGLE BUFFER (capture_data == view_data).
+      // bSwapBuffer stays false here, so set_capture_data() is never called
+      // below and capture_data would keep pointing at whatever back buffer a
+      // previous repeat-mode run left behind (capture_data != view_data).
+      // The driver then fills capture_data while view_data stays empty.
+      // During the capture that still renders, because is_realtime_refresh()
+      // is true for stream+single and get_logic_snapshot() returns
+      // capture_data. But the moment the capture ends is_working() goes
+      // false, is_realtime_refresh() returns false, and get_logic_snapshot()
+      // falls back to view_data -> empty snapshot -> blank screen.
+      // Pin capture_data to view_data so both phases read the same data.
+      _state->set_capture_data(_state->view_data());
     } else if (is_repeat_mode()) {
       if (_is_stream_mode) {
         if (_capture_times == 1)
@@ -362,7 +352,20 @@ bool CaptureManager::exec_capture() {
         else
           bSwapBuffer = true;
       } else {
-        bSwapBuffer = true;
+        // Non-stream repeat: use SINGLE BUFFER (capture_data == view_data).
+        // DSView original design: data goes directly into view_data, so the
+        // viewport can show live data during capture via get_logic_snapshot()
+        // which returns view_data->get_logic(). Double buffer would put data
+        // in capture_data while view_data stays empty → blank screen.
+        // Zero-copy shared_ptr makes this safe: copy_data_to_document shares
+        // the snapshot, and view_data->clear() on next capture creates a new
+        // shared_ptr while the document keeps the old one alive.
+        //
+        // bSwapBuffer stays false, so set_capture_data() is not called below.
+        // Pin capture_data to view_data explicitly, otherwise a back buffer
+        // left over from an earlier double-buffered run would still be the
+        // capture target and view_data would never receive data.
+        _state->set_capture_data(_state->view_data());
       }
     } else if (is_loop_mode()) {
     }
@@ -377,15 +380,18 @@ bool CaptureManager::exec_capture() {
     _state->clear_all_decode_task2();
     clear_decode_result();
 
-    // CRITICAL: Release the active document's copy of the old mmap data.
-    // copy_data_to_document() shares the mmap via shared_ptr. If we don't
-    // clear the document's LogicSnapshot here, its shared_ptr reference
-    // keeps the old multi-GB mmap alive while a new one is created,
-    // causing memory to double on every capture.
+    // CRITICAL: Release the active document's shared_ptr references to the old
+    // snapshot data. copy_data_to_document() now shares the shared_ptr (zero-copy)
+    // instead of deep-copying. If we don't reset the document's shared_ptrs here,
+    // the old multi-GB mmap stays alive (ref count > 0) while a new one is
+    // created, causing memory to double on every capture.
+    // Note: doc->clear() resets the shared_ptrs (releasing the document's
+    // reference). If SessionData still holds a shared_ptr to the same snapshot
+    // (e.g. view_data), the data stays alive. We must NOT call
+    // doc->get_active_logic()->clear() because that would clear the data
+    // in-place, affecting SessionData's shared snapshot.
     if (_state->document_registry()->get_active_document()) {
-      _state->document_registry()->get_active_document()
-          ->get_active_logic()
-          ->clear();
+      _state->document_registry()->get_active_document()->clear();
     }
   }
 

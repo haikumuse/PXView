@@ -3306,8 +3306,15 @@ void MainWindow::on_event(const pv::interface::CurrentDeviceChanged &) {
     }
 
     current_view()->update_all_trace_postion();
-    QTimer::singleShot(100, this,
-                       [this]() { _session->start_capture(true); });
+    // Input module devices (VCD, CSV, binary, Saleae) have no driver and
+    // data was already fed by import_file(). Calling start_capture() would
+    // clear the already-loaded data and crash in sr_session_start() because
+    // sdi->driver is NULL. Only start_capture for .pxl file devices that
+    // have a virtual-session driver and need session replay.
+    if (!_device_agent->is_input_module()) {
+      QTimer::singleShot(100, this,
+                         [this]() { _session->start_capture(true); });
+    }
   } else if (_device_agent->is_demo()) {
     if (_device_agent->get_work_mode() == LOGIC) {
       _pattern_mode = _device_agent->get_demo_operation_mode();

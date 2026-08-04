@@ -216,6 +216,12 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
     }
   }
 
+  // CRITICAL: Now that all signal raw pointers have been rebound to the new
+  // snapshots, it is safe to release the document's deferred (old) shared_ptrs.
+  // Until this call, the old snapshots are kept alive by _pending_* to prevent
+  // use-after-free on raw pointers that were still pointing to them.
+  doc->clear_pending_release();
+
   if (_view->_time_viewport) {
     _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
@@ -242,8 +248,35 @@ void ViewDataSync::clone_signals_for_document(
 }
 
 pv::data::DataSource *ViewDataSync::document_snapshot_source() {
-  if (_view->_document && _view->_document->has_data())
+  // During active capture in non-stream repeat mode, return the session
+  // (SigSession) so that get_logic_snapshot() returns view_data's live
+  // data. With single-buffer mode (capture_data == view_data), data goes
+  // directly into view_data, and the session returns it for live display.
+  //
+  // Without this check, the document (holding the PREVIOUS capture's data
+  // via shared_ptr) would be returned, causing the view to show frozen data
+  // instead of the current capture's live data.
+  //
+  // This matches the DSView original design: non-stream repeat used single
+  // buffer, and the view always read from the session's view_data.
+  // NOTE: the guard must be as narrow as possible. `is_working()` is true
+  // whenever device_status()==ST_RUNNING, and ST_RUNNING is still set while
+  // RevEndPacket/CopyToDocDone/SessionStopped are queued on the async event
+  // bus. Combined with `is_repeat_mode()` (which is a *persistent* collect-mode
+  // setting that stays true even for an instant/single shot taken while the
+  // mode selector sits on Repeat), the old condition also fired for single
+  // capture: the view then bypassed _document and read view_data, which
+  // capture_init() had already cleared to a fresh empty snapshot -> blank
+  // screen. Use is_repeating() (excludes instant) so a single shot always
+  // keeps reading the document.
+  if (_view->_data_source && _view->_data_source->is_running_status() &&
+      _view->_data_source->is_repeating() &&
+      !_view->_data_source->is_realtime_refresh())
+    return _view->_data_source;
+
+  if (_view->_document && _view->_document->has_data()) {
     return _view->_document;
+  }
   return _view->_data_source;
 }
 
@@ -333,9 +366,38 @@ void ViewDataSync::data_updated() {
 
   // --- General path (non-DSO or DSO stopped) ---
   // Deduplicate rapid calls: if called within 16ms of the last execution,
-  // only mark viewports dirty without doing full update cycle
+  // only mark viewports dirty without doing full update cycle.
+  // CRITICAL: Still update signal data pointers in the dedup path!
+  // Without this, when SR_DF_END arrives right after the last data packet
+  // (< 16ms), data_updated() is deduplicated and signal _data pointers
+  // remain null/stale. The subsequent viewport_update() (from signals_changed)
+  // triggers paint, but paint_mid_align checks !_data → returns → blank screen.
   if (_view->_data_updated_timer.isValid() &&
       _view->_data_updated_timer.elapsed() < 16) {
+    auto *source = _view->document_snapshot_source();
+    if (source) {
+      for (auto sig : _view->_own_signals) {
+        int type = sig->signal_type();
+        switch (type) {
+        case SR_CHANNEL_LOGIC: {
+          view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
+          s->set_data(source->get_logic_snapshot());
+          break;
+        }
+        case SR_CHANNEL_ANALOG: {
+          view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
+          s->set_data(source->get_analog_snapshot());
+          break;
+        }
+        case SR_CHANNEL_DSO: {
+          view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
+          s->set_data(source->get_dso_snapshot());
+          s->paint_prepare();
+          break;
+        }
+        }
+      }
+    }
     _view->set_update(_view->_time_viewport, true);
     _view->set_update(_view->_fft_viewport, true);
     return;
@@ -347,11 +409,11 @@ void ViewDataSync::data_updated() {
     for (auto sig : _view->_own_signals) {
       int type = sig->signal_type();
       switch (type) {
-      case SR_CHANNEL_LOGIC: {
-        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-        s->set_data(source->get_logic_snapshot());
-        break;
-      }
+        case SR_CHANNEL_LOGIC: {
+          view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
+          s->set_data(source->get_logic_snapshot());
+          break;
+        }
       case SR_CHANNEL_ANALOG: {
         view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
         s->set_data(source->get_analog_snapshot());

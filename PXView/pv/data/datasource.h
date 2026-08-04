@@ -108,6 +108,10 @@ public:
     virtual bool is_instant() = 0;
     virtual bool have_view_data() = 0;
     virtual bool is_working() = 0;
+    // Capture mode and refresh flags. Default: false (SessionDocument stubs).
+    // SigSession overrides to forward to CaptureManager.
+    virtual bool is_repeat_mode() { return false; }
+    virtual bool is_realtime_refresh() { return false; }
     // Repeat-mode hold percentage (0..100). Default 0; SigSession overrides
     // to forward to CaptureManager. Used by ViewStatus to draw the repeat
     // progress bar.

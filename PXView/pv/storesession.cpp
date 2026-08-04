@@ -967,26 +967,27 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         return;
     }
 
+    // sr_output_new() takes a filename parameter separately (4th arg) and
+    // stores it in op->filename.  The params hash table is ONLY for module
+    // options declared via sr_output_module.options().  Putting 'filename' or
+    // 'type' in the hash table causes sr_output_new() to reject them as
+    // unknown options and return NULL — which previously caused a silent
+    // failure (no file created, no error reported).
     GHashTable *params = g_hash_table_new(g_str_hash, g_str_equal);
-    GVariant* filenameGVariant = g_variant_new_bytestring(_file_name.toUtf8().data());
-    g_hash_table_insert(params, (char*)"filename", filenameGVariant);
-    GVariant* typeGVariant = g_variant_new_int16(channel_type);
-    g_hash_table_insert(params, (char*)"type", typeGVariant);
 
     // Upstream libsigrok makes sr_output opaque — use sr_output_new() to create
     // an instance instead of stack-allocating and manually assigning fields
     // (fork libsigrok exposed module/sdi/param/start_sample_index on sr_output).
     // sr_output_new() calls the module's init handler internally.
-    // Note: fork sr_output.start_sample_index (used for logic start offset) has
-    // no upstream equivalent — dropped (acceptable for stub).
     const struct sr_output *output = sr_output_new(_outModule, params,
                                                    _session->get_device()->inst(),
                                                    _file_name.toUtf8().data());
     if (!output) {
         pxv_err("Failed to init export module (sr_output_new returned nullptr).");
+        _has_error = true;
+        _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR4),
+                     "Failed to init export module.");
         g_hash_table_destroy(params);
-        if (filenameGVariant != nullptr)
-            g_variant_unref(filenameGVariant);
         return;
     }
 
@@ -1019,7 +1020,12 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
 
     QFile file(_file_name);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        pxv_err("Failed to open export file: %s", _file_name.toUtf8().data());
+        _has_error = true;
+        _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR3),
+                     "Failed to open export file.");
         sr_output_free(output);
+        g_hash_table_destroy(params);
         return;
     }
     QTextStream out(&file);
@@ -1375,8 +1381,6 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     // Upstream libsigrok: sr_output_free() replaces fork _outModule->cleanup().
     sr_output_free(output);
     g_hash_table_destroy(params);
-    if (filenameGVariant != nullptr)
-        g_variant_unref(filenameGVariant);
 
     progress_updated();
 }

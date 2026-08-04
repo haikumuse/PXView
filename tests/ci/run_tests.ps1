@@ -98,7 +98,7 @@ if (-not $pythonExe) {
     Write-Host "No Python with pytest found, trying to install..."
     $pythonExe = "python"
     try {
-        & $pythonExe -m pip install --quiet pytest pytest-html requests 2>$null
+        & $pythonExe -m pip install --quiet pytest pytest-html pytest-timeout requests 2>$null
         $check = & $pythonExe -c "import pytest; print('OK')" 2>$null
         if ($check -ne "OK") { throw "pip install failed" }
         Write-Host "Installed pytest into $pythonExe"

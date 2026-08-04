@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "analogsnapshot.h"
@@ -52,9 +53,26 @@ namespace pv {
 class SessionData {
 public:
   SessionData();
-  data::LogicSnapshot *get_logic() { return &logic; }
-  data::AnalogSnapshot *get_analog() { return &analog; }
-  data::DsoSnapshot *get_dso() { return &dso; }
+  // Raw pointer getters (backward compat — returns nullptr if shared_ptr is null)
+  data::LogicSnapshot *get_logic() {
+    // Self-contained: ensure the snapshot carries its samplerate so the renderer
+    // can read _data->samplerate() without any external pass-through. This covers
+    // the path where rendering reads directly from SessionData (no SessionDocument).
+    if (_logic && _cur_snap_samplerate > 0)
+      _logic->set_samplerate((double)_cur_snap_samplerate);
+    return _logic.get();
+  }
+  data::AnalogSnapshot *get_analog() { return _analog.get(); }
+  data::DsoSnapshot *get_dso() { return _dso.get(); }
+
+  // Shared_ptr getters — for zero-copy ownership sharing with SessionDocument.
+  // The caller (copy_data_to_document) copies the shared_ptr, incrementing the
+  // ref count. When SessionData::clear() resets its shared_ptr, the underlying
+  // snapshot stays alive because SessionDocument still holds a reference.
+  std::shared_ptr<data::LogicSnapshot> logic_shared() { return _logic; }
+  std::shared_ptr<data::AnalogSnapshot> analog_shared() { return _analog; }
+  std::shared_ptr<data::DsoSnapshot> dso_shared() { return _dso; }
+
   void clear();
 
   uint64_t _cur_snap_samplerate, _cur_samplelimits, _trig_pos;
@@ -68,9 +86,12 @@ public:
   std::vector<bool> _signal_invert_channels;
 
 private:
-  data::LogicSnapshot logic;
-  data::AnalogSnapshot analog;
-  data::DsoSnapshot dso;
+  // shared_ptr enables zero-copy ownership sharing with SessionDocument.
+  // clear() resets these to fresh instances; if SessionDocument also holds
+  // a shared_ptr to the old snapshot, the old data stays alive (ref count > 0).
+  std::shared_ptr<data::LogicSnapshot> _logic;
+  std::shared_ptr<data::AnalogSnapshot> _analog;
+  std::shared_ptr<data::DsoSnapshot> _dso;
 };
 
 } // namespace pv

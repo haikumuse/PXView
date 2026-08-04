@@ -32,13 +32,19 @@ cp -r /mingw64/share/qt6/plugins/* .
 ../window/copy-deps.sh imageformats/qjpeg.dll /mingw64
 
 # --- Python standard library ---
-# Detect Python version from MinGW's python314.dll
-PY_VER=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "")
+# Detect Python version from the python3XX.dll that PXView.exe ACTUALLY links
+# (authoritative — avoids mismatch when `python` on PATH is a different version).
+PY_VER=""
+PY_DLL=$(ldd PXView.exe 2>/dev/null | grep -oE 'libpython3\.[0-9]+\.dll' | head -1)
+if [ -n "$PY_DLL" ]; then
+    # libpython3.14.dll -> 3.14
+    PY_VER=$(echo "$PY_DLL" | grep -oE '3\.[0-9]+')
+fi
 if [ -z "$PY_VER" ]; then
     # Fallback: extract from /mingw64/bin/python3*.dll filename
     PY_DLL=$(ls /mingw64/bin/python3*.dll 2>/dev/null | head -1)
     if [ -n "$PY_DLL" ]; then
-        PY_BASE=$(basename "$PY_DLL" .dll)  # e.g. python314
+        PY_BASE=$(basename "$PY_DLL" .dll)
         PY_MAJOR="${PY_BASE:6:1}"
         PY_MINOR="${PY_BASE:7}"
         PY_VER="${PY_MAJOR}.${PY_MINOR}"
@@ -50,14 +56,25 @@ if [ -z "$PY_VER" ]; then
 else
     echo "Detected MinGW Python version: $PY_VER"
 
-    # Extract stdlib from embeddable zip (contains pre-compiled .pyc files)
-    PY_ZIP=$(ls ../python/python3*.zip 2>/dev/null | head -1)
-    if [ -n "$PY_ZIP" ]; then
-        echo "Extracting Python stdlib from: $PY_ZIP"
+    # Copy the FULL Python standard library from MSYS2 (matches the .pyd
+    # extension modules copied below, so libffi/_ctypes stay ABI-compatible).
+    # NOTE: Do NOT mix in python.org embeddable zip — its libffi-8.dll is a
+    # different build than MinGW's _ctypes.pyd and breaks ctypes import.
+    MSYS_PYLIB="/mingw64/lib/python${PY_VER}"
+    if [ -d "$MSYS_PYLIB" ]; then
+        echo "Copying Python stdlib from MSYS2: $MSYS_PYLIB"
         mkdir -p "lib/python${PY_VER}"
-        unzip -q "$PY_ZIP" -d "lib/python${PY_VER}/"
+        # Copy everything except the bulky test suite and site-packages junk
+        # to keep the package lean while staying self-consistent.
+        cp -r "$MSYS_PYLIB"/* "lib/python${PY_VER}/" 2>/dev/null || true
+        # Trim the heavyweight test/ idlelib/ turtledemo/ trees (not needed at runtime)
+        rm -rf "lib/python${PY_VER}/test" \
+               "lib/python${PY_VER}/idlelib" \
+               "lib/python${PY_VER}/turtledemo" \
+               "lib/python${PY_VER}/__pycache__/test" 2>/dev/null || true
+        echo "   [OK] stdlib copied from MSYS2"
     else
-        echo "WARNING: No python3*.zip found in python/, skipping stdlib .pyc"
+        echo "WARNING: $MSYS_PYLIB not found, skipping stdlib"
     fi
 
     # Copy MinGW's compiled extension modules (.pyd)
@@ -67,6 +84,17 @@ else
     else
         echo "WARNING: /mingw64/lib/python${PY_VER}/lib-dynload not found"
     fi
+
+    # _ctypes.pyd (loaded by ctypes/__init__.py) links against libffi-8.dll,
+    # which is NOT a dependency of libpython3.14.dll (so copy-deps.sh won't
+    # pick it up). Copy it explicitly from MinGW so it stays ABI-compatible.
+    for ffi in /mingw64/bin/libffi-8.dll /mingw64/bin/libffi-7.dll; do
+        if [ -f "$ffi" ]; then
+            echo "Copying $ffi (required by _ctypes.pyd)"
+            cp "$ffi" . 2>/dev/null || true
+            break
+        fi
+    done
 
     # Copy python3XX._pth if it exists (configures sys.path)
     PY_SHORT=$(echo "$PY_VER" | tr -d '.')

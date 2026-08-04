@@ -20,24 +20,27 @@ class TestCaptureBasic:
 
     def test_start_capture_minimal(self, mcp: McpClient, device_id: str,
                                    cleanup_after_test):
-        """start_capture with minimal parameters succeeds."""
-        result = mcp.start_capture(device_id)
+        """start_capture with minimal timed configuration succeeds."""
+        # Use a proper timed capture with minimal channels
+        result = mcp.start_capture(device_id, {
+            "digitalChannels": [0],
+            "digitalSampleRate": 1000000,
+        }, {
+            "timedCaptureMode": {"durationSeconds": 0.5}
+        })
         assert result is not None
-        # Stop immediately since we didn't configure properly
-        try:
-            mcp.stop_capture()
-        except Exception:
-            pass
+        mcp.wait_capture(timeout_seconds=15, timeout=20)
 
     def test_start_capture_logic_config(self, mcp: McpClient, device_id: str,
                                         cleanup_after_test):
-        """start_capture with logicDeviceConfiguration succeeds."""
+        """start_capture with logicDeviceConfiguration + timed capture."""
         mcp.start_capture(device_id, {
             "digitalChannels": [0, 1],
             "digitalSampleRate": 1000000,
+        }, {
+            "timedCaptureMode": {"durationSeconds": 0.5}
         })
-        time.sleep(0.5)
-        mcp.stop_capture()
+        mcp.wait_capture(timeout_seconds=15, timeout=20)
 
     def test_start_capture_manual_mode(self, mcp: McpClient, device_id: str,
                                        cleanup_after_test):
@@ -113,14 +116,15 @@ class TestCaptureBasic:
             "timedCaptureMode": {"durationSeconds": 1}
         })
         result = mcp.wait_capture(timeout_seconds=15, timeout=20)
-        assert result is not None
+        # wait_capture returns None on success (void MCP tool result)
+        # An error would raise McpError, not return None
 
     def test_close_capture(self, mcp: McpClient, device_id: str,
                            cleanup_after_test):
         """close_capture releases capture resources."""
         do_timed_capture(mcp, device_id, channels=[0], duration_seconds=0.5)
         result = mcp.close_capture()
-        assert result is not None
+        # close_capture may return None on success (wrap_void)
 
     def test_start_capture_multi_channel(self, mcp: McpClient, device_id: str,
                                          cleanup_after_test):

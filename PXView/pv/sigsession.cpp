@@ -658,7 +658,43 @@ bool SigSession::import_file(QString name) {
             mod_id_str.c_str());
     return false;
   }
-  const struct sr_input *input = sr_input_new(mod, nullptr);
+
+  // For the binary input module, auto-detect channel count and sample rate
+  // from the current device. Raw binary files have no header, so the module
+  // defaults to 8 channels @ 0 Hz — which is almost never correct.
+  // PulseView solves this by showing an options dialog before import; we
+  // auto-detect from the current device context (if a device is open with
+  // 16/32 channels, the binary file was likely exported from that device).
+  GHashTable *input_opts = nullptr;
+  if (mod_id_str == "binary" && _state->device_agent().have_instance()) {
+    int cur_channels = 0;
+    for (auto m : _state->signal_models()) {
+      if (m->type() == SR_CHANNEL_LOGIC && m->enabled())
+        cur_channels++;
+    }
+    if (cur_channels < 1)
+      cur_channels = 8;  // fallback
+
+    uint64_t cur_rate = 0;
+    cur_rate = (uint64_t)_state->device_agent().get_sample_rate();
+    if (cur_rate == 0)
+      cur_rate = 1000000;  // fallback 1 MHz
+
+    pxv_info("Import file: binary module — auto-detect channels=%d, "
+             "samplerate=%llu from current device",
+             cur_channels, (unsigned long long)cur_rate);
+
+    input_opts = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
+                                       (GDestroyNotify)g_variant_unref);
+    g_hash_table_insert(input_opts, g_strdup("numchannels"),
+                        g_variant_ref_sink(g_variant_new_int32(cur_channels)));
+    g_hash_table_insert(input_opts, g_strdup("samplerate"),
+                        g_variant_ref_sink(g_variant_new_uint64(cur_rate)));
+  }
+
+  const struct sr_input *input = sr_input_new(mod, input_opts);
+  if (input_opts)
+    g_hash_table_destroy(input_opts);
   if (!input) {
     pxv_err("Import file error: sr_input_new failed for \"%s\"",
             mod_id_str.c_str());
@@ -1892,12 +1928,17 @@ void SigSession::on_event(const interface::RevEndPacket &) {
     bool bSwapBuffer = false;
 
     if (is_single_mode()) {
-      if (!_capture_manager->is_stream_mode())
-        bAddDecoder = true;
+      // Always add decoder and copy to document. With zero-copy (shared_ptr
+      // sharing), copy_data_to_document is instant — no reason to skip it
+      // for stream mode. Without it, the document never gets data,
+      // CopyToDocDone is never broadcast, set_data_document is never called,
+      // and the View's signal data pointers may not be properly bound.
+      bAddDecoder = true;
     } else if (is_repeat_mode()) {
       if (!_capture_manager->is_stream_mode()) {
+        // Non-stream repeat: single buffer (capture_data == view_data).
+        // No swap needed — data already in view_data. Just add decoder.
         bAddDecoder = true;
-        bSwapBuffer = true;
       } else if (_capture_manager->capture_times() > 1) {
         bAddDecoder = true;
         bSwapBuffer = true;
@@ -1925,16 +1966,10 @@ void SigSession::on_event(const interface::RevEndPacket &) {
 
     // Switch the caputrued data buffer to view.
     if (bSwapBuffer) {
-      // CRITICAL: Join any pending copy thread before clearing old view_data.
-      // The copy thread reads from _state->view_data() (the previous capture's
-      // data). If we clear it here without joining, the copy thread would read
-      // freed/corrupted memory. In double-buffer mode, exec_capture skips the
-      // copy_in_progress wait, so the copy might still be running when the next
-      // RevEndPacket arrives.
-      if (_document_registry->copy_thread().joinable()) {
-        _document_registry->copy_thread().join();
-      }
-
+      // No copy_thread to join — copy_data_to_document is now zero-copy
+      // (shared_ptr sharing, instant). The old join was needed because the
+      // background deep-copy thread might still be reading from view_data
+      // when the next RevEndPacket arrived.
       if (_state->view_data() != _state->capture_data())
         _state->view_data()->clear();
 
@@ -1945,38 +1980,24 @@ void SigSession::on_event(const interface::RevEndPacket &) {
       receive_trigger(_state->view_data()->_trig_pos); // Update trig position.
 
       _event_bus->broadcast_async<interface::DataPoolChanged>({});
+    } else if (is_repeat_mode() && !_capture_manager->is_stream_mode()) {
+      // Single-buffer repeat: data already in view_data (capture_data ==
+      // view_data). Still need to update session time and trigger position.
+      _state->set_session_time(_state->trig_time());
+      receive_trigger(_state->view_data()->_trig_pos);
+      _event_bus->broadcast_async<interface::DataPoolChanged>({});
     }
 
     if (bAddDecoder && _document_registry->get_active_document()) {
-      // Move copy_data_to_document to a background thread
-      // so the UI thread is not blocked by the deep copy.
-      // C4 fix: lock _capture_state_mutex to make the snapshot of
-      // _copy_in_progress + _capture_owner_document atomic with respect
-      // to CaptureOwnerGuard ctor/dtor and clear_capture_owner_document.
-      data::SessionDocument *doc;
-      {
-        std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-        _document_registry->copy_in_progress() = true;
-        doc = _document_registry->get_capture_owner_document()
-                  ? _document_registry->get_capture_owner_document()
-                  : _document_registry->get_active_document();
-      }
-      _event_bus->broadcast_async<interface::CopyInProgressChanged>(
-          {is_copy_in_progress()});
-
-      if (_document_registry->copy_thread().joinable()) {
-        _document_registry->copy_thread().join(); // 等待上一个 copy 完成
-      }
-      _document_registry->copy_thread() = std::thread([this, doc]() {
-        copy_data_to_document(doc);
-        {
-          std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-          _document_registry->copy_in_progress() = false;
-        }
-        _event_bus->broadcast_async<interface::CopyInProgressChanged>(
-            {is_copy_in_progress()});
-        _event_bus->broadcast_async<interface::CopyToDocDone>({nullptr});
-      });
+      // Zero-copy: copy_data_to_document now shares shared_ptrs (instant).
+      // No background thread, no mutex, no CopyInProgressChanged — the old
+      // deep-copy thread is no longer needed.
+      data::SessionDocument *doc =
+          _document_registry->get_capture_owner_document()
+              ? _document_registry->get_capture_owner_document()
+              : _document_registry->get_active_document();
+      copy_data_to_document(doc);
+      _event_bus->broadcast_async<interface::CopyToDocDone>({nullptr});
     } else {
       // No active document (typical in headless mode) OR stream mode (no
       // copy thread needed). Skip the deep copy to a SessionDocument and
@@ -2013,7 +2034,8 @@ void SigSession::on_event(const interface::RevEndPacket &) {
 }
 
 void SigSession::on_event(const interface::CopyToDocDone &) {
-  // Background copy_data_to_document has completed. Start decoders.
+  // copy_data_to_document has completed (now synchronous/instant — zero-copy
+  // shared_ptr sharing). Start decoders.
   // NOTE: _capture_owner_document is NOT cleared here for repeat/loop mode —
   // it is managed by CaptureOwnerGuard for the whole capture session.
   // In repeat mode the owner persists across frames; the guard is reset
@@ -2470,9 +2492,14 @@ void SigSession::copy_data_to_document(data::SessionDocument *doc) {
   doc->set_samplelimits(_state->view_data()->_cur_samplelimits);
   doc->set_trigger_pos(_state->view_data()->_trig_pos);
 
-  doc->copy_from_logic(_state->view_data()->get_logic());
-  doc->copy_from_analog(_state->view_data()->get_analog());
-  doc->copy_from_dso(_state->view_data()->get_dso());
+  // Zero-copy: share the shared_ptr (increment ref count) instead of
+  // deep-copying GB of snapshot data. Both SessionData and SessionDocument
+  // now point to the same underlying snapshot. When SessionData::clear()
+  // resets its shared_ptr (for the next capture), the snapshot stays alive
+  // because SessionDocument still holds a reference.
+  doc->share_from_logic(_state->view_data()->logic_shared());
+  doc->share_from_analog(_state->view_data()->analog_shared());
+  doc->share_from_dso(_state->view_data()->dso_shared());
 }
 
 void SigSession::attach_data_to_signal(SessionData *data) {

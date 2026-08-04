@@ -225,10 +225,10 @@ public:
   bool is_stopped_status() override { return _state->device_status() == ST_STOPPED; }
   void set_collect_mode(DEVICE_COLLECT_MODE m) { _capture_manager->set_collect_mode(m); }
   int get_collect_mode() { return _capture_manager->get_collect_mode(); }
-  bool is_repeat_mode() { return _capture_manager->is_repeat_mode(); }
+  bool is_repeat_mode() override { return _capture_manager->is_repeat_mode(); }
   bool is_single_mode() { return _capture_manager->is_single_mode(); }
   bool is_loop_mode() { return _capture_manager->is_loop_mode(); }
-  bool is_realtime_refresh() { return _capture_manager->is_realtime_refresh(); }
+  bool is_realtime_refresh() override { return _capture_manager->is_realtime_refresh(); }
   bool is_repeating() override { return _capture_manager->is_repeating(); }
   void session_save() override { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->session_save(); }); }
   void show_region(uint64_t start, uint64_t end, bool keep) { dispatch_to<ICaptureCallback>([start, end, keep](ICaptureCallback *cb) { cb->show_region(start, end, keep); }); }

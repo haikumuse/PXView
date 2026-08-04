@@ -97,6 +97,7 @@ public:
         const std::string& operation_mode = "",
         const std::string& buffer_options = "",
         const std::string& digital_filter = "",
+        const std::string& pattern = "",
         int capture_ratio = -1,
         double repeat_interval_seconds = 0.0,
         uint64_t sample_count = 0) = 0;

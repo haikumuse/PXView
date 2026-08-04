@@ -116,8 +116,21 @@ json RpcDispatcher::to_json(const SampleConfig& s) {
 }
 
 json RpcDispatcher::to_json(const CaptureStatus& s) {
+    // Map numeric CaptureState enum to human-readable string.
+    // Tests and MCP clients expect string values: idle, capturing, completed, etc.
+    const char* state_str = "idle";
+    switch (s.state) {
+        case CaptureState::Empty:    state_str = "idle";       break;
+        case CaptureState::Starting: state_str = "capturing";  break;
+        case CaptureState::Recording:state_str = "capturing";  break;
+        case CaptureState::Stopping: state_str = "capturing";  break;
+        case CaptureState::Stopped:  state_str = "completed";  break;
+        case CaptureState::Paused:   state_str = "paused";     break;
+        case CaptureState::Error:    state_str = "error";      break;
+    }
     return json{
-        {"state",                   static_cast<int>(s.state)},
+        {"state",                   state_str},
+        {"state_code",              static_cast<int>(s.state)},
         {"is_instant",              s.is_instant},
         {"is_saving",               s.is_saving},
         {"have_view_data",          s.have_view_data},
@@ -1859,6 +1872,7 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
         std::string operation_mode = logic_config.value("operationMode", "");
         std::string buffer_options = logic_config.value("bufferOptions", "");
         std::string digital_filter = logic_config.value("digitalFilter", "");
+        std::string pattern = logic_config.value("pattern", "");
 
         // Parse captureRatio and repeatIntervalSeconds
         int capture_ratio = capture_config.value("captureRatio", -1);
@@ -1878,7 +1892,7 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
             stream_buffer_size_gb, stream_mem_buffer_size_gb,
             disk_cache_enabled, disk_cache_path,
             threshold_preset,
-            operation_mode, buffer_options, digital_filter,
+            operation_mode, buffer_options, digital_filter, pattern,
             capture_ratio, repeat_interval_seconds,
             sample_count);
         mcp_dbg_log("on_start_capture: configure_and_start returned");

@@ -142,7 +142,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-html requests
+          pip install pytest pytest-html pytest-timeout requests
 
       # ============================================================
       # Step 6: 启动 PXView headless

@@ -18,7 +18,7 @@ from helpers.export_helper import (
     read_csv_file,
     read_binary_file,
 )
-from helpers.decoder_helper import add_decoder_safe
+from helpers.decoder_helper import add_decoder_safe, get_decoder_results_with_retry
 
 pytestmark = pytest.mark.p1
 
@@ -89,6 +89,8 @@ class TestExportImport:
                                        device_id=device_id)
         do_timed_capture(mcp, device_id, channels=[0],
                          sample_rate=1000000, duration_seconds=0.5)
+        # Wait for decoder to finish processing before exporting
+        get_decoder_results_with_retry(mcp, analyzer_id, max_wait=15.0)
 
         filepath = os.path.join(tmp_capture_dir, "decode_table.csv")
         mcp.export_data_table_csv(filepath, analyzers=[
@@ -105,6 +107,8 @@ class TestExportImport:
                                        device_id=device_id)
         do_timed_capture(mcp, device_id, channels=[0],
                          sample_rate=1000000, duration_seconds=0.5)
+        # Wait for decoder to finish processing before exporting
+        get_decoder_results_with_retry(mcp, analyzer_id, max_wait=15.0)
 
         filepath = os.path.join(tmp_capture_dir, "decode_bin.csv")
         mcp.export_data_table_csv(filepath, analyzers=[
@@ -121,6 +125,8 @@ class TestExportImport:
                                        device_id=device_id)
         do_timed_capture(mcp, device_id, channels=[0],
                          sample_rate=1000000, duration_seconds=0.5)
+        # Wait for decoder to finish processing before exporting
+        get_decoder_results_with_retry(mcp, analyzer_id, max_wait=15.0)
 
         filepath = os.path.join(tmp_capture_dir, "decode_dec.csv")
         mcp.export_data_table_csv(filepath, analyzers=[

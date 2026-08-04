@@ -16,10 +16,34 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import re
 import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional, Union
+
+
+def _to_windows_path(path: str) -> str:
+    """Convert a MSYS2/Cygwin-style path to a Windows-native path.
+
+    PXView is a native Windows application and cannot understand
+    MSYS2 paths like /c/Users/... or /tmp/...  This function converts
+    such paths to C:\\Users\\... or the equivalent Windows form.
+    """
+    if not path:
+        return path
+    # Convert /c/Users/... → C:/Users/...
+    m = re.match(r'^/([a-zA-Z])/(.*)$', path)
+    if m:
+        return f"{m.group(1).upper()}:/{m.group(2)}"
+    # Convert /tmp/... → use TEMP env var
+    if path.startswith('/tmp/'):
+        tmp = os.environ.get('TEMP', os.environ.get('TMP', 'C:\\Temp'))
+        # TEMP is already in Windows format, just append the rest
+        rest = path[5:]  # skip '/tmp/'
+        return tmp.replace('\\\\', '/') + '/' + rest
+    return path
 
 
 class McpError(Exception):
@@ -70,9 +94,71 @@ class McpClient:
         self._request_id += 1
         return self._request_id
 
+    @staticmethod
+    def _parse_sse_response(text: str) -> dict:
+        """Parse an SSE (Server-Sent Events) response body and extract
+        the final 'result' event's JSON payload.
+
+        SSE format:
+            event: progress
+            data: {"status":"capturing","elapsed_seconds":0.0}
+
+            event: result
+            data: {"jsonrpc":"2.0","id":1,"result":{...}}
+
+        Returns the parsed JSON from the last 'result' event.
+        Falls back to parsing the entire text as JSON if no SSE format detected.
+        """
+        if not text.startswith("event:"):
+            # Not SSE — parse as regular JSON
+            return json.loads(text)
+
+        # Parse SSE events
+        result_json: Optional[dict] = None
+        current_event = None
+        current_data_lines: list = []
+
+        for line in text.split("\n"):
+            if line.startswith("event:"):
+                current_event = line[6:].strip()
+            elif line.startswith("data:"):
+                current_data_lines.append(line[5:].strip())
+            elif line.strip() == "":
+                # End of event
+                if current_event and current_data_lines:
+                    data_str = "\n".join(current_data_lines)
+                    try:
+                        parsed = json.loads(data_str)
+                        if current_event == "result":
+                            result_json = parsed
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                current_event = None
+                current_data_lines = []
+
+        # Handle last event (if no trailing empty line)
+        if current_event and current_data_lines:
+            data_str = "\n".join(current_data_lines)
+            try:
+                parsed = json.loads(data_str)
+                if current_event == "result":
+                    result_json = parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        if result_json is not None:
+            return result_json
+
+        raise McpConnectionError(
+            "SSE response did not contain a 'result' event"
+        )
+
     def _post(self, body: dict, timeout: Optional[float] = None) -> dict:
         """Send a JSON-RPC request and return the parsed response."""
-        t = timeout or self.timeout
+        # Use a shorter default per-request timeout to avoid long hangs
+        # when the server is temporarily unresponsive. Explicit timeouts
+        # (e.g. for wait_capture) are respected as-is.
+        t = timeout if timeout is not None else min(self.timeout, 30.0)
         raw = json.dumps(body).encode("utf-8")
         last_err: Optional[Exception] = None
         for attempt in range(self.max_retries):
@@ -80,12 +166,22 @@ class McpClient:
                 req = urllib.request.Request(
                     self.url, data=raw,
                     headers={"Content-Type": "application/json",
-                             "Accept": "application/json",
+                             "Accept": "application/json, text/event-stream",
                              "Connection": "close"},
                     method="POST",
                 )
                 with urllib.request.urlopen(req, timeout=t) as resp:
                     text = resp.read().decode("utf-8", errors="replace")
+                    if not text.strip():
+                        # Empty response body — server may have timed out
+                        # or closed connection prematurely
+                        raise McpConnectionError(
+                            f"Empty response from {self.url}"
+                        )
+                    # Check if response is SSE (wait_capture uses SSE streaming)
+                    content_type = resp.headers.get("Content-Type", "")
+                    if "text/event-stream" in content_type:
+                        return self._parse_sse_response(text)
                     return json.loads(text)
             except urllib.error.HTTPError as exc:
                 try:
@@ -197,10 +293,24 @@ class McpClient:
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
-                self._call_method("ping", {}, timeout=5.0)
-                return True
-            except (McpError, Exception):
-                time.sleep(interval)
+                # Use a raw HTTP POST to check connectivity — don't rely
+                # on any specific JSON-RPC method being supported.
+                raw = json.dumps({
+                    "jsonrpc": "2.0", "id": 0, "method": "ping",
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    self.url, data=raw,
+                    headers={"Content-Type": "application/json",
+                             "Connection": "close"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5.0) as resp:
+                    text = resp.read().decode("utf-8", errors="replace")
+                    if text.strip():
+                        return True
+            except Exception:
+                pass
+            time.sleep(interval)
         return False
 
     # ==================================================================
@@ -260,14 +370,14 @@ class McpClient:
                      timeout: Optional[float] = None) -> Any:
         """Load a capture from a .pxc session file."""
         return self._call_tool("load_capture", {
-            "filepath": filepath
+            "filepath": _to_windows_path(filepath)
         }, timeout=timeout)
 
     def save_capture(self, filepath: str,
                      timeout: Optional[float] = None) -> Any:
         """Save current capture to a .pxc session file."""
         return self._call_tool("save_capture", {
-            "filepath": filepath
+            "filepath": _to_windows_path(filepath)
         }, timeout=timeout)
 
     def close_capture(self, timeout: Optional[float] = None) -> Any:
@@ -334,7 +444,7 @@ class McpClient:
                             iso8601_timestamp: bool = False,
                             timeout: Optional[float] = None) -> Any:
         """Export raw capture data as CSV files."""
-        args: dict = {"directory": directory}
+        args: dict = {"directory": _to_windows_path(directory)}
         if digital_channels is not None:
             args["digitalChannels"] = digital_channels
         if analog_channels is not None:
@@ -349,7 +459,7 @@ class McpClient:
                                analog_downsample_ratio: int = 1,
                                timeout: Optional[float] = None) -> Any:
         """Export raw capture data as binary files."""
-        args: dict = {"directory": directory}
+        args: dict = {"directory": _to_windows_path(directory)}
         if digital_channels is not None:
             args["digitalChannels"] = digital_channels
         if analog_channels is not None:
@@ -362,7 +472,7 @@ class McpClient:
                               iso8601_timestamp: bool = False,
                               timeout: Optional[float] = None) -> Any:
         """Export analyzer results as a CSV data table."""
-        args: dict = {"filepath": filepath}
+        args: dict = {"filepath": _to_windows_path(filepath)}
         if analyzers is not None:
             args["analyzers"] = analyzers
         args["iso8601Timestamp"] = iso8601_timestamp
@@ -583,9 +693,13 @@ class McpClient:
     def connect_device(self, device_id: str,
                        timeout: Optional[float] = None) -> Any:
         """Connect to a device by id."""
-        return self._call_tool("connect_device", {
+        result = self._call_tool("connect_device", {
             "deviceId": device_id
         }, timeout=timeout)
+        # Device connection triggers init_signals and possibly a default
+        # capture. Give the server a moment to settle before the next call.
+        time.sleep(1)
+        return result
 
     def disconnect_device(self, device_id: Optional[str] = None,
                           timeout: Optional[float] = None) -> Any:
@@ -683,7 +797,9 @@ class McpClient:
 
     def refresh_device_list(self, timeout: Optional[float] = None) -> List[dict]:
         """Trigger a hot-plug rescan and return updated device list."""
-        return self._call_tool("refresh_device_list", {}, timeout=timeout)
+        # refresh_device_list scans all drivers which can take a long time
+        # on systems with many USB devices. Use a longer default timeout.
+        return self._call_tool("refresh_device_list", {}, timeout=timeout or 120.0)
 
     def set_save_range(self, start_sample: int, end_sample: int,
                        timeout: Optional[float] = None) -> Any:

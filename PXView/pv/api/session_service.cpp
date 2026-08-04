@@ -64,6 +64,42 @@
 #include <condition_variable>
 #include <functional>
 
+// Headless-mode ISessionDataGetter implementation.
+// In GUI mode, MainWindow provides genSessionData() which serializes the full
+// session config (device options, channel layout, trigger config, etc.).
+// In headless mode there is no MainWindow, so we provide a minimal
+// implementation that generates a basic JSON config with device info.
+namespace {
+class HeadlessSessionDataGetter : public ISessionDataGetter {
+public:
+    HeadlessSessionDataGetter(pv::SigSession *session, DeviceAgent *device)
+        : _session(session), _device(device) {}
+
+    bool genSessionData(std::string &str) override {
+        if (!_session || !_device)
+            return false;
+
+        QJsonObject sessionVar;
+        sessionVar["Version"] = QJsonValue::fromVariant(SESSION_FORMAT_VERSION);
+        sessionVar["Device"] = QJsonValue::fromVariant(_device->driver_name());
+        sessionVar["DeviceMode"] =
+            QJsonValue::fromVariant(_device->get_work_mode());
+        sessionVar["Language"] = 0;
+        sessionVar["Title"] = QJsonValue::fromVariant(
+            QString("PXView v") + QCoreApplication::applicationVersion());
+
+        QJsonDocument doc(sessionVar);
+        QString data = QString::fromUtf8(doc.toJson());
+        str.append(data.toLocal8Bit().data());
+        return true;
+    }
+
+private:
+    pv::SigSession *_session;
+    DeviceAgent *_device;
+};
+} // namespace
+
 #ifdef WIN32
 #include <windows.h>
 // windows.h defines `interface` as a macro for COM interface declarations,
@@ -497,13 +533,20 @@ Result<void> SessionService::wait_capture_complete(uint64_t timeout_ms) {
         return Result<void>::Fail(ErrorCode::InvalidState,
                                  "Unexpected capture state");
 
-    // Block until capture stops or timeout. In GUI mode we use QEventLoop so
-    // that ISessionCallback callbacks (which arrive on the main thread) are
-    // processed; in headless mode we use a plain condition_variable + mutex
-    // because there is no event loop to pump.
+    // Block until capture stops or timeout.
+    //
+    // CRITICAL: We must always use QEventLoop (not condition_variable) in
+    // BOTH GUI and headless modes. EventBus::dispatch_to posts callbacks
+    // (frame_ended, update_capture) to the main thread via
+    // QCoreApplication::postEvent. If the main thread is blocked in
+    // _wait_cv.wait_for(), those posted events never get processed,
+    // _wait_cv.notify_all() is never called, and the wait deadlocks.
+    //
+    // QEventLoop::exec() pumps the Qt event queue so posted callbacks
+    // are delivered, while a check_timer polls the capture state directly.
     _wait_capture_stop_flag = false;
 
-    if (is_gui_mode()) {
+    {
         QEventLoop loop;
         QTimer timeout_timer;
         timeout_timer.setSingleShot(true);
@@ -538,15 +581,6 @@ Result<void> SessionService::wait_capture_complete(uint64_t timeout_ms) {
 
         check_timer.stop();
         timeout_timer.stop();
-    } else {
-        // Headless mode: poll the session state on a worker thread.
-        std::unique_lock<std::mutex> lock(_wait_mutex);
-        bool timed_out = !_wait_cv.wait_for(lock,
-            std::chrono::milliseconds(timeout_ms), [this]() {
-                return !_session->is_working() &&
-                       !_session->is_running_status();
-            });
-        _wait_capture_stop_flag = !timed_out;
     }
 
     if (_wait_capture_stop_flag)
@@ -936,6 +970,17 @@ Result<int> SessionService::configure_and_start(
             if (!full_name.empty()) {
                 _device->set_config_string(SR_CONF_OPERATION_MODE, full_name.c_str());
             }
+        }
+    }
+
+    // 5f. Set demo logic pattern mode if specified (deterministic data source
+    // such as "graycode" / "sigrok" / "random"). Only valid for the demo device
+    // and only in Logic mode. This is used to make save/load and decoder tests
+    // reproducible (random pattern breaks byte-for-byte comparisons).
+    if (!pattern.empty()) {
+        dbg_log(QString("configure_and_start: step 5f - demo pattern: %1").arg(pattern.c_str()).toUtf8().constData());
+        if (!_device->set_config_string(SR_CONF_PATTERN_MODE, pattern.c_str())) {
+            dbg_log("  WARNING: set SR_CONF_PATTERN_MODE failed (device may not support it)");
         }
     }
 
@@ -3383,7 +3428,10 @@ Result<void> SessionService::save_file(const std::string &path) {
                                   "Session is nullptr");
 
     StoreSession store(_session);
-    store._sessionDataGetter = nullptr;
+    // Provide a headless ISessionDataGetter so save_start() can generate
+    // session config JSON without MainWindow.
+    HeadlessSessionDataGetter getter(_session, _device);
+    store._sessionDataGetter = &getter;
     store.SetFileName(QString::fromStdString(path));
     bool ok = store.save_start();
     if (!ok)
@@ -3402,7 +3450,9 @@ Result<void> SessionService::export_data(const ExportConfig &config) {
                                   "Session is nullptr");
 
     StoreSession store(_session);
-    store._sessionDataGetter = nullptr;
+    // Provide a headless ISessionDataGetter for export operations.
+    HeadlessSessionDataGetter getter(_session, _device);
+    store._sessionDataGetter = &getter;
     store.SetFileName(QString::fromStdString(config.output_path));
     store.SetDataRange(config.start_sample, config.end_sample);
     
