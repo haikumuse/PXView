@@ -35,24 +35,16 @@ namespace pv {
 namespace prop {
 
 Enum::Enum(QString name, QString label,
-    std::vector<pair<GVariant*, QString> > values,
+    std::vector<pair<GVarPtr, QString> > values,
     Getter getter, Setter setter) :
     Property(name, label, getter, setter),
-	_values(values),
+	_values(std::move(values)),
 	_selector(nullptr)
 {
-    for (std::vector< pair<GVariant*, QString> >::const_iterator i =
-        _values.begin(); i != _values.end(); i++)
-        g_variant_ref((*i).first);
 }
 
 Enum::~Enum()
 {
-	for (unsigned int i = 0; i < _values.size(); i++){
-        if (_values[i].first)
-            g_variant_unref(_values[i].first);
-	}
-
 	if (_selector != nullptr){
 		delete _selector;
 		_selector = nullptr;
@@ -76,10 +68,10 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
 	_selector->setObjectName("dock_content");
 
 	for (unsigned int i = 0; i < _values.size(); i++) {
-		const pair<GVariant*, QString> &v = _values[i];
-        _selector->addItem(v.second, QVariant::fromValue((void*)v.first));
+		const pair<GVarPtr, QString> &v = _values[i];
+        _selector->addItem(v.second, QVariant::fromValue((void*)v.first.get()));
 		
-		if (value && g_variant_compare(v.first, value) == 0)
+		if (value && g_variant_compare(v.first.get(), value) == 0)
 			_selector->setCurrentIndex(i);
 	}
 
@@ -126,7 +118,7 @@ void Enum::select_value(const QString &val_str)
         return;
 
     for (unsigned int i = 0; i < _values.size(); i++) {
-        GVariant *gvar = _values[i].first;
+        GVariant *gvar = _values[i].first.get();
         if (!gvar)
             continue;
         gchar *text = g_variant_print(gvar, FALSE);

@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "property.h"
+#include "../gvarptr.h"
 
 class DsComboBox;
 
@@ -39,7 +40,7 @@ class Enum : public Property
     Q_OBJECT;
 
 public:
-    Enum(QString name, QString label, std::vector<std::pair<GVariant*, QString> > values,
+	Enum(QString name, QString label, std::vector<std::pair<GVarPtr, QString> > values,
 		Getter getter, Setter setter);
 
 	virtual ~Enum();
@@ -62,7 +63,7 @@ private slots:
     void on_current_item_changed(int);
 
 private:
-	const std::vector< std::pair<GVariant*, QString> > _values;
+	const std::vector< std::pair<GVarPtr, QString> > _values;
 
 	DsComboBox *_selector;
 };

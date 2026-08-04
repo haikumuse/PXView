@@ -320,6 +320,18 @@ View::~View() {
     _glitch_filter_popup = nullptr;
   }
 
+  // Clean up cursors (View owns the storage; ViewCursors delegate only
+  // manages behaviour). Without this, cursor objects leak on View destruction.
+  for (auto c : _logic_cursors)
+    delete c;
+  _logic_cursors.clear();
+  for (auto c : _dso_cursors)
+    delete c;
+  _dso_cursors.clear();
+  for (auto x : _xcursorList)
+    delete x;
+  _xcursorList.clear();
+
   DESTROY_OBJECT(_trig_cursor);
   DESTROY_OBJECT(_search_cursor);
   REMOVE_UI(this);

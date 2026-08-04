@@ -158,22 +158,12 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 DeviceOptionsDock::~DeviceOptionsDock() {
   REMOVE_UI(this);
   for (auto ptr : _probe_options_binding_list) {
-    const auto &props = ptr->properties();
-    for (auto p : props) {
-      delete p;
-    }
     delete ptr;
   }
   _probe_options_binding_list.clear();
 
-  if (_device_options_binding) {
-    const auto &dev_props = _device_options_binding->properties();
-    for (auto p : dev_props) {
-      delete p;
-    }
-    delete _device_options_binding;
-    _device_options_binding = nullptr;
-  }
+  delete _device_options_binding;
+  _device_options_binding = nullptr;
 }
 
 void DeviceOptionsDock::ChannelChecked(int index, QObject *object) {
@@ -1309,34 +1299,62 @@ void DeviceOptionsDock::try_resize_scroll() {
 #endif
 }
 
-void DeviceOptionsDock::update_view() {
+void DeviceOptionsDock::rebuild_bindings() {
   for (auto ptr : _probe_options_binding_list) {
-    const auto &props = ptr->properties();
-    for (auto p : props) {
-      delete p;
-    }
     delete ptr;
   }
   _probe_options_binding_list.clear();
 
-  if (_device_options_binding) {
-    const auto &old_dev_props = _device_options_binding->properties();
-    for (auto p : old_dev_props) {
-      delete p;
-    }
-    delete _device_options_binding;
-    _device_options_binding = nullptr;
-  }
+  delete _device_options_binding;
+  _device_options_binding = nullptr;
 
+  if (_device_agent->have_instance()) {
+    _device_options_binding = new pv::prop::binding::DeviceOptions(_session);
+  }
+}
+
+void DeviceOptionsDock::build_mode_section() {
+  if (!_device_options_binding)
+    return;
+
+  QFont sectionTitleFont = dock_font_section_title();
+  QLabel *mode_title =
+      new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
+  mode_title->setObjectName("dock_section_title");
+  mode_title->setFont(sectionTitleFont);
+  mode_title->setProperty("lang_id", S_ID(IDS_DLG_MODE));
+  QWidget *mode_section = new QWidget(_container_panel);
+  mode_section->setObjectName("dock_mode_section");
+  QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
+  mode_vbox->setContentsMargins(0, 0, 0, 0);
+  mode_vbox->setSpacing(5);
+  mode_vbox->addWidget(mode_title);
+  QWidget *mode_inner = new QWidget(mode_section);
+  QLayout *props_lay = get_property_form(mode_inner);
+  props_lay->setContentsMargins(5, 8, 5, 10);
+  mode_vbox->addWidget(mode_inner);
+  mode_vbox->setAlignment(Qt::AlignTop);
+
+  // Insert before the first spacer/stretch (or append if none found)
+  int insert_idx = _container_lay->count();
+  for (int i = 0; i < _container_lay->count(); ++i) {
+    QLayoutItem *item = _container_lay->itemAt(i);
+    if (item && item->spacerItem()) {
+      insert_idx = i;
+      break;
+    }
+  }
+  _container_lay->insertWidget(insert_idx, mode_section);
+}
+
+void DeviceOptionsDock::update_view() {
   // Preserve sampling settings widget from being deleted
   if (_sampling_settings_widget) {
     _container_lay->removeWidget(_sampling_settings_widget);
     _sampling_settings_widget->setParent(nullptr);
   }
 
-  if (_device_agent->have_instance()) {
-    _device_options_binding = new pv::prop::binding::DeviceOptions(_session);
-  }
+  rebuild_bindings();
 
   QLayoutItem *item;
   while ((item = _container_lay->takeAt(0)) != nullptr) {
@@ -1354,8 +1372,6 @@ void DeviceOptionsDock::update_view() {
   if (_device_options_binding == nullptr)
     return;
 
-  QFont sectionTitleFont = dock_font_section_title();
-
   build_dynamic_panel();
 
   QWidget *minWid = new QWidget();
@@ -1370,23 +1386,7 @@ void DeviceOptionsDock::update_view() {
   _container_lay->addWidget(sep_mode);
 
   // Mode 部分
-  QLabel *mode_title = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"),
-                                  _container_panel);
-  mode_title->setObjectName("dock_section_title");
-  mode_title->setFont(sectionTitleFont);
-  mode_title->setProperty("lang_id", S_ID(IDS_DLG_MODE));
-  QWidget *mode_section = new QWidget(_container_panel);
-  mode_section->setObjectName("dock_mode_section");
-  QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
-  mode_vbox->setContentsMargins(0, 0, 0, 0);
-  mode_vbox->setSpacing(5);
-  mode_vbox->addWidget(mode_title);
-  QWidget *mode_inner = new QWidget(mode_section);
-  QLayout *props_lay = get_property_form(mode_inner);
-  props_lay->setContentsMargins(5, 8, 5, 10);
-  mode_vbox->addWidget(mode_inner);
-  mode_vbox->setAlignment(Qt::AlignTop);
-  _container_lay->addWidget(mode_section);
+  build_mode_section();
 
   if (_sampling_settings_widget) {
     _container_lay->insertWidget(0, _sampling_settings_widget);
@@ -1412,35 +1412,18 @@ void DeviceOptionsDock::on_mode_changed() {
   // area) and the Mode section (property form), preserving the surrounding
   // scaffolding (sampling widget, separators, minWid, stretch). This avoids
   // the full nuke-and-rebuild of update_view() which causes UI jumping.
-  //
-  // Cleanup order matters: Property destructors delete their owned widgets
-  // (DsComboBox etc.) which are children of the mode_section / dynamic_panel.
-  // We must delete bindings BEFORE deleting the container widgets to avoid
-  // double-free.
 
-  // 1. Delete probe options bindings (Property destructors delete their widgets
-  //    which live inside _dynamic_panel's tabs)
+  // 1. Delete old bindings (Binding destructor deletes properties which
+  //    delete their widgets, removing them from the container's child list)
   for (auto ptr : _probe_options_binding_list) {
-    const auto &props = ptr->properties();
-    for (auto p : props) {
-      delete p;
-    }
     delete ptr;
   }
   _probe_options_binding_list.clear();
+  delete _device_options_binding;
+  _device_options_binding = nullptr;
 
-  // 2. Delete device options binding (Property destructors delete their widgets
-  //    which live inside the mode_section)
-  if (_device_options_binding) {
-    const auto &old_dev_props = _device_options_binding->properties();
-    for (auto p : old_dev_props) {
-      delete p;
-    }
-    delete _device_options_binding;
-    _device_options_binding = nullptr;
-  }
-
-  // 3. Delete old Mode section container (remaining labels/layout shell)
+  // 2. Delete old Mode section container (property widgets already deleted
+  //    by binding destructors; only labels/layout shell remain)
   for (int i = 0; i < _container_lay->count(); ++i) {
     QLayoutItem *item = _container_lay->itemAt(i);
     if (item && item->widget() &&
@@ -1451,48 +1434,19 @@ void DeviceOptionsDock::on_mode_changed() {
     }
   }
 
-  // 4. Create new device options binding (queries SR_CONF_DEVICE_OPTIONS for
-  //    the new mode)
+  // 3. Create new device options binding (queries SR_CONF_DEVICE_OPTIONS
+  //    for the new mode)
   if (_device_agent->have_instance()) {
     _device_options_binding = new pv::prop::binding::DeviceOptions(_session);
   }
 
-  // 5. Rebuild dynamic panel in-place (deletes old _dynamic_panel, creates new)
+  // 4. Rebuild dynamic panel in-place (deletes old _dynamic_panel, creates new)
   build_dynamic_panel();
 
-  // 6. Rebuild Mode section and insert before the stretch
-  if (_device_options_binding) {
-    QFont sectionTitleFont = dock_font_section_title();
-    QLabel *mode_title =
-        new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
-    mode_title->setObjectName("dock_section_title");
-    mode_title->setFont(sectionTitleFont);
-    mode_title->setProperty("lang_id", S_ID(IDS_DLG_MODE));
-    QWidget *mode_section = new QWidget(_container_panel);
-    mode_section->setObjectName("dock_mode_section");
-    QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
-    mode_vbox->setContentsMargins(0, 0, 0, 0);
-    mode_vbox->setSpacing(5);
-    mode_vbox->addWidget(mode_title);
-    QWidget *mode_inner = new QWidget(mode_section);
-    QLayout *props_lay = get_property_form(mode_inner);
-    props_lay->setContentsMargins(5, 8, 5, 10);
-    mode_vbox->addWidget(mode_inner);
-    mode_vbox->setAlignment(Qt::AlignTop);
+  // 5. Rebuild Mode section
+  build_mode_section();
 
-    // Insert before the stretch (find first spacer item)
-    int insert_idx = _container_lay->count();
-    for (int i = 0; i < _container_lay->count(); ++i) {
-      QLayoutItem *item = _container_lay->itemAt(i);
-      if (item && item->spacerItem()) {
-        insert_idx = i;
-        break;
-      }
-    }
-    _container_lay->insertWidget(insert_idx, mode_section);
-  }
-
-  // 7. Refresh cached mode strings (used by mode_check_timeout to detect
+  // 6. Refresh cached mode strings (used by mode_check_timeout to detect
   //    operation_mode / pattern_mode changes)
   _device_agent->get_config_string(SR_CONF_OPERATION_MODE, _opt_mode);
   if (_device_agent->is_demo())
@@ -1528,19 +1482,9 @@ void DeviceOptionsDock::device_updated() {
     _channel_mode_indexs.clear();
     _dso_channel_list.clear();
 
-    if (_device_options_binding) {
-      const auto &old_dev_props = _device_options_binding->properties();
-      for (auto p : old_dev_props) {
-        delete p;
-      }
-      delete _device_options_binding;
-      _device_options_binding = nullptr;
-    }
+    delete _device_options_binding;
+    _device_options_binding = nullptr;
     for (auto ptr : _probe_options_binding_list) {
-      const auto &props = ptr->properties();
-      for (auto p : props) {
-        delete p;
-      }
       delete ptr;
     }
     _probe_options_binding_list.clear();
