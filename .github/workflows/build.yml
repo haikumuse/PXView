@@ -27,6 +27,7 @@ on:
       - 'v*'
     branches:
       - main
+      - view_and_data
   pull_request:
     branches:
       - main
