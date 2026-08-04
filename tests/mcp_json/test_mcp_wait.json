@@ -1,1 +1,0 @@
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"wait_capture","arguments":{"timeoutSeconds":30}},"id":10}

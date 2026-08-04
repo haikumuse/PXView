@@ -199,7 +199,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
         o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels(),
         _state->capture_manager()->is_instant(),
-        false /* isFile */);
+        _state->device_agent().is_file());
     _state->frame_began();
   } else {
     // Append to the existing data snapshot

@@ -248,6 +248,8 @@ public:
     bool get_config_double(int key, double &value, const sr_channel *ch = nullptr, const sr_channel_group *cg = nullptr);
     bool set_config_double(int key, double value, const sr_channel *ch = nullptr, const sr_channel_group *cg = nullptr);
 
+    bool get_config_int64(int key, int64_t &value, const sr_channel *ch = nullptr, const sr_channel_group *cg = nullptr);
+
     // --- sr_config create/free (fork libsigrok API stub) ---
     // Fork libsigrok exposed ds_new_config / ds_free_config for building
     // sr_config entries to attach to sr_datafeed_meta packets (used by

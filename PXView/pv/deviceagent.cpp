@@ -1555,6 +1555,17 @@ bool DeviceAgent::set_config_double(int key, double value, const sr_channel *ch,
     return set_config(key, gvar, ch, cg);
 }
 
+bool DeviceAgent::get_config_int64(int key, int64_t &value, const sr_channel *ch, const sr_channel_group *cg)
+{
+    GVariant *gvar = get_config(key, ch, cg);
+    if (gvar) {
+        value = g_variant_get_int64(gvar);
+        g_variant_unref(gvar);
+        return true;
+    }
+    return false;
+}
+
 // --- sr_config create/free (fork libsigrok API stub) ---
 // Fork libsigrok exposed ds_new_config / ds_free_config for building
 // sr_config entries to attach to sr_datafeed_meta packets (used by

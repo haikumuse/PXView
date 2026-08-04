@@ -439,7 +439,13 @@ void StoreSession::save_analog(pv::data::AnalogSnapshot *analog_snapshot)
                 MakeChunkName(chunk_name, i, 0, ch_type, HEADER_FORMAT_VERSION);
                 ret = m_zipDoc.AddFromBuffer(chunk_name, (const char*)tmp, size) ? SR_OK : -1;
 
-                buf += (size - _unit_count);
+                /* Wrap-around: buf should now point to the start of the
+                 * wrapped data in buf_start. The number of bytes that
+                 * wrapped past buf_end is (buf + size - buf_end).
+                 * Previous code used `buf += (size - _unit_count)` which
+                 * caused unsigned underflow (size < _unit_count normally),
+                 * making buf point to invalid memory. */
+                buf = buf_start + (buf + size - buf_end);
                 if (tmp)
                     free(tmp);
             } 
@@ -600,7 +606,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
 {
     GSList *l;
     struct sr_channel *probe;
-    int probecnt;
     char *s;
     char meta[300] = {0};
   
@@ -708,9 +713,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, "ref max = %d\n", tmp_u32); str += meta;
         }
     }
-    else if (mode == LOGIC) {
-        sprintf(meta, "trigger time = %lld\n", _session->get_session_time().toMSecsSinceEpoch()); str += meta;
-    }
     else if (mode == ANALOG) {
         data::AnalogSnapshot *analog_snapshot = nullptr;
         if ((analog_snapshot = dynamic_cast<data::AnalogSnapshot*>(snapshot))) {
@@ -728,7 +730,11 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
     }
     sprintf(meta, "trigger pos = %" PRIu64 "\n", _session->get_trigger_pos()); str += meta;
 
-    probecnt = 0;
+    /* trigger time: written in ALL modes (not just LOGIC) so the frontend
+     * can restore the original capture timestamp when reopening a .pxl file.
+     * Format: milliseconds since Unix epoch (int64). */
+    sprintf(meta, "trigger time = %lld\n", (long long)_session->get_session_time().toMSecsSinceEpoch()); str += meta;
+
     int analogcnt = 0;
 
     // MSO 架构修复：meta_gen 传入的 snapshot 可能是 LogicSnapshot，
@@ -779,48 +785,50 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
 
         if (mode == DSO)
         {
-            sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
+            /* DSO/ANALOG per-channel fields use analogcnt (not probecnt)
+             * because probecnt only counts logic channels and stays 0
+             * in DSO/ANALOG mode, causing all channels to write to
+             * index 0 and overwrite each other. */
+            sprintf(meta, " enable%d = %d\n", analogcnt, probe->enabled);
             str += meta;
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double vfactor = matched_model ? matched_model->vfactor() : 1;
             double hw_offset = matched_model ? matched_model->hw_offset() : 0;
             double trig_value = matched_model ? matched_model->trig_value() : 0;
-            sprintf(meta, " coupling%d = %d\n", probecnt, coupling);
+            sprintf(meta, " coupling%d = %d\n", analogcnt, coupling);
             str += meta;
-            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, (uint64_t)vdiv);
+            sprintf(meta, " vDiv%d = %" PRIu64 "\n", analogcnt, (uint64_t)vdiv);
             str += meta;
-            sprintf(meta, " vFactor%d = %" PRIu64 "\n", probecnt, (uint64_t)vfactor);
+            sprintf(meta, " vFactor%d = %" PRIu64 "\n", analogcnt, (uint64_t)vfactor);
             str += meta;
-            sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
+            sprintf(meta, " vOffset%d = %d\n", analogcnt, (int)hw_offset);
             str += meta;
-            sprintf(meta, " vTrig%d = %d\n", probecnt, (int)trig_value);
+            sprintf(meta, " vTrig%d = %d\n", analogcnt, (int)trig_value);
             str += meta;
         }
         else if (mode == ANALOG)
         {
-            sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
+            sprintf(meta, " enable%d = %d\n", analogcnt, probe->enabled);
             str += meta;
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double hw_offset = matched_model ? matched_model->hw_offset() : 0;
-            sprintf(meta, " coupling%d = %d\n", probecnt, coupling);
+            sprintf(meta, " coupling%d = %d\n", analogcnt, coupling);
             str += meta;
-            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, (uint64_t)vdiv);
+            sprintf(meta, " vDiv%d = %" PRIu64 "\n", analogcnt, (uint64_t)vdiv);
             str += meta;
-            sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
+            sprintf(meta, " vOffset%d = %d\n", analogcnt, (int)hw_offset);
             str += meta;
-            sprintf(meta, " mapUnit%d = %s\n", probecnt, "");
+            sprintf(meta, " mapUnit%d = %s\n", analogcnt, "");
             str += meta;
-            sprintf(meta, " mapMax%d = %lf\n", probecnt, 0.0);
+            sprintf(meta, " mapMax%d = %lf\n", analogcnt, 0.0);
             str += meta;
-            sprintf(meta, " mapMin%d = %lf\n", probecnt, 0.0);
+            sprintf(meta, " mapMin%d = %lf\n", analogcnt, 0.0);
             str += meta;
         }
 
-        if (is_logic)
-            probecnt++;
-        else
+        if (!is_logic)
             analogcnt++;
     }
 
@@ -1190,7 +1198,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         _unit_count = snapshot->get_sample_count(); 
         unsigned int usize = 8192;
         unsigned int size = usize;
-        struct sr_datafeed_dso dp; 
+        struct sr_datafeed_dso dp;
 
         uint8_t *ch_data_buffer = (uint8_t*)malloc(usize * dso_snapshot->get_channel_num() + 1);
         if (ch_data_buffer == nullptr){
@@ -1199,6 +1207,14 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         }
 
         int ch_num = dso_snapshot->get_channel_num();
+
+        /* Initialize DSO packet fields. Previously dp was uninitialized,
+         * causing sample_bits/en_ch_num/trig_flag to contain garbage. */
+        memset(&dp, 0, sizeof(dp));
+        dp.en_ch_num = (uint8_t)ch_num;
+        int bits = 0;
+        _session->get_device()->get_config_byte(SR_CONF_UNIT_BITS, bits);
+        dp.sample_bits = bits ? bits : 8;
 
         for(uint64_t i = 0; !_canceled && i < _unit_count; i+=usize){
             if(_unit_count - i < usize)
@@ -1253,14 +1269,62 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         void* data_buffer = analog_snapshot->get_data();
         unsigned int usize = 8192;        
         struct sr_datafeed_analog ap;
+        struct sr_analog_encoding encoding;
+        struct sr_analog_meaning meaning;
+        struct sr_analog_spec spec;
 
         const uint64_t ring_start = analog_snapshot->get_ring_start();
  
         int ch_count = snapshot->get_channel_num();  
+        int unit_bytes = analog_snapshot->get_unit_bytes();
+
+        /* Build channel list for analog meaning (all enabled analog channels) */
+        GSList *analog_ch_list = nullptr;
+        for(auto m : _session->get_signal_models()) {
+            if (m->type() == SR_CHANNEL_ANALOG) {
+                for (GSList *l = _session->get_device()->get_channels(); l; l = l->next) {
+                    struct sr_channel *ch = (struct sr_channel *)l->data;
+                    if (ch->index == m->index() && ch->type == SR_CHANNEL_ANALOG) {
+                        analog_ch_list = g_slist_append(analog_ch_list, ch);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /* sr_analog_init is SR_PRIV (internal-only), not exported in the
+         * public libsigrok API. Manually initialize the analog structs here.
+         * This replicates what sr_analog_init() does (see analog.c). */
+        memset(&ap, 0, sizeof(ap));
+        memset(&encoding, 0, sizeof(encoding));
+        memset(&meaning, 0, sizeof(meaning));
+        memset(&spec, 0, sizeof(spec));
+        ap.encoding = &encoding;
+        ap.meaning = &meaning;
+        ap.spec = &spec;
+        encoding.unitsize = sizeof(float);
+        encoding.is_float = TRUE;
+        encoding.is_bigendian = FALSE;
+        encoding.digits = 2;
+        encoding.is_digits_decimal = TRUE;
+        encoding.scale.p = 1;
+        encoding.scale.q = 1;
+        encoding.offset.p = 0;
+        encoding.offset.q = 1;
+        spec.spec_digits = 2;
+        /* Override with actual snapshot format */
+        encoding.unitsize = unit_bytes;
+        encoding.is_float = analog_snapshot->is_float();
+        encoding.is_signed = TRUE;
+        encoding.is_bigendian = FALSE;
+        ap.meaning->channels = analog_ch_list;
+        ap.meaning->mq = SR_MQ_VOLTAGE;
+        ap.meaning->unit = SR_UNIT_VOLT;
+        ap.meaning->mqflags = SR_MQFLAG_DC;
     
         void *block_buffer[2];
         uint64_t block_samples[2];
-        block_buffer[0] =  (unsigned char*)data_buffer + ring_start * ch_count;
+        block_buffer[0] =  (unsigned char*)data_buffer + ring_start * ch_count * unit_bytes;
         block_samples[0] = unit_count - ring_start;
         block_buffer[1] = data_buffer;
         block_samples[1] = ring_start;
@@ -1285,7 +1349,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                     size = sample_count - i;
                 }
          
-                ap.data = (unsigned char*)block_buffer[j] + i * ch_count;
+                ap.data = (unsigned char*)block_buffer[j] + i * ch_count * unit_bytes;
                 ap.num_samples = size;
                 p.type = SR_DF_ANALOG;
                 p.payload = &ap;
@@ -1302,6 +1366,8 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                // pxv_info("size:%llu;_units_stored:%llu", size, _units_stored);
             }
         }
+
+        g_slist_free(analog_ch_list);
     }
 
     // optional, as QFile destructor will already do it:

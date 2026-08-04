@@ -798,6 +798,16 @@ void CaptureManager::data_auto_unlock() {
 bool CaptureManager::get_data_auto_lock() { return _data_auto_lock != 0; }
 
 bool CaptureManager::is_realtime_refresh() {
+  // After stopping (is_working == false), there is no live capture to
+  // refresh from. Returning false here ensures that get_signal_snapshot()
+  // and get_*_snapshot() fall back to view_data (the last completed
+  // capture's data) instead of capture_data (the back buffer, which was
+  // cleared by the RevEndPacket handler on manual stop in repeat mode).
+  // Without this check, stream-mode + repeat-mode stops would leave the
+  // viewport blank because the snapshot getters returned the cleared
+  // capture_data instead of view_data.
+  if (!_state->is_working())
+    return false;
   if (is_loop_mode())
     return true;
   if (_is_stream_mode && is_single_mode())

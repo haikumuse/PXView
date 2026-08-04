@@ -1,0 +1,4 @@
+# PXView MCP E2E Test Dependencies
+pytest>=8.0
+pytest-html>=4.1
+requests>=2.28

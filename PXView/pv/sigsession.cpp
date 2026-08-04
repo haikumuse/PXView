@@ -588,6 +588,20 @@ bool SigSession::set_file(QString name) {
     return false;
   }
 
+  // Restore the original capture timestamp from the .pxl header.
+  // session_file.c parses "trigger time" and stores it via
+  // SR_CONF_SESSION_TIME. Without this, the session time defaults
+  // to the current time, making default filenames (e.g. "-yyMMdd-hhmmss")
+  // incorrect for file-loaded data.
+  {
+    int64_t file_time_ms = 0;
+    if (_state->device_agent().get_config_int64(SR_CONF_SESSION_TIME, file_time_ms)
+        && file_time_ms > 0) {
+      _state->set_session_time(QDateTime::fromMSecsSinceEpoch(file_time_ms));
+      _state->set_trig_time(QDateTime::fromMSecsSinceEpoch(file_time_ms));
+    }
+  }
+
   // 文件设备选中后，触发采集来回放数据。
   // exec_capture() -> device_agent.start() -> sr_session_start/run()
   // -> dev_acquisition_start -> stream_session_data/stream_pxv_session_data

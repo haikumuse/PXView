@@ -1,1 +1,0 @@
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"add_analyzer","arguments":{"analyzerName":"spi","analyzerLabel":"spi_test","settings":{"channelMap":{"CLK":0,"MOSI":1,"CS#":2},"options":{"cpol":"0","cpha":"0","bitorder":"msb-first"}}}},"id":41}

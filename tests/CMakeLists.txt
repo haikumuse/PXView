@@ -1,47 +1,77 @@
 #===============================================================================
-#= PXView tests
+#= PXView MCP E2E Test Suite
 #-------------------------------------------------------------------------------
 # This directory is added via `add_subdirectory(tests)` from the top-level
 # CMakeLists.txt when ENABLE_TESTS is ON.
 #
-# Contents:
-#   - test_font.cpp  : font rendering test executable (Qt6::Widgets/Gui)
-#   - mcp_json/*.json: JSON-RPC 2.0 request bodies driving the MCP HTTP API
-#                      tests via run_mcp_case.py
+# Tests are implemented as Python pytest files in suites/.
+# They communicate with PXView via MCP (HTTP JSON-RPC 2.0 on port 10110).
+# Requires PXView to be running in --headless mode.
 #===============================================================================
 
 find_package(Python3 COMPONENTS Interpreter)
 
-#-------------------------------------------------------------------------------
-# test_font - font rendering test
-#-------------------------------------------------------------------------------
-add_executable(test_font test_font.cpp)
-set_target_properties(test_font PROPERTIES
-	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/PXView/tests"
+if(NOT Python3_FOUND)
+    message(STATUS "Python3 not found — MCP E2E tests will be skipped")
+    return()
+endif()
+
+# ---- Install pytest + requests into the build tree ----
+# This ensures the test runner has its dependencies available.
+set(PYTEST_VENV_DIR "${CMAKE_BINARY_DIR}/pytest_venv")
+
+if(WIN32)
+    set(PYTEST_PYTHON "${PYTEST_VENV_DIR}/Scripts/python.exe")
+    set(PYTEST_PIP "${PYTEST_VENV_DIR}/Scripts/pip.exe")
+else()
+    set(PYTEST_PYTHON "${PYTEST_VENV_DIR}/bin/python")
+    set(PYTEST_PIP "${PYTEST_VENV_DIR}/bin/pip")
+endif()
+
+# Create venv and install deps (only if not already done)
+add_custom_command(
+    OUTPUT "${PYTEST_PYTHON}"
+    COMMAND ${Python3_EXECUTABLE} -m venv "${PYTEST_VENV_DIR}"
+    COMMAND "${PYTEST_PIP}" install --quiet pytest pytest-html requests
+    COMMENT "Creating pytest virtual environment"
 )
-target_link_libraries(test_font PRIVATE
-	Qt6::Widgets
-	Qt6::Gui
+add_custom_target(pytest_venv DEPENDS "${PYTEST_PYTHON}")
+
+# ---- Register CTest entries ----
+
+# Option 1: Run all tests as a single CTest case
+add_test(
+    NAME "mcp_e2e_all"
+    COMMAND "${PYTEST_PYTHON}" -m pytest
+            "${CMAKE_CURRENT_SOURCE_DIR}/suites/"
+            -v
+            --tb=short
+            --html="${CMAKE_BINARY_DIR}/test_report.html"
+            --junitxml="${CMAKE_BINARY_DIR}/test_report.xml"
+            --self-contained-html
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+set_tests_properties("mcp_e2e_all" PROPERTIES
+    TIMEOUT 600
+    DEPENDS pytest_venv
+    ENVIRONMENT "PXVIEW_MCP_URL=http://127.0.0.1:10110/mcp"
 )
 
-add_test(NAME test_font COMMAND test_font)
-
-#-------------------------------------------------------------------------------
-# MCP HTTP API tests - one ctest case per mcp_json/*.json file
-#-------------------------------------------------------------------------------
-file(GLOB MCP_JSON_CASES "${CMAKE_CURRENT_SOURCE_DIR}/mcp_json/*.json")
-
-foreach(json_case ${MCP_JSON_CASES})
-	get_filename_component(case_name "${json_case}" NAME_WE)
-	add_test(
-		NAME "mcp_${case_name}"
-		COMMAND ${Python3_EXECUTABLE}
-				"${CMAKE_CURRENT_SOURCE_DIR}/run_mcp_case.py"
-				"${json_case}"
-	)
-	set_tests_properties(
-		"mcp_${case_name}"
-		PROPERTIES
-			WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-	)
+# Option 2: Run by priority level (for faster feedback)
+foreach(level p0 p1 p2)
+    add_test(
+        NAME "mcp_e2e_${level}"
+        COMMAND "${PYTEST_PYTHON}" -m pytest
+                "${CMAKE_CURRENT_SOURCE_DIR}/suites/"
+                -v
+                --tb=short
+                -m "${level}"
+                --junitxml="${CMAKE_BINARY_DIR}/test_report_${level}.xml"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    set_tests_properties("mcp_e2e_${level}" PROPERTIES
+        TIMEOUT 300
+        DEPENDS pytest_venv
+        ENVIRONMENT "PXVIEW_MCP_URL=http://127.0.0.1:10110/mcp"
+    )
 endforeach()
