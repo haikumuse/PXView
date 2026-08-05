@@ -114,6 +114,10 @@ class Viewport : public QWidget, public IUiWindow {
   friend class ViewportInteraction;
   friend class ViewportDrag;
 
+  // Render passes (Phase 5) access pixmap and cached geometry state.
+  friend class SignalPixmapPass;
+  friend class CursorOverlayPass;
+
 public:
   static const int HitCursorMargin = 10;
   static const double HitCursorTimeMargin;

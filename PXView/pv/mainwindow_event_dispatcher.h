@@ -87,6 +87,11 @@ public:
     void on_event(const pv::interface::StartCollectWorkPrev &) override;
     void on_event(const pv::interface::EndCollectWorkPrev &) override;
 
+    // --- IServiceEventListener forwarding ---
+    // Routes View operation broadcasts from SessionService (MCP/WS API)
+    // to the active View. MainWindow::on_service_event forwards here.
+    void on_service_event(const pv::api::ServiceEventData &data);
+
 private:
     QPointer<MainWindow> _window;
 };

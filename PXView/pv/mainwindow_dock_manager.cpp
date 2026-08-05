@@ -52,6 +52,7 @@
 #include "tabcontext.h"
 #include "toolbars/samplingbar.h"
 #include "toolbars/trigbar.h"
+#include "toolbars/filebar.h"
 #include "ui/langresource.h"
 #include "ui/string_ids.h"
 #include "view/view.h"
@@ -654,6 +655,100 @@ void DockManager::on_side_bar_action_clicked(int index) {
         return &app.frameOptions._dsoDock;
     else
         return &app.frameOptions._analogDock;
+}
+
+// ---------------------------------------------------------------------------
+// update_toolbar_view_status — extracted from MainWindow (Phase 2).
+// Updates the enabled and visible state of all sidebar items and toolbars
+// based on the current capture status (is_working) and work mode
+// (LOGIC / ANALOG / DSO). Also closes the SlidingDrawer if the currently
+// open page belongs to a sidebar item that has become invisible.
+// ---------------------------------------------------------------------------
+void DockManager::update_toolbar_view_status() {
+    _wnd->_sampling_bar->update_view_status();
+    _wnd->_file_bar->update_view_status();
+    _wnd->_trig_bar->update_view_status();
+
+    bool bEnable = _wnd->_session->is_working() == false;
+    int mode = _wnd->_device_agent->get_work_mode();
+
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_TRIGGER, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_DECODE, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_MEASURE, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_SEARCH, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_FUNCTION, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_OPTIONS, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_MCP, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_LOG, bEnable);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_RUNSTOP, true);
+    _side_bar->setItemEnabled(_wnd->SIDEBAR_INSTANT, true);
+
+    if (_wnd->_session->is_working() && mode == DSO) {
+        if (_wnd->_session->is_instant() == false) {
+            _side_bar->setItemEnabled(_wnd->SIDEBAR_TRIGGER, true);
+            _side_bar->setItemEnabled(_wnd->SIDEBAR_MEASURE, true);
+            _side_bar->setItemEnabled(_wnd->SIDEBAR_FUNCTION, true);
+            _side_bar->setItemEnabled(_wnd->SIDEBAR_OPTIONS, true);
+        }
+    }
+
+    if (mode == LOGIC) {
+        _side_bar->setItemVisible(_wnd->SIDEBAR_TRIGGER, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_DECODE, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MEASURE, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_SEARCH, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_FUNCTION, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_OPTIONS, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MCP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_LOG, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_RUNSTOP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_INSTANT, true);
+    } else if (mode == ANALOG) {
+        _side_bar->setItemVisible(_wnd->SIDEBAR_TRIGGER, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_DECODE, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MEASURE, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_SEARCH, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_FUNCTION, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_OPTIONS, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MCP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_LOG, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_RUNSTOP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_INSTANT, false);
+    } else if (mode == DSO) {
+        _side_bar->setItemVisible(_wnd->SIDEBAR_TRIGGER, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_DECODE, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MEASURE, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_SEARCH, false);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_FUNCTION, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_OPTIONS, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_MCP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_LOG, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_RUNSTOP, true);
+        _side_bar->setItemVisible(_wnd->SIDEBAR_INSTANT, true);
+    }
+
+    /* If the currently-open drawer page belongs to a sidebar item that is
+     * now invisible (e.g. switching DSO→ANALOG hides SIDEBAR_TRIGGER while
+     * the DsoTriggerDock drawer is still open), close the drawer so the user
+     * doesn't see stale content from the previous mode. Without this, the
+     * drawer remains open but the sidebar button to close it is invisible. */
+    if (_sliding_drawer && _sliding_drawer->isOpen()) {
+        int cp = _drawer_current_page;
+        bool should_close = false;
+        if (cp == _drawer_page_trigger || cp == _drawer_page_dso_trigger)
+            should_close = !_side_bar->isItemVisible(_wnd->SIDEBAR_TRIGGER);
+        else if (cp == _drawer_page_protocol)
+            should_close = !_side_bar->isItemVisible(_wnd->SIDEBAR_DECODE);
+        else if (cp == _drawer_page_search)
+            should_close = !_side_bar->isItemVisible(_wnd->SIDEBAR_SEARCH);
+        else if (cp == _drawer_page_function)
+            should_close = !_side_bar->isItemVisible(_wnd->SIDEBAR_FUNCTION);
+        if (should_close) {
+            _sliding_drawer->close();
+            _side_bar->clearAllChecked();
+            _drawer_current_page = -1;
+        }
+    }
 }
 
 } // namespace pv

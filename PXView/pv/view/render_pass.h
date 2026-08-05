@@ -140,6 +140,7 @@ class SignalPixmapPass : public RenderPass {
 public:
   void render(QPainter &p, const RenderContext &ctx) override;
   int z_order() const override { return 20; }
+  bool should_run(const RenderContext &ctx) const override;
 };
 
 /**
@@ -161,6 +162,7 @@ class CursorOverlayPass : public RenderPass {
 public:
   void render(QPainter &p, const RenderContext &ctx) override;
   int z_order() const override { return 40; }
+  bool should_run(const RenderContext &ctx) const override;
 };
 
 } // namespace view

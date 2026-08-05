@@ -117,6 +117,13 @@ public:
 
     ::DockOptions *getDockOptions();
 
+    // ---- Capture UI status ----
+
+    /** Update toolbar and sidebar enabled/visible state based on the
+     *  current capture status and work mode. Extracted from MainWindow
+     *  during Phase 2 modernization (~85 lines). */
+    void update_toolbar_view_status();
+
     // ---- Accessors ----
 
     dock::ProtocolDock      *protocol_widget()       { return _protocol_widget; }

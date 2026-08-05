@@ -35,6 +35,7 @@
 #include "toolbars/titlebar.h"
 #include "widgets/sidebar.h"
 #include "pxvdef.h"
+#include "api/types.h"
 
 // build_channel_layout is accessed via MainWindow::build_channel_layout()
 
@@ -574,4 +575,76 @@ void SessionEventDispatcher::on_event(const pv::interface::StartCollectWorkPrev 
 }
 
 void SessionEventDispatcher::on_event(const pv::interface::EndCollectWorkPrev &) {
+}
+
+// ---------------------------------------------------------------------------
+// IServiceEventListener — route View operation broadcasts from SessionService
+// (MCP/WS API) to the active View. In Headless mode there is no MainWindow,
+// so these events are simply not consumed.
+// Extracted from MainWindow::on_service_event during Phase 2 modernization.
+// ---------------------------------------------------------------------------
+void SessionEventDispatcher::on_service_event(const pv::api::ServiceEventData &data) {
+  pv::view::View *view = safe_current_view();
+  if (!view)
+    return;
+
+  const auto &params = data.params;
+
+  switch (data.event) {
+  case pv::api::ServiceEvent::ViewShowRegion: {
+    auto it_start = params.find("start");
+    auto it_end = params.find("end");
+    if (it_start != params.end() && it_end != params.end()) {
+      uint64_t start = std::stoull(it_start->second);
+      uint64_t end = std::stoull(it_end->second);
+      view->show_region(start, end, true);
+    }
+    break;
+  }
+  case pv::api::ServiceEvent::ViewZoomFit: {
+    // TODO: View has no zoom_fit() method yet; approximate with zoom out.
+    // A proper fit-to-screen implementation should be added to View.
+    view->zoom(-1.0);
+    break;
+  }
+  case pv::api::ServiceEvent::ViewZoomIn: {
+    view->zoom(1.0);
+    break;
+  }
+  case pv::api::ServiceEvent::ViewZoomOut: {
+    view->zoom(-1.0);
+    break;
+  }
+  case pv::api::ServiceEvent::ViewCursorAdded: {
+    auto it = params.find("sample_pos");
+    if (it != params.end()) {
+      uint64_t sample_pos = std::stoull(it->second);
+      view->add_cursor(sample_pos);
+    }
+    break;
+  }
+  case pv::api::ServiceEvent::ViewCursorRemoved: {
+    // Cursor removal by index is handled by View internally;
+    // no direct public API to remove by index from outside.
+    // TODO: Add View::remove_cursor(int index) if needed.
+    break;
+  }
+  case pv::api::ServiceEvent::ViewCursorsCleared: {
+    view->clear_cursors();
+    break;
+  }
+  case pv::api::ServiceEvent::DecoderAdded:
+  case pv::api::ServiceEvent::DecoderRemoved:
+  case pv::api::ServiceEvent::SignalsChanged: {
+    // Core data changed via MCP/API (decoder added/removed or signals
+    // changed). Trigger lazy sync so View creates/removes the
+    // corresponding DecodeTrace by Core Stack identity comparison.
+    view->mark_derived_traces_dirty();
+    view->signals_changed(nullptr);
+    break;
+  }
+  default:
+    // Not a View event; ignore.
+    break;
+  }
 }

@@ -27,13 +27,10 @@
 #include "ruler.h"
 #include "viewstatus.h"
 
-#include "../data/logicsnapshot.h"
 #include "../dialogs/dsomeasure.h"
 #include "../sigsession.h"
 #include "analogsignal.h"
-#include "decodetrace.h"
 #include "dsosignal.h"
-#include "logicsignal.h"
 #include "signal.h"
 #include "spectrumtrace.h"
 
@@ -54,8 +51,6 @@
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
-#include "lissajoustrace.h"
-#include "mathtrace.h"
 
 using namespace std;
 
@@ -253,10 +248,11 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   p.save();
   p.translate(0, -_viewport->_view.get_vOffset());
 
-  // Phase 5: Group card background rendering now via RenderPass.
-  // The pass is called directly (not via RenderPipeline) since it is
-  // the only pass migrated so far. As more passes are wired in, a
-  // full RenderPipeline will be used.
+  // Phase 5: Group card background rendering via RenderPass.
+  // All four passes are now wired in (GroupCardBackgroundPass here in
+  // doPaint, SignalPixmapPass/DecodeTracePass/CursorOverlayPass in
+  // paintSignals). Passes are called directly rather than via
+  // RenderPipeline since each needs slightly different context setup.
   {
     GroupCardBackgroundPass cardPass;
     RenderContext ctx;
@@ -382,247 +378,67 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
 }
 
 void ViewportPainter::paintCursors(QPainter &p) {
-  const QRect xrect = _viewport->_view.get_view_rect();
-  auto &cursor_list = _viewport->_view.get_cursorList();
+  // Phase 5: cursor overlay rendering now via CursorOverlayPass.
+  // Handles regular cursors, xcursors, trigger cursor, and search cursor.
+  RenderContext cctx;
+  cctx.view = &_viewport->_view;
+  cctx.viewport = _viewport;
+  cctx.type = _viewport->_type;
 
-  if (_viewport->_view.cursors_shown() && _viewport->_type == TIME_VIEW) {
-
-    for (auto cursor : cursor_list) {
-      const int64_t cursorX = _viewport->_view.index2pixel(cursor->index());
-      if (xrect.contains(_viewport->_view.hover_point().x(),
-                         _viewport->_view.hover_point().y()) &&
-          qAbs(cursorX - _viewport->_view.hover_point().x()) <=
-              Viewport::HitCursorMargin)
-        cursor->paint(p, xrect, 1,
-                      _viewport->_view.session().is_stopped_status());
-      else
-        cursor->paint(p, xrect, 0,
-                      _viewport->_view.session().is_stopped_status());
-    }
-  }
+  CursorOverlayPass cursorPass;
+  if (cursorPass.should_run(cctx))
+    cursorPass.render(p, cctx);
 }
 
 void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
   std::vector<Trace *> traces;
   _viewport->_view.get_traces(_viewport->_type, traces);
-  std::list<int> _index_list;
 
-  bool rebuilt = false;
+  // Phase 5: Signal pixmap rebuild + blit via SignalPixmapPass.
+  {
+    RenderContext sctx;
+    sctx.view = &_viewport->_view;
+    sctx.viewport = _viewport;
+    sctx.type = _viewport->_type;
+    sctx.vOffset = _viewport->_view.get_vOffset();
+    sctx.fore = fore;
+    sctx.back = back;
+    sctx.traces = &traces;
+    sctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
+    sctx.viewWidth = _viewport->_view.get_view_width();
 
-  if (_viewport->_view.is_logic_rendering_mode()) {
-    // Determine if view parameters changed (requires full logic signal rebuild)
-    bool view_params_changed =
-        (_viewport->_view.scale() != _viewport->_curScale ||
-         _viewport->_view.offset() != _viewport->_curOffset ||
-         _viewport->_view.get_signalHeight() != _viewport->_curSignalHeight ||
-         _viewport->_view.get_vOffset() != _viewport->_curVOffset);
+    SignalPixmapPass pixmapPass;
+    if (pixmapPass.should_run(sctx))
+      pixmapPass.render(p, sctx);
+  }
 
-    const qreal dpr = _viewport->devicePixelRatioF();
-    const QSize pixmapSize = (QSizeF(_viewport->size()) * dpr).toSize();
-    const bool pixmap_changed =
-        _viewport->_pixmap.isNull() ||
-        _viewport->_pixmap.size() != pixmapSize ||
-        !qFuzzyCompare(_viewport->_pixmap.devicePixelRatioF(), dpr);
+  // Phase 5: Decode trace rendering via DecodeTracePass.
+  // Paint decode traces directly on the widget (not via QPixmap) to
+  // ensure crisp text rendering.
+  {
+    RenderContext dctx;
+    dctx.view = &_viewport->_view;
+    dctx.viewport = _viewport;
+    dctx.type = _viewport->_type;
+    dctx.vOffset = _viewport->_view.get_vOffset();
+    dctx.fore = fore;
+    dctx.back = back;
+    dctx.traces = &traces;
+    dctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
 
-    if (view_params_changed || _viewport->_need_update || pixmap_changed) {
-      rebuilt = true;
-      (void)rebuilt;
-
-      _viewport->_curScale = _viewport->_view.scale();
-      _viewport->_curOffset = _viewport->_view.offset();
-      _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
-      _viewport->_curVOffset = _viewport->_view.get_vOffset();
-
-      // Reuse the existing QPixmap when size & DPR match (avoids heap
-      // alloc/dealloc on every frame in realtime refresh mode).
-      if (pixmap_changed) {
-        _viewport->_pixmap = QPixmap(pixmapSize);
-        _viewport->_pixmap.setDevicePixelRatio(dpr);
-      }
-      _viewport->_pixmap.fill(Qt::transparent);
-
-      QPainter dbp(&_viewport->_pixmap);
-      dbp.translate(0, -_viewport->_view.get_vOffset());
-
-      bool bFirst = true;
-      uint64_t end_align_sample = 0;
-
-      for (auto t : traces) {
-        if (t->enabled()) {
-          _index_list = t->get_index_list();
-          int idx = *_index_list.begin() % 8;
-          QString token = QString("@logic-channel-%1").arg(idx);
-          QColor color = AppConfig::Instance().GetThemeColor(token);
-          if (!color.isValid()) {
-            color = Viewport::PROBE_COLORS[idx];
-          }
-          if (t->signal_type() == SR_CHANNEL_LOGIC) {
-            LogicSignal *logic_signal = (LogicSignal *)t;
-            if (bFirst && logic_signal->data())
-              end_align_sample =
-                  logic_signal->data()->get_ring_sample_count();
-            logic_signal->paint_mid_align_sample(
-                dbp, 0, t->get_view_rect().right(), color, back,
-                end_align_sample);
-            bFirst = false;
-          } else if (t->signal_type() != SR_CHANNEL_DECODER) {
-            // Non-logic, non-decoder traces go into the cached pixmap
-            t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
-          }
-        }
-      }
-      _viewport->_need_update = false;
-    }
-
-    // 1. Blit the cached logic signal pixmap (cheap: just a memcpy)
-    p.drawPixmap(0, 0, _viewport->_pixmap);
-
-    // 2. Paint decode traces directly on the widget (not via QPixmap).
-    //    Rendering text into a QPixmap forces grayscale antialiasing
-    //    even when the font strategy requests no antialiasing, because
-    //    the raster paint engine on an offscreen surface ignores the
-    //    TextAntialiasing hint.  Painting directly on the QWidget
-    //    respects the hint, producing crisp pixel-aligned text.
-    //    Logic-signal waveforms are still cached in _pixmap because
-    //    lines are not affected by the antialiasing difference.
-    {
+    DecodeTracePass decodePass;
+    if (decodePass.should_run(dctx)) {
       p.save();
-      p.translate(0, -_viewport->_view.get_vOffset());
-
-      QFont dfont = theme_font_trace_label();
-      p.setFont(dfont);
-
-      for (auto t : traces) {
-        if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
-          t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
-        }
-      }
+      p.setFont(theme_font_trace_label());
+      decodePass.render(p, dctx);
       p.restore();
     }
-  } else {
-    const qreal dpr = _viewport->devicePixelRatioF();
-    const QSize pixmapSize = (QSizeF(_viewport->size()) * dpr).toSize();
-    const bool pixmap_changed =
-        _viewport->_pixmap.isNull() ||
-        _viewport->_pixmap.size() != pixmapSize ||
-        !qFuzzyCompare(_viewport->_pixmap.devicePixelRatioF(), dpr);
-
-    if (_viewport->_view.scale() != _viewport->_curScale ||
-        _viewport->_view.offset() != _viewport->_curOffset ||
-        _viewport->_view.get_signalHeight() != _viewport->_curSignalHeight ||
-        _viewport->_view.get_vOffset() != _viewport->_curVOffset ||
-        _viewport->_need_update || pixmap_changed) {
-
-      rebuilt = true;
-
-      _viewport->_curScale = _viewport->_view.scale();
-      _viewport->_curOffset = _viewport->_view.offset();
-      _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
-      _viewport->_curVOffset = _viewport->_view.get_vOffset();
-
-      // Reuse the existing QPixmap when size & DPR match (avoids heap
-      // alloc/dealloc on every frame in DSO continuous mode).
-      if (pixmap_changed) {
-        _viewport->_pixmap = QPixmap(pixmapSize);
-        _viewport->_pixmap.setDevicePixelRatio(dpr);
-      }
-      _viewport->_pixmap.fill(Qt::transparent);
-
-      QPainter dbp(&_viewport->_pixmap);
-      dbp.translate(0, -_viewport->_view.get_vOffset());
-
-      bool isLissa = false;
-
-      if (_viewport->_view.get_work_mode() == DSO) {
-        auto lis_trace = _viewport->_view.get_own_lissajous_trace();
-        if (lis_trace && lis_trace->enabled()) {
-          isLissa = true;
-        }
-      }
-
-      for (auto t : traces) {
-        if (t->enabled()) {
-          if (isLissa && t->signal_type() == SR_CHANNEL_DSO)
-            continue;
-          if (isLissa && t->signal_type() == SR_CHANNEL_MATH)
-            continue;
-
-          t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
-        }
-      }
-      _viewport->_need_update = false;
-    }
-    p.drawPixmap(0, 0, _viewport->_pixmap);
   }
 
-  // plot cursors
+  // Phase 5: cursor overlay (regular + xcursor + trigger + search) via CursorOverlayPass.
   paintCursors(p);
 
-  const QRect xrect = _viewport->_view.get_view_rect();
-
-  if (_viewport->_view.xcursors_shown() && _viewport->_type == TIME_VIEW) {
-    auto &xcursor_list = _viewport->_view.get_xcursorList();
-    auto i = xcursor_list.begin();
-    int index = 0;
-    bool hovered = false;
-
-    while (i != xcursor_list.end()) {
-      const double cursorX =
-          xrect.left() + (*i)->value(XCursor::XCur_Y) * xrect.width();
-      const double cursorY0 =
-          xrect.top() + (*i)->value(XCursor::XCur_X0) * xrect.height();
-      const double cursorY1 =
-          xrect.top() + (*i)->value(XCursor::XCur_X1) * xrect.height();
-
-      if (!hovered &&
-          ((*i)->get_close_rect(xrect).contains(
-              _viewport->_view.hover_point()) ||
-           (*i)->get_map_rect(xrect).contains(
-               _viewport->_view.hover_point()))) {
-        (*i)->paint(p, xrect, XCursor::XCur_All);
-        hovered = true;
-      } else if (!hovered && xrect.contains(_viewport->_view.hover_point())) {
-        if (qAbs(cursorX - _viewport->_view.hover_point().x()) <=
-                Viewport::HitCursorMargin &&
-            _viewport->_view.hover_point().y() > min(cursorY0, cursorY1) &&
-            _viewport->_view.hover_point().y() < max(cursorY0, cursorY1)) {
-          (*i)->paint(p, xrect, XCursor::XCur_Y);
-          hovered = true;
-        } else if (qAbs(cursorY0 - _viewport->_view.hover_point().y()) <=
-                   Viewport::HitCursorMargin) {
-          (*i)->paint(p, xrect, XCursor::XCur_X0);
-          hovered = true;
-        } else if (qAbs(cursorY1 - _viewport->_view.hover_point().y()) <=
-                   Viewport::HitCursorMargin) {
-          (*i)->paint(p, xrect, XCursor::XCur_X1);
-          hovered = true;
-        } else {
-          (*i)->paint(p, xrect, XCursor::XCur_None);
-        }
-      } else {
-        (*i)->paint(p, xrect, XCursor::XCur_None);
-      }
-
-      i++;
-      index++;
-    }
-  }
-
   if (_viewport->_type == TIME_VIEW) {
-    if (_viewport->_view.trig_cursor_shown()) {
-      _viewport->_view.get_trig_cursor()->paint(p, xrect, 0, false);
-    }
-    if (_viewport->_view.search_cursor_shown()) {
-      const int64_t searchX = _viewport->_view.index2pixel(
-          _viewport->_view.get_search_cursor()->index());
-      if (xrect.contains(_viewport->_view.hover_point().x(),
-                         _viewport->_view.hover_point().y()) &&
-          qAbs(searchX - _viewport->_view.hover_point().x()) <=
-              Viewport::HitCursorMargin)
-        _viewport->_view.get_search_cursor()->paint(p, xrect, 1, -1);
-      else
-        _viewport->_view.get_search_cursor()->paint(p, xrect, 0, -1);
-    }
     // plot zoom rect
     if (_viewport->_action_type == LOGIC_ZOOM) {
       p.setPen(Qt::NoPen);
