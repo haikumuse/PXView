@@ -220,8 +220,14 @@ public:
    */
   inline double scale() { return _layout->scale(); }
 
+  /**
+   * @brief Minimum allowed time scale (seconds per pixel).
+   */
   inline double get_minscale() { return _layout->minscale(); }
 
+  /**
+   * @brief Maximum allowed time scale (seconds per pixel).
+   */
   inline double get_maxscale() { return _layout->maxscale(); }
 
   void auto_set_max_scale();
@@ -232,10 +238,15 @@ public:
   inline int64_t offset() { return _layout->offset(); }
 
   /**
-   * trigger position fix
+   * @brief Trigger horizontal offset in fractional pixels.
+   * Aligns the trigger cursor with the actual trigger point in the waveform.
    */
   inline double trig_hoff() { return _trig_hoff; }
 
+  /**
+   * @brief Set the trigger horizontal offset.
+   * @param hoff The new trigger offset in fractional pixels.
+   */
   inline void set_trig_hoff(double hoff) { _trig_hoff = hoff; }
 
   int64_t get_min_offset();

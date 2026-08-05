@@ -44,6 +44,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/logicsignal.cpp
     PXView/pv/view/analogsignal.cpp
     PXView/pv/view/dsosignal.cpp
+PXView/pv/view/dsosignal_paint.cpp
     PXView/pv/view/dso_trigger_config.cpp
     PXView/pv/view/dso_measure.cpp
     PXView/pv/view/dsldial.cpp
