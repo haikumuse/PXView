@@ -50,31 +50,40 @@ using namespace std;
 namespace pv {
 namespace view {
 
+ViewCursors::ViewCursors(View *view) : _view(view) {}
+
+ViewCursors::~ViewCursors() {
+  for (auto c : _logic_cursors) delete c;
+  for (auto c : _dso_cursors) delete c;
+  for (auto x : _xcursorList) delete x;
+  // _trig_cursor and _search_cursor auto-deleted by unique_ptr
+}
+
 void ViewCursors::init_cursors(QColor foreColor) {
   _show_trig_cursor = false;
-  _trig_cursor = new Cursor(*_view, -1, 0);
+  _trig_cursor = std::make_unique<Cursor>(*_view, -1, 0);
   _trig_cursor->set_colour(View::LightRed);
   _show_search_cursor = false;
   _search_pos = 0;
-  _search_cursor = new Cursor(*_view, -1, _search_pos);
+  _search_cursor = std::make_unique<Cursor>(*_view, -1, _search_pos);
   _search_cursor->set_colour(foreColor);
 }
 
 void ViewCursors::show_cursors(bool show) {
   _show_cursors = show;
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
 }
 
 void ViewCursors::show_trig_cursor(bool show) {
   _show_trig_cursor = show;
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
 }
 
 void ViewCursors::show_search_cursor(bool show) {
   _show_search_cursor = show;
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
 }
 
@@ -105,7 +114,7 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
 
   AppConfig &app = AppConfig::Instance();
 
-  if (trigger_enabled || _view->_device_agent->is_virtual() ||
+  if (trigger_enabled || _view->device_agent()->is_virtual() ||
       _view->get_work_mode() == DSO) {
     _show_trig_cursor = true;
 
@@ -123,7 +132,7 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
     }
   }
 
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
 }
 
@@ -143,7 +152,7 @@ void ViewCursors::set_search_pos(uint64_t search_pos, bool hit) {
 
   if (hit) {
     _view->set_scale_offset(_view->scale(), (time / _view->scale()) - (width / 2));
-    _view->_ruler->update();
+    _view->get_ruler()->update();
     _view->viewport_update();
   }
 }
@@ -274,7 +283,7 @@ uint64_t ViewCursors::get_cursor_samples(int index) {
 QString ViewCursors::get_cm_time(int index) {
   uint64_t sampleIndex = get_cursor_samples(index);
   uint64_t sampleRate = _view->document_snapshot_source()->cur_snap_samplerate();
-  return _view->_ruler->format_real_time(sampleIndex, sampleRate);
+  return _view->get_ruler()->format_real_time(sampleIndex, sampleRate);
 }
 
 QString ViewCursors::get_cm_delta(int index1, int index2) {
@@ -285,7 +294,7 @@ QString ViewCursors::get_cm_delta(int index1, int index2) {
   uint64_t samples2 = get_cursor_samples(index2);
   uint64_t delta_sample =
       (samples1 > samples2) ? samples1 - samples2 : samples2 - samples1;
-  return _view->_ruler->format_real_time(
+  return _view->get_ruler()->format_real_time(
       delta_sample, _view->document_snapshot_source()->cur_snap_samplerate());
 }
 

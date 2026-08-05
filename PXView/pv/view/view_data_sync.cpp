@@ -71,79 +71,78 @@ using namespace std;
 namespace pv {
 namespace view {
 
+// =============================================================================
+// DRY helpers: eliminate repeated switch-case boilerplate via Signal
+// polymorphism (set_data_from_source / clear_data).
+// =============================================================================
+
+void ViewDataSync::apply_source_to_signals(pv::data::DataSource *source) {
+  for (auto sig : _view->get_own_signals())
+    sig->set_data_from_source(source);
+}
+
+void ViewDataSync::clear_all_signal_data() {
+  for (auto sig : _view->get_own_signals())
+    sig->clear_data();
+}
+
+void ViewDataSync::refresh_dso_signal_paint(pv::data::DataSource *source,
+                                             bool set_scale) {
+  if (!source)
+    return;
+  for (auto sig : _view->get_own_signals()) {
+    auto *s = sig->as_dso();
+    if (!s)
+      continue;
+    if (set_scale) {
+      if (_view->is_logic_rendering_mode()) {
+        s->set_scale(s->get_totalHeight());
+      } else {
+        const int scale_height =
+            s->get_view_rect().height() - View::DsoStatusHeight;
+        s->set_scale(scale_height > 0 ? scale_height
+                                        : s->get_view_rect().height());
+      }
+    }
+    s->paint_prepare();
+  }
+}
+
 void ViewDataSync::set_data_source(pv::data::DataSource *source) {
   _data_source = source;
   _view->mark_derived_traces_dirty();
   _view->rebuild_signals();
 
-  if (_view->_time_viewport) {
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view()) {
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
-  if (_view->_fft_viewport) {
-    _view->_fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->fft_viewport()) {
+    _view->fft_viewport()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
   _view->update();
 }
 
 void ViewDataSync::clear_signal_data() {
-  for (auto sig : _view->get_own_signals()) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    }
-  }
+  clear_all_signal_data();
 
-  if (_view->_time_viewport) {
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view()) {
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
-  if (_view->_fft_viewport) {
-    _view->_fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->fft_viewport()) {
+    _view->fft_viewport()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
   _view->update();
 }
 
 void ViewDataSync::set_signal_data_from_source(
     pv::data::DataSource *source) {
-  for (auto sig : _view->get_own_signals()) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(source->get_logic_snapshot());
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(source->get_analog_snapshot());
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(source->get_dso_snapshot());
-      break;
-    }
-    }
-  }
+  apply_source_to_signals(source);
 
-  if (_view->_time_viewport) {
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view()) {
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
-  if (_view->_fft_viewport) {
-    _view->_fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->fft_viewport()) {
+    _view->fft_viewport()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
   _view->update();
 }
@@ -156,26 +155,7 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
   if (!doc) {
     _document = nullptr;
     // Clear signal data pointers so paint events don't dereference freed data.
-    for (auto sig : _view->get_own_signals()) {
-      int type = sig->signal_type();
-      switch (type) {
-      case SR_CHANNEL_LOGIC: {
-        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      case SR_CHANNEL_ANALOG: {
-        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      case SR_CHANNEL_DSO: {
-        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      }
-    }
+    clear_all_signal_data();
     return;
   }
 
@@ -193,26 +173,9 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
     }
   }
 
-  for (auto sig : _view->get_own_signals()) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(doc->get_active_logic());
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(doc->get_active_analog());
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(doc->get_active_dso());
-      break;
-    }
-    }
-  }
+  // SessionDocument::get_*_snapshot() delegates to get_active_*(),
+  // so apply_source_to_signals(doc) correctly binds all signals.
+  apply_source_to_signals(doc);
 
   // CRITICAL: Now that all signal raw pointers have been rebound to the new
   // snapshots, it is safe to release the document's deferred (old) shared_ptrs.
@@ -220,11 +183,11 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
   // use-after-free on raw pointers that were still pointing to them.
   doc->clear_pending_release();
 
-  if (_view->_time_viewport) {
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view()) {
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
-  if (_view->_fft_viewport) {
-    _view->_fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->fft_viewport()) {
+    _view->fft_viewport()->update(UpdateEventType::UPDATE_EV_GENERIC);
   }
   _view->update();
 }
@@ -289,20 +252,20 @@ void ViewDataSync::receive_end() {
     uint64_t actual_samples;
     bool ret;
 
-    ret = _view->_device_agent->get_config_bool(SR_CONF_RLE, rle);
+    ret = _view->device_agent()->get_config_bool(SR_CONF_RLE, rle);
 
     if (ret && rle) {
-      ret = _view->_device_agent->get_config_uint64(SR_CONF_ACTUAL_SAMPLES,
+      ret = _view->device_agent()->get_config_uint64(SR_CONF_ACTUAL_SAMPLES,
                                                      actual_samples);
       if (ret) {
         if (actual_samples !=
             _view->document_snapshot_source()->cur_samplelimits()) {
-          _view->_viewbottom->set_rle_depth(actual_samples);
+          _view->viewstatus_widget()->set_rle_depth(actual_samples);
         }
       }
     }
   }
-  _view->_time_viewport->unshow_wait_trigger();
+  _view->get_time_view()->unshow_wait_trigger();
 
   _view->limit_scale_offset();
 }
@@ -323,16 +286,6 @@ void ViewDataSync::receive_trigger(quint64 trig_pos1) {
 }
 
 void ViewDataSync::data_updated() {
-  {
-    auto *src = _view->document_snapshot_source();
-    if (src && src->get_analog_snapshot())
-      pxv_info("data_updated: source analog sample_count=%llu doc_has_data=%d",
-               (unsigned long long)src->get_analog_snapshot()->get_sample_count(),
-               (_document && _document->has_data()) ? 1 : 0);
-    else
-      pxv_info("data_updated: source=%p analog_snapshot=%p",
-               (void*)src, src ? (void*)src->get_analog_snapshot() : nullptr);
-  }
   // Detect DSO continuous (running) mode for the fast-path below.
   const bool is_dso_running =
       (_view->get_work_mode() == DSO && _data_source &&
@@ -347,25 +300,21 @@ void ViewDataSync::data_updated() {
   if (is_dso_running) {
     if (_data_updated_timer.isValid() &&
         _data_updated_timer.elapsed() < 33) {
-      _view->set_update(_view->_time_viewport, true);
+      _view->set_update(_view->get_time_view(), true);
       return;
     }
 
     auto *source = _view->document_snapshot_source();
     if (source) {
-      for (auto sig : _view->get_own_signals()) {
-        if (sig->signal_type() == SR_CHANNEL_DSO) {
-          auto *s = static_cast<view::DsoSignal *>(sig);
-          s->set_data(source->get_dso_snapshot());
-          s->paint_prepare();
-        }
-      }
+      for (auto sig : _view->get_own_signals())
+        sig->set_data_from_source(source);
+      refresh_dso_signal_paint(source, false);
       if (_view->get_own_lissajous_trace())
         _view->get_own_lissajous_trace()->set_data(source->get_dso_snapshot());
     }
 
-    _view->set_update(_view->_time_viewport, true);
-    _view->set_update(_view->_fft_viewport, true);
+    _view->set_update(_view->get_time_view(), true);
+    _view->set_update(_view->fft_viewport(), true);
     _view->viewport_update();
     _data_updated_timer.start();
     return;
@@ -383,91 +332,45 @@ void ViewDataSync::data_updated() {
       _data_updated_timer.elapsed() < 16) {
     auto *source = _view->document_snapshot_source();
     if (source) {
-      for (auto sig : _view->get_own_signals()) {
-        int type = sig->signal_type();
-        switch (type) {
-        case SR_CHANNEL_LOGIC: {
-          view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-          s->set_data(source->get_logic_snapshot());
-          break;
-        }
-        case SR_CHANNEL_ANALOG: {
-          view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-          s->set_data(source->get_analog_snapshot());
-          break;
-        }
-        case SR_CHANNEL_DSO: {
-          view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-          s->set_data(source->get_dso_snapshot());
-          s->paint_prepare();
-          break;
-        }
-        }
-      }
+      apply_source_to_signals(source);
+      refresh_dso_signal_paint(source, false);
     }
-    _view->set_update(_view->_time_viewport, true);
-    _view->set_update(_view->_fft_viewport, true);
+    _view->set_update(_view->get_time_view(), true);
+    _view->set_update(_view->fft_viewport(), true);
     return;
   }
 
   // Refresh data pointers in render objects (does NOT rebuild them).
   auto *source = _view->document_snapshot_source();
   if (source) {
-    for (auto sig : _view->get_own_signals()) {
-      int type = sig->signal_type();
-      switch (type) {
-        case SR_CHANNEL_LOGIC: {
-          view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-          s->set_data(source->get_logic_snapshot());
-          break;
-        }
-      case SR_CHANNEL_ANALOG: {
-        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-        s->set_data(source->get_analog_snapshot());
-        break;
-      }
-      case SR_CHANNEL_DSO: {
-        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-        s->set_data(source->get_dso_snapshot());
-        if (_view->is_logic_rendering_mode()) {
-          s->set_scale(s->get_totalHeight());
-        } else {
-          const int scale_height =
-              s->get_view_rect().height() - View::DsoStatusHeight;
-          s->set_scale(scale_height > 0 ? scale_height
-                                        : s->get_view_rect().height());
-        }
-        s->paint_prepare();
-        break;
-      }
-      }
-    }
+    apply_source_to_signals(source);
+    refresh_dso_signal_paint(source, true);
 
     if (_view->get_own_lissajous_trace()) {
       _view->get_own_lissajous_trace()->set_data(source->get_dso_snapshot());
     }
   }
 
-  _view->setViewportMargins(_view->headerWidth(), View::RulerHeight, 0, 0);
+  _view->set_viewport_margins(_view->headerWidth(), _view->rulerHeight(), 0, 0);
   _view->update_margins();
   _view->update_scale_offset();
   _view->update_scroll();
 
-  _view->_time_viewport->unshow_wait_trigger();
-  _view->set_update(_view->_time_viewport, true);
-  _view->set_update(_view->_fft_viewport, true);
+  _view->get_time_view()->unshow_wait_trigger();
+  _view->set_update(_view->get_time_view(), true);
+  _view->set_update(_view->fft_viewport(), true);
   _view->viewport_update();
-  _view->_ruler->update();
+  _view->get_ruler()->update();
 
   _data_updated_timer.start();
 }
 
 void ViewDataSync::set_receive_len(uint64_t len) {
-  if (_view->_time_viewport)
-    _view->_time_viewport->set_receive_len(len);
+  if (_view->get_time_view())
+    _view->get_time_view()->set_receive_len(len);
 
-  if (_view->_fft_viewport && _view->_device_agent->get_work_mode() == DSO)
-    _view->_fft_viewport->set_receive_len(len);
+  if (_view->fft_viewport() && _view->device_agent()->get_work_mode() == DSO)
+    _view->fft_viewport()->set_receive_len(len);
 }
 
 // =============================================================================
@@ -534,16 +437,16 @@ void ViewDataSync::capture_init() {
 
   double sampletime = _view->document_snapshot_source()->cur_sampletime();
   if (sampletime > 0) {
-    _view->_layout->_maxscale = sampletime / (width * View::MaxViewRate);
+    _view->layout_delegate()->set_maxscale(sampletime / (width * View::MaxViewRate));
 
     if (mode == ANALOG) {
-      _view->set_scale_offset(_view->_layout->_maxscale, 0);
+      _view->set_scale_offset(_view->layout_delegate()->maxscale(), 0);
     }
   }
 
   _view->status_clear();
 
-  _view->_trig_hoff = 0;
+  _view->set_trig_hoff(0);
 }
 
 void ViewDataSync::show_region(uint64_t start, uint64_t end, bool keep) {
@@ -561,7 +464,7 @@ void ViewDataSync::show_region(uint64_t start, uint64_t end, bool keep) {
     const double ideal_scale = (end - start) * 2.0 /
                                _view->document_snapshot_source()->cur_snap_samplerate() /
                                width;
-    const double new_scale = max(min(ideal_scale, _view->_layout->_maxscale), _view->_layout->_minscale);
+    const double new_scale = max(min(ideal_scale, _view->layout_delegate()->maxscale()), _view->layout_delegate()->minscale());
     const double new_off =
         (start + end) * 0.5 /
             (_view->document_snapshot_source()->cur_snap_samplerate() * new_scale) -
@@ -588,7 +491,7 @@ void ViewDataSync::timebase_changed() {
   }
 
   double scale = _view->scale();
-  double hori_res = _view->_sampling_bar->get_hori_res();
+  double hori_res = _view->sampling_bar()->get_hori_res();
 
   if (hori_res > 0) {
     scale = _data_source->cur_view_time() / width;
@@ -601,13 +504,13 @@ void ViewDataSync::mode_changed() {
   // Reset DSO user zoom factor on mode transition — entering DSO should
   // start at fit-frame (1.0), and leaving DSO shouldn't carry a stale
   // factor back in if the user later re-enters DSO.
-  _view->_layout->_dso_zoom_factor = 1.0;
-  if (_view->_device_agent->is_virtual()) {
+  _view->layout_delegate()->set_dso_zoom_factor(1.0);
+  if (_view->device_agent()->is_virtual()) {
     uint64_t samplerate = _view->document_snapshot_source()->cur_snap_samplerate();
     if (samplerate > 0)
-      _view->set_scale_offset(View::WellSamplesPerPixel * 1.0 / samplerate, _view->_layout->_offset);
+      _view->set_scale_offset(View::WellSamplesPerPixel * 1.0 / samplerate, _view->layout_delegate()->offset());
   }
-  _view->set_scale_offset(max(min(_view->_layout->_scale, _view->_layout->_maxscale), _view->_layout->_minscale), _view->_layout->_offset);
+  _view->set_scale_offset(max(min(_view->layout_delegate()->scale(), _view->layout_delegate()->maxscale()), _view->layout_delegate()->minscale()), _view->layout_delegate()->offset());
 }
 
 void ViewDataSync::auto_set_max_scale() {
@@ -615,8 +518,8 @@ void ViewDataSync::auto_set_max_scale() {
   const int width = _view->get_view_width();
 
   if (width > 0) {
-    _view->_layout->_maxscale = limitTime / (width * View::MaxViewRate);
-    _view->set_scale(_view->_layout->_maxscale);
+    _view->layout_delegate()->set_maxscale(limitTime / (width * View::MaxViewRate));
+    _view->set_scale(_view->layout_delegate()->maxscale());
   }
 }
 
@@ -627,7 +530,7 @@ int ViewDataSync::get_view_width() {
       view_width = max(view_width, s->get_view_rect().width());
     }
   } else {
-    view_width = _view->_viewcenter->width();
+    view_width = _view->viewcenter_widget()->width();
   }
 
   if (view_width == 0) {
@@ -644,7 +547,7 @@ int ViewDataSync::get_view_height() {
       view_height = max(view_height, s->get_view_rect().height());
     }
   } else {
-    view_height = _view->_time_viewport ? _view->_time_viewport->height() : 0;
+    view_height = _view->get_time_view() ? _view->get_time_view()->height() : 0;
   }
 
   return view_height;
@@ -658,14 +561,14 @@ QRect ViewDataSync::get_view_rect() {
     }
   }
 
-  return _view->_viewcenter->rect();
+  return _view->viewcenter_widget()->rect();
 }
 
 int64_t ViewDataSync::get_logic_lst_data_offset() {
   int width = _view->get_view_width();
   assert(width > 0);
 
-  return ceil((_data_source->get_logic_data_view_time() / _view->_layout->_scale) -
+  return ceil((_data_source->get_logic_data_view_time() / _view->layout_delegate()->scale()) -
               (width * View::MaxViewRate));
 }
 
@@ -696,7 +599,7 @@ QString ViewDataSync::get_index_delta(uint64_t start, uint64_t end) {
     return "0";
 
   uint64_t delta_sample = (start > end) ? start - end : end - start;
-  return _view->_ruler->format_real_time(
+  return _view->get_ruler()->format_real_time(
       delta_sample, _view->document_snapshot_source()->cur_snap_samplerate());
 }
 
@@ -705,32 +608,32 @@ QString ViewDataSync::get_index_delta(uint64_t start, uint64_t end) {
 // =============================================================================
 
 bool ViewDataSync::eventFilter(QObject *object, QEvent *event) {
-  if (_view->_destroying)
+  if (_view->destroying())
     return false;
 
   const QEvent::Type type = event->type();
   if (type == QEvent::MouseMove) {
-    const QMouseEvent *const mouse_event = (QMouseEvent *)event;
-    if (object == _view->_ruler || object == _view->_time_viewport ||
-        object == _view->_fft_viewport) {
-      double cur_periods = (mouse_event->position().toPoint().x() + _view->_layout->_offset) *
-                           _view->_layout->_scale / _view->_ruler->get_min_period();
+    const QMouseEvent *const mouse_event = static_cast<QMouseEvent *>(event);
+    if (object == _view->get_ruler() || object == _view->get_time_view() ||
+        object == _view->fft_viewport()) {
+      double cur_periods = (mouse_event->position().toPoint().x() + _view->layout_delegate()->offset()) *
+                           _view->layout_delegate()->scale() / _view->get_ruler()->get_min_period();
       int integer_x =
-          round(cur_periods) * _view->_ruler->get_min_period() / _view->_layout->_scale - _view->_layout->_offset;
+          round(cur_periods) * _view->get_ruler()->get_min_period() / _view->layout_delegate()->scale() - _view->layout_delegate()->offset();
       double cur_deviate_x =
           qAbs(mouse_event->position().toPoint().x() - integer_x);
       if (_view->is_logic_rendering_mode() && cur_deviate_x < 10)
-        _view->_hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
+        _view->hover_point() = QPoint(integer_x, mouse_event->position().toPoint().y());
       else
-        _view->_hover_point = mouse_event->position().toPoint();
-    } else if (object == _view->_header)
-      _view->_hover_point = QPoint(0, (int)mouse_event->position().y());
+        _view->hover_point() = mouse_event->position().toPoint();
+    } else if (object == _view->header_widget())
+      _view->hover_point() = QPoint(0, (int)mouse_event->position().y());
     else
-      _view->_hover_point = QPoint(-1, -1);
+      _view->hover_point() = QPoint(-1, -1);
 
     _view->hover_point_changed();
   } else if (type == QEvent::Leave) {
-    _view->_hover_point = QPoint(-1, -1);
+    _view->hover_point() = QPoint(-1, -1);
     _view->hover_point_changed();
   }
 
@@ -745,41 +648,40 @@ void ViewDataSync::resizeEvent(QResizeEvent *event) {
     return;
   }
 
-  bool widthChanged = (_view->_layout->_lastWidth != width);
-  _view->_layout->_lastWidth = width;
+  bool widthChanged = (_view->layout_delegate()->lastWidth() != width);
+  _view->layout_delegate()->set_lastWidth(width);
 
   if (!widthChanged && _view->get_work_mode() != DSO) {
-    _view->setViewportMargins(_view->headerWidth(), View::RulerHeight, 0, 0);
-    _view->_header->header_resize();
+    _view->set_viewport_margins(_view->headerWidth(), _view->rulerHeight(), 0, 0);
+    _view->header_widget()->header_resize();
     _view->update_scroll();
     _view->viewport_update();
     return;
   }
 
   _view->reconstruct();
-  _view->setViewportMargins(_view->headerWidth(), View::RulerHeight, 0, 0);
+  _view->set_viewport_margins(_view->headerWidth(), _view->rulerHeight(), 0, 0);
   _view->update_margins();
   _view->update_scroll();
   _view->signals_changed(nullptr);
 
   if (_view->get_work_mode() == DSO) {
-    _view->set_scale_offset(_data_source->cur_view_time() / width, _view->_layout->_offset);
+    _view->set_scale_offset(_data_source->cur_view_time() / width, _view->layout_delegate()->offset());
   }
 
   if (_view->get_work_mode() != DSO) {
-    _view->_layout->_maxscale =
-        _view->document_snapshot_source()->cur_sampletime() / (width * View::MaxViewRate);
-    if (_view->_layout->_scale > _view->_layout->_maxscale) {
-      _view->set_scale_offset(_view->_layout->_maxscale, _view->_layout->_offset);
+    _view->layout_delegate()->set_maxscale(_view->document_snapshot_source()->cur_sampletime() / (width * View::MaxViewRate));
+    if (_view->layout_delegate()->scale() > _view->layout_delegate()->maxscale()) {
+      _view->set_scale_offset(_view->layout_delegate()->maxscale(), _view->layout_delegate()->offset());
     }
   } else {
-    _view->_layout->_maxscale = 1e9;
+    _view->layout_delegate()->set_maxscale(1e9);
   }
 
-  _view->_ruler->update();
-  _view->_header->header_resize();
-  _view->set_update(_view->_time_viewport, true);
-  _view->set_update(_view->_fft_viewport, true);
+  _view->get_ruler()->update();
+  _view->header_widget()->header_resize();
+  _view->set_update(_view->get_time_view(), true);
+  _view->set_update(_view->fft_viewport(), true);
   _view->resize();
   _view->schedule_visible_range_notify();
 }

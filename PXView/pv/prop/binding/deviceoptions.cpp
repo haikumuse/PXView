@@ -25,6 +25,7 @@
 
 #include <QObject>
 #include <cstdint>
+#include <set>
 #include "../bool.h"
 #include "../string.h"
 #include "../double.h"
@@ -69,6 +70,8 @@ DeviceOptions::DeviceOptions(SigSession *session)
 
     pxv_info("DeviceOptions binding: num_opts=%zu", num_opts);
 
+	std::set<int> bound_keys;
+
 	for (unsigned int i = 0; i < num_opts; i++) {
 		/* Mask off capability bits (SR_CONF_GET/SET/LIST, top 3 bits) to
 		 * get the bare config key. pxlogic.c now routes DEVICE_OPTIONS through
@@ -77,6 +80,16 @@ DeviceOptions::DeviceOptions(SigSession *session)
 		 * sr_key_info_get only recognizes bare keys.
 		 * SR_CONF_MASK = 0x1fffffff (libsigrok-internal.h, not public). */
 		const int key = (int)(options[i] & 0x1fffffff);
+
+		/* Skip duplicate keys — some drivers may accidentally list the same
+		 * key twice in devopts[] (e.g. with different capability bits),
+		 * which would create duplicate UI controls. */
+		if (bound_keys.count(key)) {
+			pxv_warn("DeviceOptions binding: skipping duplicate key %d "
+				 "(already bound)", key);
+			continue;
+		}
+		bound_keys.insert(key);
 
 		const struct sr_config_info *const info =
 			_device_agent->get_config_info(key);
@@ -226,7 +239,13 @@ DeviceOptions::DeviceOptions(SigSession *session)
         // implement these. DSL/PXLogic devices already declare
         // SR_CONF_OPERATION_MODE in their devopts and handled by the switch
         // above (bind_list), so we only bind here for non-DSL devices.
-        if (!_device_agent->is_dsl_device()) {
+        /* Only add app-layer OPERATION_MODE if the driver didn't already
+         * declare it in devopts[] (bound_keys check) AND this is not a
+         * DSL device (DSL devices handle it in the driver). Without the
+         * bound_keys check, demo driver (is_dsl_device()==true but also
+         * declares OPERATION_MODE in devopts[]) would get a duplicate. */
+        if (!_device_agent->is_dsl_device() &&
+            bound_keys.count(SR_CONF_OPERATION_MODE) == 0) {
             GVariant *opmode_list = _device_agent->get_config_list(
                 nullptr, SR_CONF_OPERATION_MODE);
             bind_list("operation_mode", "Operation mode",

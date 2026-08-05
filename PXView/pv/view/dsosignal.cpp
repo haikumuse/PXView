@@ -31,6 +31,7 @@
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
+#include "../data/datasource.h"
 #include "../data/dsosnapshot.h"
 #include "../data/signalmodel.h"
 #include "../pxvdef.h"
@@ -1468,6 +1469,12 @@ void DsoSignal::paint_hover_measure(QPainter &p, QColor fore, QColor back) {
 }
 
 void DsoSignal::set_data(data::DsoSnapshot *data) { _data = data; }
+
+void DsoSignal::set_data_from_source(data::DataSource *source) {
+  _data = source ? source->get_dso_snapshot() : nullptr;
+}
+
+void DsoSignal::clear_data() { _data = nullptr; }
 
 } // namespace view
 } // namespace pv

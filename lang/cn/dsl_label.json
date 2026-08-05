@@ -32,7 +32,7 @@
         "text": "触发前采样比例"
     },
     {
-        "id": "Run Length Encoding",
+        "id": "Run length encoding",
         "text": "RLE编码"
     },
     {
@@ -136,7 +136,7 @@
         "text": "RLE硬件压缩"
     },
     {
-        "id": "Bandwidth Limit",
+        "id": "Bandwidth limit",
         "text": "带宽限制"
     },
     {
@@ -242,6 +242,10 @@
     {
         "id": "Disk Cache Path",
         "text": "缓存路径"
+    },
+    {
+        "id": "Clock type",
+        "text": "时钟类型"
     },
     {
         "id": "Pattern",

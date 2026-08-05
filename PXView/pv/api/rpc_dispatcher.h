@@ -12,7 +12,7 @@ public:
 
     JsonRpcResponse handle_request(const JsonRpcRequest& req) override;
 
-    // MCP tool schema definitions
+    // MCP tool schema definitions — 61 tool schemas in tool_schemas.inc
     static nlohmann::json get_tool_schemas();
 
 private:

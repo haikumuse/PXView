@@ -111,6 +111,18 @@ private:
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _rebuild_in_progress = false;
+
+  // --- signals_changed() split helpers (was 300-line God-method) ---
+  void sort_signal_groups_by_view_index();
+  void classify_traces(std::vector<Trace *> &time_traces,
+                        std::vector<Trace *> &fft_traces,
+                        std::vector<Trace *> &logic_traces,
+                        std::vector<Trace *> &decoder_traces);
+  void update_fft_viewport(const std::vector<Trace *> &fft_traces);
+  void layout_time_signals(std::vector<Trace *> &time_traces,
+                            const std::vector<Trace *> &logic_traces,
+                            const std::vector<Trace *> &decoder_traces);
+  void finalize_signal_layout();
 };
 
 } // namespace view

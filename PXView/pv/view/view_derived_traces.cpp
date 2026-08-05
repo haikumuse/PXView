@@ -57,6 +57,14 @@ using namespace std;
 namespace pv {
 namespace view {
 
+ViewDerivedTraces::ViewDerivedTraces(View *view) : _view(view) {}
+
+// Destructor defined in .cpp so unique_ptr<MathTrace/LissajousTrace>
+// can see complete type definitions.
+ViewDerivedTraces::~ViewDerivedTraces() {
+  cleanup();
+}
+
 void ViewDerivedTraces::cleanup() {
   for (auto dt : _own_decode_traces)
     delete dt;
@@ -66,15 +74,13 @@ void ViewDerivedTraces::cleanup() {
     delete st;
   _own_spectrum_traces.clear();
 
-  if (_own_math_trace) {
-    delete _own_math_trace;
-    _own_math_trace = nullptr;
-  }
+if (_own_math_trace) {
+_own_math_trace.reset();
+}
 
-  if (_own_lissajous_trace) {
-    delete _own_lissajous_trace;
-    _own_lissajous_trace = nullptr;
-  }
+if (_own_lissajous_trace) {
+_own_lissajous_trace.reset();
+}
 }
 
 void ViewDerivedTraces::mark_derived_traces_dirty() {
@@ -85,7 +91,7 @@ bool ViewDerivedTraces::add_decoder(
     srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
     std::list<pv::data::decode::Decoder *> &sub_decoders,
     std::shared_ptr<pv::data::DecoderStack> &out_stack) {
-  if (!_view->_session)
+  if (!_view->session_ptr())
     return false;
 
   out_stack = nullptr;
@@ -107,7 +113,7 @@ bool ViewDerivedTraces::add_decoder(
   //    The index used here is the position in the View's own list, matching
   //    the pattern in sync_derived_traces().
   int decode_index = (int)_own_decode_traces.size();
-  auto *trace = new DecodeTrace(_view->_session, out_stack, decode_index);
+  auto *trace = new DecodeTrace(_view->session_ptr(), out_stack, decode_index);
   // Set initial view_index: place after all signal tracks (same pattern
   // as sync_derived_traces). Without this, view_index defaults to -1 and
   // causes incorrect layout ordering in LOGIC mode.
@@ -176,7 +182,7 @@ bool ViewDerivedTraces::add_decoder(
 }
 
 bool ViewDerivedTraces::rst_decoder_by_key_handel(void *handel, QPoint anchor) {
-  if (!_view->_session || !handel)
+  if (!_view->session_ptr() || !handel)
     return false;
 
   // Find the View-owned DecodeTrace that wraps this DecoderStack.
@@ -259,7 +265,7 @@ void ViewDerivedTraces::remove_decoder(int index) {
 }
 
 void ViewDerivedTraces::remove_decoder_by_key_handel(void *key_handel) {
-  if (!_view->_session || !key_handel)
+  if (!_view->session_ptr() || !key_handel)
     return;
 
   // Find the View-owned DecodeTrace that wraps the DecoderStack with this
@@ -288,7 +294,7 @@ void ViewDerivedTraces::remove_decoder_by_key_handel(void *key_handel) {
 }
 
 void ViewDerivedTraces::clear_all_decoders() {
-  if (!_view->_session)
+  if (!_view->session_ptr())
     return;
 
   // 1. Delete all View-owned DecodeTrace objects first.
@@ -358,7 +364,7 @@ void ViewDerivedTraces::sync_derived_traces() {
       }
     }
     if (!exists) {
-      auto *dt = new DecodeTrace(_view->_session, stack, decode_index);
+      auto *dt = new DecodeTrace(_view->session_ptr(), stack, decode_index);
       // Sync _visible from Decoder::_shown so that a decoder the user
       // previously hid stays hidden after tab switch (sync_derived_traces
       // is called lazily when the DecodeTrace list is accessed).
@@ -407,7 +413,7 @@ void ViewDerivedTraces::sync_derived_traces() {
       }
     }
     if (!exists) {
-      auto *st = new SpectrumTrace(_view->_session, stack, stack->get_index());
+      auto *st = new SpectrumTrace(_view->session_ptr(), stack, stack->get_index());
       _own_spectrum_traces.push_back(st);
       changed = true;
     }
@@ -419,10 +425,9 @@ void ViewDerivedTraces::sync_derived_traces() {
     if (!_own_math_trace ||
         _own_math_trace->get_math_stack().get() != math_stack.get()) {
       // Tear down any stale MathTrace bound to a previous MathStack.
-      if (_own_math_trace) {
-        delete _own_math_trace;
-        _own_math_trace = nullptr;
-        changed = true;
+if (_own_math_trace) {
+_own_math_trace.reset();
+changed = true;
       }
 
       // MathStack now exposes the source channel indices. Look up the
@@ -433,18 +438,18 @@ void ViewDerivedTraces::sync_derived_traces() {
       const int idx1 = math_stack->ch1_index();
       const int idx2 = math_stack->ch2_index();
       for (auto *sig : _view->get_own_signals()) {
-        if (!sig || sig->signal_type() != SR_CHANNEL_DSO)
+        if (!sig)
           continue;
         if (sig->get_index() == idx1)
-          dso1 = dynamic_cast<DsoSignal *>(sig);
+          dso1 = sig->as_dso();
         if (sig->get_index() == idx2)
-          dso2 = dynamic_cast<DsoSignal *>(sig);
+          dso2 = sig->as_dso();
         if (dso1 && dso2)
           break;
       }
 
       if (dso1 && dso2) {
-        _own_math_trace = new MathTrace(true, math_stack, dso1, dso2);
+        _own_math_trace = std::make_unique<MathTrace>(true, math_stack, dso1, dso2);
         changed = true;
       } else {
         pxv_warn("View::sync_derived_traces: DsoSignal not found for "
@@ -453,10 +458,9 @@ void ViewDerivedTraces::sync_derived_traces() {
       }
     }
   } else {
-    if (_own_math_trace) {
-      delete _own_math_trace;
-      _own_math_trace = nullptr;
-      changed = true;
+if (_own_math_trace) {
+_own_math_trace.reset();
+changed = true;
     }
   }
 
@@ -465,7 +469,7 @@ void ViewDerivedTraces::sync_derived_traces() {
   if (lissajous_model && lissajous_model->enabled()) {
     if (!_own_lissajous_trace) {
       auto *snapshot = source->get_dso_snapshot();
-      _own_lissajous_trace = new LissajousTrace(
+      _own_lissajous_trace = std::make_unique<LissajousTrace>(
           lissajous_model->enabled(), snapshot, lissajous_model->x_index(),
           lissajous_model->y_index(), lissajous_model->percent());
       changed = true;
@@ -481,10 +485,9 @@ void ViewDerivedTraces::sync_derived_traces() {
       _own_lissajous_trace->set_data(source->get_dso_snapshot());
     }
   } else {
-    if (_own_lissajous_trace) {
-      delete _own_lissajous_trace;
-      _own_lissajous_trace = nullptr;
-      changed = true;
+if (_own_lissajous_trace) {
+_own_lissajous_trace.reset();
+changed = true;
     }
   }
 

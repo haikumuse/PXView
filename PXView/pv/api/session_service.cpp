@@ -428,6 +428,221 @@ ChannelType SessionService::sr_channel_type_to_api(int sr_type) const {
 }
 
 // ===========================================================================
+// configure_and_start helper methods (split from 470-line function)
+// ===========================================================================
+
+void SessionService::ensure_logic_mode_for_digital(
+    const std::vector<int16_t>& digital_channels) {
+    int cur_mode = _device->get_work_mode();
+
+    GSList *channels = _device->get_channels();
+    int ch_count = 0;
+    for (GSList *l = channels; l; l = l->next) ch_count++;
+
+    // If we need digital channels but device isn't in LOGIC mode or has
+    // too few channels, force switch to LOGIC mode.
+    if (!digital_channels.empty() && (cur_mode != LOGIC || ch_count < 16)) {
+        if (cur_mode != LOGIC) {
+            _session->switch_work_mode(LOGIC);
+        } else {
+            // Device reports LOGIC mode but has too few channels.
+            // Force a mode cycle to reinitialize.
+            _device->set_work_mode(DSO);
+            if (is_gui_mode()) QCoreApplication::processEvents();
+            _device->set_work_mode(LOGIC);
+            _session->init_signals();
+        }
+        if (is_gui_mode()) {
+            QCoreApplication::processEvents();
+            QCoreApplication::processEvents();
+        }
+    }
+}
+
+void SessionService::configure_capture_channels(
+    const std::vector<int16_t>& digital_channels,
+    const std::vector<int16_t>& analog_channels) {
+    GSList *channels = _device->get_channels();
+
+    if (digital_channels.empty() && analog_channels.empty()) {
+        // No channel selection requested — keep driver defaults.
+        return;
+    }
+
+    // Disable all channels first
+    for (GSList *l = channels; l; l = l->next) {
+        auto *ch = static_cast<sr_channel *>(l->data);
+        if (ch && ch->enabled) {
+            _device->enable_probe(ch->index, false);
+        }
+    }
+
+    // Enable specified digital channels
+    for (int16_t idx : digital_channels) {
+        _device->enable_probe(idx, true);
+    }
+
+    // Enable specified analog channels
+    for (int16_t idx : analog_channels) {
+        _device->enable_probe(idx, true);
+    }
+}
+
+void SessionService::apply_trigger_to_signal_models(
+    int trigger_channel_index,
+    const std::string& trigger_type,
+    const std::vector<std::pair<int16_t, std::string>>& linked_channels) {
+    if (trigger_channel_index < 0)
+        return;
+
+    auto &sigs = _session->get_signal_models();
+    for (auto m : sigs) {
+        if (!m || m->type() != SR_CHANNEL_LOGIC)
+            continue;
+
+        if (m->index() == trigger_channel_index) {
+            int trig_type = pv::data::SignalModel::NONTRIG;
+            if (trigger_type == "rising") trig_type = pv::data::SignalModel::POSTRIG;
+            else if (trigger_type == "falling") trig_type = pv::data::SignalModel::NEGTRIG;
+            else if (trigger_type == "pulse_high") trig_type = pv::data::SignalModel::HIGTRIG;
+            else if (trigger_type == "pulse_low") trig_type = pv::data::SignalModel::LOWTRIG;
+            else trig_type = pv::data::SignalModel::EDGTRIG;
+            m->set_trig_type(trig_type);
+        } else {
+            bool is_linked = false;
+            for (const auto &lc : linked_channels) {
+                if (m->index() == lc.first) {
+                    is_linked = true;
+                    int trig_type = (lc.second == "high") ?
+                        pv::data::SignalModel::HIGTRIG : pv::data::SignalModel::LOWTRIG;
+                    m->set_trig_type(trig_type);
+                    break;
+                }
+            }
+            if (!is_linked) {
+                m->set_trig_type(pv::data::SignalModel::NONTRIG);
+            }
+        }
+    }
+}
+
+void SessionService::configure_device_options(
+    const std::string& channel_mode,
+    bool rle_enabled,
+    double stream_buffer_size_gb,
+    double stream_mem_buffer_size_gb,
+    bool disk_cache_enabled,
+    const std::string& disk_cache_path,
+    const std::string& threshold_preset,
+    const std::string& operation_mode,
+    const std::string& buffer_options,
+    const std::string& digital_filter,
+    const std::string& pattern) {
+    // Set channel mode if specified (e.g. "Buffer", "Stream")
+    if (!channel_mode.empty()) {
+        _device->set_config_string(SR_CONF_CHANNEL_MODE, channel_mode.c_str());
+    }
+
+    // Set RLE if specified
+    if (rle_enabled) {
+        _device->set_config_bool(SR_CONF_RLE, true);
+    }
+
+    // Set disk cache and stream buffer sizes
+    if (disk_cache_enabled) {
+        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, true);
+        if (stream_buffer_size_gb > 0.0) {
+            _device->set_config_double(SR_CONF_STREAM_BUFF, stream_buffer_size_gb);
+        }
+        if (!disk_cache_path.empty()) {
+            _device->set_config_string(SR_CONF_DISK_CACHE_PATH, disk_cache_path.c_str());
+        }
+    } else {
+        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, false);
+        if (stream_mem_buffer_size_gb > 0.0) {
+            _device->set_config_double(SR_CONF_STREAM_MEM_BUFF, stream_mem_buffer_size_gb);
+        }
+    }
+
+    // Set threshold preset if specified (distinct from VTH raw voltage)
+    if (!threshold_preset.empty()) {
+        _device->set_config_string(SR_CONF_THRESHOLD, threshold_preset.c_str());
+    }
+
+    // Set operation mode if specified
+    if (!operation_mode.empty()) {
+        if (!_device->set_config_string(SR_CONF_OPERATION_MODE, operation_mode.c_str())) {
+            std::string full_name;
+            if (operation_mode == "Buffer" || operation_mode == "buffer")
+                full_name = "Buffer Mode";
+            else if (operation_mode == "Stream" || operation_mode == "stream")
+                full_name = "Stream Mode";
+            else if (operation_mode == "Internal test" ||
+                     operation_mode == "internal_test" ||
+                     operation_mode == "Internal Test")
+                full_name = "Internal Test";
+            if (!full_name.empty()) {
+                _device->set_config_string(SR_CONF_OPERATION_MODE, full_name.c_str());
+            }
+        }
+    }
+
+    // Set demo logic pattern mode if specified
+    if (!pattern.empty()) {
+        _device->set_config_string(SR_CONF_PATTERN_MODE, pattern.c_str());
+    }
+
+    // Set buffer options if specified
+    if (!buffer_options.empty()) {
+        _device->set_config_string(SR_CONF_BUFFER_OPTIONS, buffer_options.c_str());
+    }
+
+    // Set digital filter if specified
+    if (!digital_filter.empty()) {
+        _device->set_config_string(SR_CONF_FILTER, digital_filter.c_str());
+    }
+}
+
+void SessionService::configure_capture_timing(
+    const std::string& capture_mode,
+    double repeat_interval_seconds,
+    int capture_ratio,
+    double duration_seconds,
+    uint64_t sample_count) {
+    // Set capture mode
+    if (capture_mode == "single" || capture_mode == "manual") {
+        _session->set_collect_mode(COLLECT_SINGLE);
+    } else if (capture_mode == "repeat") {
+        _session->set_collect_mode(COLLECT_REPEAT);
+    } else if (capture_mode == "loop") {
+        _session->set_collect_mode(COLLECT_LOOP);
+    }
+
+    // Set repeat interval if specified
+    if (repeat_interval_seconds > 0.0) {
+        _session->set_repeat_intvl(repeat_interval_seconds);
+    }
+
+    // Set capture ratio (trigger position percentage) if specified
+    if (capture_ratio >= 0 && capture_ratio <= 100) {
+        _device->set_config_uint64(SR_CONF_CAPTURE_RATIO,
+                                    static_cast<uint64_t>(capture_ratio));
+    }
+
+    // Set duration (sample limit) if specified.
+    if (duration_seconds > 0.0) {
+        uint64_t rate = _device->get_sample_rate();
+        if (rate > 0) {
+            uint64_t sample_limit = static_cast<uint64_t>(
+                duration_seconds * static_cast<double>(rate));
+            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
+        }
+    } else if (sample_count > 0) {
+        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+    }
+}
+
+// ===========================================================================
 // 1. Capture control
 // ===========================================================================
 
@@ -621,6 +836,9 @@ Result<int> SessionService::configure_and_start(
     double repeat_interval_seconds,
     uint64_t sample_count) {
     (void)analog_sample_rate;
+    (void)min_pulse_width_seconds;
+    (void)max_pulse_width_seconds;
+
     if (!_session)
         return Result<int>::Fail(ErrorCode::InternalError,
                                  "Session is nullptr");
@@ -631,144 +849,23 @@ Result<int> SessionService::configure_and_start(
         return Result<int>::Fail(ErrorCode::CaptureInProgress,
                                  "Capture already in progress");
 
-    // Write debug log to file (GUI app stderr is not captured reliably)
-    auto dbg_log = [](const char* msg) {
-        static QFile dbg_file;
-        if (!dbg_file.isOpen()) {
-            dbg_file.setFileName(QDir::tempPath() + "/pxview_mcp_debug.log");
-            (void)dbg_file.open(QIODevice::WriteOnly | QIODevice::Append);
-        }
-        if (dbg_file.isOpen()) {
-            dbg_file.write(msg);
-            dbg_file.write("\n");
-            dbg_file.flush();
-        }
-    };
+    // Step 0: Ensure device is in LOGIC mode if digital channels are requested.
+    ensure_logic_mode_for_digital(digital_channels);
 
-    // Pulse-width trigger counts have no Core field in Simple mode (TriggerConfig
-    // Stage is only populated for Adv/Serial). Parameters retained in the API
-    // signature for ABI stability; explicit (void) cast silences unused-param
-    // warnings. See TODO in the trigger config block below.
-    (void)min_pulse_width_seconds;
-    (void)max_pulse_width_seconds;
+    // Step 1: Configure channels (enable/disable per caller specification).
+    configure_capture_channels(digital_channels, analog_channels);
 
-    dbg_log("configure_and_start: step 0 - ensure logic mode");
-
-    // 0. Ensure device is in Logic mode if digital channels are requested.
-    // If the device is in DSO or Analog mode, it won't have the expected
-    // logic channels, and enable_probe() may hang or crash.
-    {
-        int cur_mode = _device->get_work_mode();
-        const char* mode_names[] = {"LOGIC", "DSO", "ANALOG", "UNKNOWN"};
-        int mode_idx = (cur_mode >= 0 && cur_mode <= 2) ? cur_mode : 3;
-        dbg_log(QString("  current work mode: %1 (%2)").arg(cur_mode).arg(mode_names[mode_idx]).toUtf8().constData());
-
-        GSList *channels = _device->get_channels();
-        int ch_count = 0;
-        for (GSList *l = channels; l; l = l->next) ch_count++;
-        dbg_log(QString("  channel count: %1").arg(ch_count).toUtf8().constData());
-
-        // If we need digital channels but have too few, force switch to LOGIC mode
-        if (!digital_channels.empty() && (cur_mode != LOGIC || ch_count < 16)) {
-            if (cur_mode != LOGIC) {
-                dbg_log("  switching to LOGIC mode");
-                _session->switch_work_mode(LOGIC);
-            } else {
-                // Device reports LOGIC mode but has too few channels.
-                // This can happen after set_device() when the device was
-                // previously in DSO mode. Force a mode cycle to reinitialize.
-                dbg_log("  forcing mode cycle: LOGIC -> DSO -> LOGIC");
-                _device->set_work_mode(DSO);
-                if (is_gui_mode()) QCoreApplication::processEvents();
-                _device->set_work_mode(LOGIC);
-                // Re-initialize signals after mode change
-                _session->init_signals();
-            }
-            // Let UI process the mode change events. In headless mode there
-            // is no event loop pumping UI signals, so skip processEvents().
-            if (is_gui_mode()) {
-                QCoreApplication::processEvents();
-                QCoreApplication::processEvents();
-            }
-
-            // Re-check channel count after mode switch
-            channels = _device->get_channels();
-            ch_count = 0;
-            for (GSList *l = channels; l; l = l->next) ch_count++;
-            dbg_log(QString("  after switch: channel count=%1, mode=%2").arg(ch_count).arg(_device->get_work_mode()).toUtf8().constData());
-        }
-    }
-
-    dbg_log("configure_and_start: step 1 - configure channels");
-
-    // 1. Configure channels directly using libsigrok API (bypassing
-    // config_changed() callback) to avoid cascading UI updates while
-    // we're in the middle of reconfiguring. We'll rebuild signals
-    // once at the end via init_signals().
-    //
-    // If the caller does NOT specify digital_channels/analog_channels,
-    // leave the driver's default enabled state untouched — disabling all
-    // channels and enabling none would produce an empty channel list and
-    // break capture ("channel list is empty" error).
-    {
-        GSList *channels = _device->get_channels();
-        int ch_count = 0;
-        for (GSList *l = channels; l; l = l->next) ch_count++;
-        dbg_log(QString("  total channels: %1").arg(ch_count).toUtf8().constData());
-
-        if (digital_channels.empty() && analog_channels.empty()) {
-            // No channel selection requested — keep driver defaults.
-            dbg_log("  no channel selection requested, keeping driver defaults");
-        } else {
-            // Disable all channels first
-            for (GSList *l = channels; l; l = l->next) {
-                auto *ch = static_cast<sr_channel *>(l->data);
-                if (ch && ch->enabled) {
-                    dbg_log(QString("  disabling channel %1 via sr_dev_channel_enable").arg(ch->index).toUtf8().constData());
-                    _device->enable_probe(ch->index, false);
-                }
-            }
-
-            // Enable specified digital channels
-            for (int16_t idx : digital_channels) {
-                dbg_log(QString("  enabling digital channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
-                _device->enable_probe(idx, true);
-            }
-
-            // Enable specified analog channels
-            for (int16_t idx : analog_channels) {
-                dbg_log(QString("  enabling analog channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
-                _device->enable_probe(idx, true);
-            }
-        }
-    }
-
-    dbg_log("configure_and_start: step 2 - rebuild signals");
-
-    // Note: We do NOT clear existing decoders here anymore.
-    // If the user added decoders before starting capture (the recommended
-    // workflow for MCP), those decoders should be preserved so that
-    // CopyToDocDone can automatically start decoding for them
-    // when the capture completes.
-    //
-    // If the user wants to clear decoders, they can call
-    // clear_decoders() explicitly before start_capture().
-
-    // 2a. Set channel mode if specified (e.g. "Buffer", "Stream")
+    // Step 2: Set channel mode, then rebuild signal list.
+    // Note: decoders are NOT cleared here. If the user added decoders before
+    // start_capture (recommended MCP workflow), they are preserved for auto-decode.
     if (!channel_mode.empty()) {
         _device->set_config_string(SR_CONF_CHANNEL_MODE, channel_mode.c_str());
     }
 
-    // 2b. Configure logic trigger if specified.
-    // Core TriggerConfig is the single source of truth; sync_trigger_to_libsigrok()
-    // in start_capture pushes it to ds_trigger_*. Here we only write Core cfg
-    // and SignalModel trig types (the latter drives UI rendering).
+    // Step 2b: Configure logic trigger if specified.
     if (trigger_channel_index >= 0) {
-        // Construct Core TriggerConfig (Simple mode).
         pv::data::TriggerConfig cfg;
         cfg.set_mode(pv::data::TriggerConfig::Simple);
-
-        // Set trigger position based on afterTriggerSeconds
         if (after_trigger_seconds > 0.0) {
             uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
             uint64_t sample_limit = _device->get_sample_limit();
@@ -782,286 +879,70 @@ Result<int> SessionService::configure_and_start(
             }
         }
         _session->set_trigger_config(cfg);
-
-        // SignalModel trig types still need to be set to drive UI rendering.
-        int model_trig = pv::data::SignalModel::EDGTRIG;
-        if (trigger_type == "rising") {
-            model_trig = pv::data::SignalModel::POSTRIG;
-        } else if (trigger_type == "falling") {
-            model_trig = pv::data::SignalModel::NEGTRIG;
-        } else if (trigger_type == "pulse_high") {
-            model_trig = pv::data::SignalModel::HIGTRIG;
-        } else if (trigger_type == "pulse_low") {
-            model_trig = pv::data::SignalModel::LOWTRIG;
-        }
-
-        for (auto model : _session->get_signal_models()) {
-            if (model->type() != SR_CHANNEL_LOGIC)
-                continue;
-            if (model->index() == trigger_channel_index) {
-                pxv_info("API start_capture: MATCHED index %d, setting to %d", model->index(), model_trig);
-                model->set_trig_type(model_trig);
-            } else {
-                bool is_linked = false;
-                for (const auto &lc : linked_channels) {
-                    if (lc.first == model->index()) {
-                        is_linked = true;
-                        if (lc.second == "high") model->set_trig_type(pv::data::SignalModel::HIGTRIG);
-                        else if (lc.second == "low") model->set_trig_type(pv::data::SignalModel::LOWTRIG);
-                        break;
-                    }
-                }
-                if (!is_linked) {
-                    model->set_trig_type(pv::data::SignalModel::NONTRIG);
-                }
-            }
-        }
-
-        // NOTE: pulse width trigger counts have no Core field in Simple mode
-        // (TriggerConfig Stage is only populated for Adv/Serial modes). The
-        // original ds_trigger_stage_set_count call has been removed; if pulse
-        // width triggering is required, TriggerConfig must be extended to
-        // support Simple-mode stage counts. Currently sync_trigger_to_libsigrok
-        // does not emit stage counts in Simple mode.
     }
-    // trigger_channel_index < 0: do not write cfg; sync_trigger_to_libsigrok()
-    // will call ds_trigger_set_en(0) in Simple mode when no channel has a
-    // non-NONTRIG trig_type.
 
-    // 2. Rebuild signal list to reflect the new channel enable/disable state.
-    // This is critical: action_start_capture() checks _signals.empty() and
-    // the signal list must match the currently enabled channels.
-    // init_signals() also clears view data and updates sample rate/limit.
+    // Step 2c: Rebuild signal list to reflect new channel state.
     _session->init_signals();
 
-    // 2c. Sync trigger state to SignalModel (header trigger icons)
-    // MUST be done after init_signals() (which recreates models) but BEFORE
-    // processEvents() (which lets the View rebuild LogicSignals from the new
-    // models). This way the View reads the correct trig_type during rebuild
-    // and the SignalModel signal/slot connection is established with the
-    // already-correct value.
-    if (trigger_channel_index >= 0) {
-        auto &sigs = _session->get_signal_models();
-        for (auto m : sigs) {
-            if (!m || m->type() != SR_CHANNEL_LOGIC)
-                continue;
+    // Step 2d: Apply trigger types to SignalModel (drives UI rendering).
+    apply_trigger_to_signal_models(trigger_channel_index, trigger_type, linked_channels);
 
-            if (m->index() == trigger_channel_index) {
-                int trig_type = pv::data::SignalModel::NONTRIG;
-                if (trigger_type == "rising") trig_type = pv::data::SignalModel::POSTRIG;
-                else if (trigger_type == "falling") trig_type = pv::data::SignalModel::NEGTRIG;
-                else if (trigger_type == "pulse_high") trig_type = pv::data::SignalModel::HIGTRIG;
-                else if (trigger_type == "pulse_low") trig_type = pv::data::SignalModel::LOWTRIG;
-                else trig_type = pv::data::SignalModel::EDGTRIG;
-
-                m->set_trig_type(trig_type);
-            } else {
-                bool is_linked = false;
-                for (const auto &lc : linked_channels) {
-                    if (m->index() == lc.first) {
-                        is_linked = true;
-                        int trig_type = (lc.second == "high") ?
-                            pv::data::SignalModel::HIGTRIG : pv::data::SignalModel::LOWTRIG;
-                        m->set_trig_type(trig_type);
-                        break;
-                    }
-                }
-                if (!is_linked) {
-                    m->set_trig_type(pv::data::SignalModel::NONTRIG);
-                }
-            }
-        }
-    }
-
-    // Let the UI process the signals_changed event triggered by init_signals().
-    // The View rebuilds LogicSignals from the new SignalModels (which now have
-    // the correct trig_type set above). In headless mode there is no UI to
-    // update; skip processEvents().
+    // Let UI process signals_changed event. Skip in headless mode.
     if (is_gui_mode()) QCoreApplication::processEvents();
 
-    dbg_log("configure_and_start: step 3 - set sample rate");
-
-    // 3. Set sample rates
+    // Step 3: Set sample rate
     if (digital_sample_rate > 0) {
-        bool ok = _device->set_config_uint64(SR_CONF_SAMPLERATE,
-                                             digital_sample_rate);
+        bool ok = _device->set_config_uint64(SR_CONF_SAMPLERATE, digital_sample_rate);
         if (!ok)
             return Result<int>::Fail(ErrorCode::ConfigInvalid,
                                      "Failed to set digital sample rate");
     }
 
-    dbg_log("configure_and_start: step 4 - set threshold");
-
-    // 4. Set digital threshold voltage (VTH)
+    // Step 4: Set digital threshold voltage (VTH)
     if (digital_threshold_volts != 0.0) {
-        bool ok = _device->set_config_double(SR_CONF_VTH,
-                                             digital_threshold_volts);
+        bool ok = _device->set_config_double(SR_CONF_VTH, digital_threshold_volts);
         if (!ok)
             return Result<int>::Fail(ErrorCode::ConfigInvalid,
                                      "Failed to set digital threshold voltage");
     }
 
-    dbg_log("configure_and_start: step 5 - glitch filters");
-
-    // 5. Configure glitch filters
+    // Step 5: Configure glitch filters
     if (!glitch_filters.empty()) {
-        // 架构修复：用 channel_index 作 key
         std::map<int, uint32_t> thresholds;
         std::map<int, ::GlitchFilterMode> modes;
-
         for (const auto &gf : glitch_filters) {
             thresholds[(int)gf.first] = static_cast<uint32_t>(gf.second);
             modes[(int)gf.first] = GLITCH_FILTER_BOTH;
         }
-
         _session->set_glitch_filter(thresholds, modes);
     }
 
-    dbg_log("configure_and_start: step 5b - RLE");
+    // Steps 5a-5g: Set device-level options
+    configure_device_options(
+        channel_mode, rle_enabled,
+        stream_buffer_size_gb, stream_mem_buffer_size_gb,
+        disk_cache_enabled, disk_cache_path,
+        threshold_preset, operation_mode,
+        buffer_options, digital_filter, pattern);
 
-    // 5b. Set RLE if specified
-    if (rle_enabled) {
-        _device->set_config_bool(SR_CONF_RLE, true);
-    }
+    // Steps 6-7: Set collect mode, repeat interval, capture ratio, duration
+    configure_capture_timing(
+        capture_mode, repeat_interval_seconds,
+        capture_ratio, duration_seconds, sample_count);
 
-    dbg_log("configure_and_start: step 5c - stream buffer");
-
-    // 5c. Set disk cache and stream buffer sizes
-    if (disk_cache_enabled) {
-        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, true);
-        if (stream_buffer_size_gb > 0.0) {
-            _device->set_config_double(SR_CONF_STREAM_BUFF, stream_buffer_size_gb);
-        }
-        if (!disk_cache_path.empty()) {
-            _device->set_config_string(SR_CONF_DISK_CACHE_PATH, disk_cache_path.c_str());
-        }
-    } else {
-        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, false);
-        if (stream_mem_buffer_size_gb > 0.0) {
-            _device->set_config_double(SR_CONF_STREAM_MEM_BUFF, stream_mem_buffer_size_gb);
-        }
-    }
-
-    dbg_log("configure_and_start: step 5d - threshold preset");
-
-    // 5d. Set threshold preset if specified (distinct from VTH raw voltage)
-    if (!threshold_preset.empty()) {
-        _device->set_config_string(SR_CONF_THRESHOLD, threshold_preset.c_str());
-    }
-
-    dbg_log("configure_and_start: step 5e - operation mode");
-
-    // 5e. Set operation mode if specified
-    if (!operation_mode.empty()) {
-        /* Task 10/Phase 3: driver config_set uses std_str_idx and expects the
-         * full mode string ("Buffer Mode"/"Stream Mode"/"Internal Test").
-         * Try the raw input first (in case the client sent the full string),
-         * then retry with short-name → full-name mapping. The legacy int16
-         * fallback is removed because the driver no longer accepts int16. */
-        if (!_device->set_config_string(SR_CONF_OPERATION_MODE, operation_mode.c_str())) {
-            std::string full_name;
-            if (operation_mode == "Buffer" || operation_mode == "buffer")
-                full_name = "Buffer Mode";
-            else if (operation_mode == "Stream" || operation_mode == "stream")
-                full_name = "Stream Mode";
-            else if (operation_mode == "Internal test" ||
-                     operation_mode == "internal_test" ||
-                     operation_mode == "Internal Test")
-                full_name = "Internal Test";
-            if (!full_name.empty()) {
-                _device->set_config_string(SR_CONF_OPERATION_MODE, full_name.c_str());
-            }
-        }
-    }
-
-    // 5f. Set demo logic pattern mode if specified (deterministic data source
-    // such as "graycode" / "sigrok" / "random"). Only valid for the demo device
-    // and only in Logic mode. This is used to make save/load and decoder tests
-    // reproducible (random pattern breaks byte-for-byte comparisons).
-    if (!pattern.empty()) {
-        dbg_log(QString("configure_and_start: step 5f - demo pattern: %1").arg(pattern.c_str()).toUtf8().constData());
-        if (!_device->set_config_string(SR_CONF_PATTERN_MODE, pattern.c_str())) {
-            dbg_log("  WARNING: set SR_CONF_PATTERN_MODE failed (device may not support it)");
-        }
-    }
-
-    dbg_log("configure_and_start: step 5f - buffer options");
-
-    // 5f. Set buffer options if specified
-    if (!buffer_options.empty()) {
-        _device->set_config_string(SR_CONF_BUFFER_OPTIONS, buffer_options.c_str());
-    }
-
-    dbg_log("configure_and_start: step 5g - digital filter");
-
-    // 5g. Set digital filter if specified
-    if (!digital_filter.empty()) {
-        _device->set_config_string(SR_CONF_FILTER, digital_filter.c_str());
-    }
-
-    dbg_log("configure_and_start: step 6 - set capture mode");
-
-    // 6. Set capture mode
-    if (capture_mode == "single" || capture_mode == "manual") {
-        _session->set_collect_mode(COLLECT_SINGLE);
-    } else if (capture_mode == "repeat") {
-        _session->set_collect_mode(COLLECT_REPEAT);
-    } else if (capture_mode == "loop") {
-        _session->set_collect_mode(COLLECT_LOOP);
-    }
-
-    // Set repeat interval if specified
-    if (repeat_interval_seconds > 0.0) {
-        _session->set_repeat_intvl(repeat_interval_seconds);
-    }
-
-    // 6b. Set capture ratio (trigger position percentage) if specified
-    if (capture_ratio >= 0 && capture_ratio <= 100) {
-        _device->set_config_uint64(SR_CONF_CAPTURE_RATIO, static_cast<uint64_t>(capture_ratio));
-    }
-
-    dbg_log("configure_and_start: step 7 - set duration");
-
-    // 7. Set duration (sample limit) if specified.
-    // fx2lafw 等上游驱动在 protocol.c 中实现 sent_samples/limit_samples 停止
-    // 逻辑：到达 limit_samples 即调用 fx2lafw_abort_acquisition 停止采集。
-    // hwdriver.c 只拒绝 set 0（= 不限制/持续流），非零值会被驱动接受作为
-    // 停止条件。Stream 模式下若用户指定 duration_seconds 或 sample_count，
-    // 设置到驱动让采集在到达后自动停止；若两者都为 0 则保持驱动默认 0
-    // (持续流式)。Ring buffer 大小由 DeviceAgent::get_sample_limit() 基于
-    // _app_stream_mem_buff 独立计算，与停止条件解耦。
-    if (duration_seconds > 0.0) {
-        uint64_t rate = _device->get_sample_rate();
-        if (rate > 0) {
-            uint64_t sample_limit = static_cast<uint64_t>(
-                duration_seconds * static_cast<double>(rate));
-            _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
-        }
-    } else if (sample_count > 0) {
-        // Use explicit sample count when duration is not specified
-        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
-    }
-
-    // Let the UI process any pending config change events before starting.
-    // In headless mode there is no UI to update; skip processEvents().
+    // Let UI process pending config change events before starting.
     if (is_gui_mode()) QCoreApplication::processEvents();
 
-    dbg_log("configure_and_start: step 8 - start capture");
-
-    // 10. Start capture
+    // Step 8: Start capture
     bool ok = _session->start_capture(instant, api_document());
-    if (!ok) {
-        dbg_log("configure_and_start: start_capture FAILED");
+    if (!ok)
         return Result<int>::Fail(ErrorCode::DeviceError,
                                  "Failed to start capture");
-    }
 
-    dbg_log("configure_and_start: SUCCESS");
     _capture_id++;
     broadcast_event(ServiceEvent::SampleConfigChanged, {});
     return Result<int>::Success(_capture_id);
 }
-
 int SessionService::get_current_capture_id() const {
     return _capture_id;
 }

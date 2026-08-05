@@ -162,7 +162,7 @@ void XCursor::paint(QPainter &p, const QRect &rect, XCur_type highlight)
     if (_dsoSig == nullptr && _sig_index != -1){
         for (auto s : _view.get_own_signals()) {
             if (s->signal_type() == SR_CHANNEL_DSO && s->get_index() == _sig_index) {
-                _dsoSig = dynamic_cast<DsoSignal*>(s);
+                _dsoSig = s->as_dso();
                 if (_dsoSig != nullptr){
                     connect(_dsoSig, &Signal::sig_released, this, &XCursor::on_signal_deleted);
                 }

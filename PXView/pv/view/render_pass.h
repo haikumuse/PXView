@@ -153,6 +153,31 @@ public:
   void render(QPainter &p, const RenderContext &ctx) override;
   int z_order() const override { return 50; }
   bool should_run(const RenderContext &ctx) const override;
+
+private:
+  // --- render() split helpers (was 350-line God-method) ---
+  struct MeasureCtx {
+    Viewport *vp;
+    View *view;
+    QColor active_color;
+    int v_offset;
+    int screen_midY;
+    int screen_preY;
+    int screen_aftY;
+    QPointF screen_hover_point;
+  };
+  void draw_logic_freq(QPainter &p, const RenderContext &ctx,
+                         const MeasureCtx &m);
+  void draw_dso_hover_lines(QPainter &p, const RenderContext &ctx,
+                             const MeasureCtx &m);
+  void draw_dso_y_measure(QPainter &p, const RenderContext &ctx,
+                           const MeasureCtx &m);
+  void draw_dso_x_measure(QPainter &p, const RenderContext &ctx,
+                           const MeasureCtx &m);
+  void draw_logic_edge(QPainter &p, const RenderContext &ctx,
+                        const MeasureCtx &m);
+  void draw_logic_jump(QPainter &p, const RenderContext &ctx,
+                        const MeasureCtx &m);
 };
 
 /**

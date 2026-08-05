@@ -64,8 +64,8 @@ void ViewLayout::set_scale_offset(double scale, int64_t offset) {
 
   if (_scale != _preScale || _offset != _preOffset) {
     update_scroll();
-    _view->_header->update();
-    _view->_ruler->update();
+    _view->header_widget()->update();
+    _view->get_ruler()->update();
     _view->viewport_update();
   }
   _view->schedule_visible_range_notify();
@@ -100,7 +100,7 @@ void ViewLayout::limit_scale_offset() {
   _offset =
       max(min(_offset, get_max_offset()), get_min_offset());
   update_scroll();
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
   _view->schedule_visible_range_notify();
 }
@@ -157,7 +157,7 @@ void ViewLayout::update_scale_offset() {
   _preScale = _scale;
   _preOffset = _offset;
 
-  _view->_ruler->update();
+  _view->get_ruler()->update();
   _view->viewport_update();
   _view->schedule_visible_range_notify();
 }
@@ -170,8 +170,8 @@ void ViewLayout::set_scale(double scale) {
 
   if (_scale != scale) {
     _scale = scale;
-    _view->_header->update();
-    _view->_ruler->update();
+    _view->header_widget()->update();
+    _view->get_ruler()->update();
     _view->viewport_update();
     update_scroll();
   }
@@ -216,9 +216,9 @@ bool ViewLayout::zoom(double steps, int offset) {
     }
     double hori_res = -1;
     if (steps > 0.5)
-      hori_res = _view->_sampling_bar->hori_knob(-1);
+      hori_res = _view->sampling_bar()->hori_knob(-1);
     else if (steps < -0.5)
-      hori_res = _view->_sampling_bar->hori_knob(1);
+      hori_res = _view->sampling_bar()->hori_knob(1);
 
     if (hori_res > 0) {
       const double scale = _view->data_source()->cur_view_time() / width;
@@ -234,8 +234,8 @@ bool ViewLayout::zoom(double steps, int offset) {
       max(min(_offset, get_max_offset()), get_min_offset());
 
   if (_scale != _preScale || _offset != _preOffset) {
-    _view->_header->update();
-    _view->_ruler->update();
+    _view->header_widget()->update();
+    _view->get_ruler()->update();
     _view->viewport_update();
     update_scroll();
   }
@@ -251,20 +251,20 @@ void ViewLayout::h_scroll_value_changed(int value) {
   _preOffset = _offset;
 
   const int range = _view->horizontalScrollBar()->maximum();
-  if (range < View::MaxScrollValue)
+  if (range < _view->maxScrollValue())
     _offset = value;
   else {
     int64_t length = 0;
     int64_t offset = 0;
     get_scroll_layout(length, offset);
-    _offset = floor(value * 1.0 / View::MaxScrollValue * length);
+    _offset = floor(value * 1.0 / _view->maxScrollValue() * length);
   }
 
   _offset =
       max(min(_offset, get_max_offset()), get_min_offset());
 
   if (_offset != _preOffset) {
-    _view->_ruler->update();
+    _view->get_ruler()->update();
     _view->viewport_update();
   }
   _view->schedule_visible_range_notify();
@@ -277,7 +277,7 @@ void ViewLayout::get_scroll_layout(int64_t &length, int64_t &offset) {
 }
 
 void ViewLayout::update_scroll() {
-  assert(_view->_viewcenter);
+  assert(_view->viewcenter_widget());
 
   int width = _view->get_view_width();
   if (width == 0) {
@@ -296,21 +296,21 @@ void ViewLayout::update_scroll() {
 
   _updating_scroll = true;
 
-  if (length < View::MaxScrollValue) {
+  if (length < _view->maxScrollValue()) {
     _view->horizontalScrollBar()->setRange(0, length);
     _view->horizontalScrollBar()->setSliderPosition(offset);
   } else {
-    _view->horizontalScrollBar()->setRange(0, View::MaxScrollValue);
+    _view->horizontalScrollBar()->setRange(0, _view->maxScrollValue());
     _view->horizontalScrollBar()->setSliderPosition(
-        _offset * 1.0 / length * View::MaxScrollValue);
+        _offset * 1.0 / length * _view->maxScrollValue());
   }
 
   _updating_scroll = false;
 
   // Set the vertical scrollbar
   int totalContentHeight = 0;
-  if (_view->_time_viewport)
-    totalContentHeight = _view->_time_viewport->get_total_height();
+  if (_view->get_time_view())
+    totalContentHeight = _view->get_time_view()->get_total_height();
   int vRange = max(0, totalContentHeight - areaSize.height());
   if (vRange > 0)
     _view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -325,14 +325,14 @@ void ViewLayout::update_margins() {
   int width = _view->get_view_width();
 
   if (width > 0) {
-    _view->_ruler->setGeometry(_view->_viewcenter->x(), 0,
-                               _view->width() - _view->_viewcenter->x(),
-                               _view->_viewcenter->y());
-    _view->_header->setGeometry(0, _view->_viewcenter->y(),
-                                _view->_viewcenter->x(),
-                                _view->_viewcenter->height());
-    _view->_devmode->setGeometry(0, 0, _view->_viewcenter->x(),
-                                 _view->_viewcenter->y());
+    _view->get_ruler()->setGeometry(_view->viewcenter_widget()->x(), 0,
+                               _view->width() - _view->viewcenter_widget()->x(),
+                               _view->viewcenter_widget()->y());
+    _view->header_widget()->setGeometry(0, _view->viewcenter_widget()->y(),
+                                _view->viewcenter_widget()->x(),
+                                _view->viewcenter_widget()->height());
+    _view->devmode_widget()->setGeometry(0, 0, _view->viewcenter_widget()->x(),
+                                 _view->viewcenter_widget()->y());
   }
 }
 

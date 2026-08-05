@@ -114,11 +114,13 @@ private:
   int _signalHeight = 0;
   int _signalHeightScale = 24;  // default = View::MaxHeightUnit
 
-  // Allow other delegates to access scale/offset state via public accessors.
-  // Phase 8: these will be replaced by IViewLayout* interface pointers.
-  friend class ViewCursors;
-  friend class ViewDataSync;
-  friend class ViewSignalSync;
+public:
+  // ---- Additional setters for delegate classes (Phase 2: friend elimination) ----
+  inline void set_maxscale(double s) { _maxscale = s; }
+  inline void set_minscale(double s) { _minscale = s; }
+  inline void set_offset(int64_t o) { _offset = o; }
+  inline int lastWidth() const { return _lastWidth; }
+  inline void set_lastWidth(int w) { _lastWidth = w; }
 };
 
 } // namespace view

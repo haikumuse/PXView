@@ -53,30 +53,13 @@ namespace pv {
 class SessionData {
 public:
   SessionData();
-  // Raw pointer getters (backward compat — returns nullptr if shared_ptr is null)
-  data::LogicSnapshot *get_logic() {
-    // Self-contained: ensure the snapshot carries its samplerate so the renderer
-    // can read _data->samplerate() without any external pass-through. This covers
-    // the path where rendering reads directly from SessionData (no SessionDocument).
-    if (_logic && _cur_snap_samplerate > 0)
-      _logic->set_samplerate((double)_cur_snap_samplerate);
-    return _logic.get();
-  }
-  data::AnalogSnapshot *get_analog() {
-    // Same samplerate injection as get_logic(): clear() creates a fresh
-    // AnalogSnapshot with _samplerate=0. Without this, AnalogSignal::paint_mid
-    // reads _data->samplerate() == 0 → samples_per_pixel == 0 → flat-line
-    // waveform (all pixels show the same sample).
-    if (_analog && _cur_snap_samplerate > 0)
-      _analog->set_samplerate((double)_cur_snap_samplerate);
-    return _analog.get();
-  }
-  data::DsoSnapshot *get_dso() {
-    // Same samplerate injection as get_logic()/get_analog().
-    if (_dso && _cur_snap_samplerate > 0)
-      _dso->set_samplerate((double)_cur_snap_samplerate);
-    return _dso.get();
-  }
+  // Raw pointer getters (pure read — no side effects).
+  // Samplerate is injected at construction time in clear(), not on every
+  // access. This eliminates the W1 window (clear → set_cur_snap_samplerate
+  // gap) where snapshots temporarily had _samplerate=0.
+  data::LogicSnapshot *get_logic() { return _logic.get(); }
+  data::AnalogSnapshot *get_analog() { return _analog.get(); }
+  data::DsoSnapshot *get_dso() { return _dso.get(); }
 
   // Shared_ptr getters — for zero-copy ownership sharing with SessionDocument.
   // The caller (copy_data_to_document) copies the shared_ptr, incrementing the
@@ -86,6 +69,9 @@ public:
   std::shared_ptr<data::AnalogSnapshot> analog_shared() { return _analog; }
   std::shared_ptr<data::DsoSnapshot> dso_shared() { return _dso; }
 
+  /// Reset to fresh snapshot instances, injecting the current samplerate
+  /// at construction time. This prevents the _samplerate=0 window that
+  /// caused analog/DSO flat-line waveforms.
   void clear();
 
   uint64_t _cur_snap_samplerate, _cur_samplelimits, _trig_pos;

@@ -71,13 +71,13 @@ void ViewGlitchFilter::on_show_glitch_filter_popup(
 
   // 对齐 HTML 原型:弹窗紧贴 name 区右侧 (label-row.right + 8),
   // 垂直方向对齐轨道上界(sig->get_y() - totalHeight/2)。
-  int name_right = _view->_header
-                       ? _view->_header->width() - sig->get_rightWidth()
+  int name_right = _view->header_widget()
+                       ? _view->header_widget()->width() - sig->get_rightWidth()
                        : 0;
   int anchor_x = name_right + 8;
   int anchor_y = sig->get_y() - sig->get_totalHeight() / 2;
-  QPoint anchor = _view->_header
-                      ? _view->_header->mapToGlobal(QPoint(anchor_x, anchor_y))
+  QPoint anchor = _view->header_widget()
+                      ? _view->header_widget()->mapToGlobal(QPoint(anchor_x, anchor_y))
                       : QCursor::pos();
 
   // Keep the popup on screen (assume ~420x500 popup size).
@@ -103,8 +103,8 @@ void ViewGlitchFilter::on_clear_glitch_filter_requested(bool all_channels) {
   // would require a Core API extension.
   _view->session().clear_glitch_filter();
   _preview_ranges.clear();
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   pv::ui::Toast::show(_view,
                       all_channels ? View::tr("已清除所有通道滤波")
                                    : View::tr("已清除通道滤波"),
@@ -125,16 +125,16 @@ void ViewGlitchFilter::on_toggle_invert_requested(
   if (sess.is_signal_invert_active()) {
     sess.clear_signal_invert();
     pv::ui::Toast::show(_view, View::tr("已清除信号取反"), pv::ui::Toast::Info);
-    if (_view->_time_viewport)
-      _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    if (_view->get_time_view())
+      _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
     return;
   }
 
   // Build the channels vector indexed by enabled-logic-channel ordinal.
   std::vector<LogicSignal *> logic_sigs;
   for (auto s : _view->get_own_signals()) {
-    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-      logic_sigs.push_back(static_cast<LogicSignal *>(s));
+    if (auto *logic = s->as_logic())
+      logic_sigs.push_back(logic);
   }
   std::vector<bool> channels(logic_sigs.size(), false);
   auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
@@ -146,8 +146,8 @@ void ViewGlitchFilter::on_toggle_invert_requested(
   pv::ui::Toast::show(_view,
                       View::tr("已对通道 %1 取反").arg(sig->get_name()),
                       pv::ui::Toast::Info);
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 void ViewGlitchFilter::on_glitch_preview_changed(pv::view::LogicSignal *sig,
@@ -162,8 +162,8 @@ void ViewGlitchFilter::on_glitch_preview_changed(pv::view::LogicSignal *sig,
   auto pulses = pv::data::PulseAnalyzer::find_pulses(snap, sig_index);
   _preview_ranges[sig] =
       pv::data::PulseAnalyzer::preview_filter(pulses, threshold, mode);
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 void ViewGlitchFilter::on_glitch_apply_requested(
@@ -238,9 +238,9 @@ void ViewGlitchFilter::on_glitch_apply_requested(
 
 void ViewGlitchFilter::on_glitch_popup_closed() {
   _preview_ranges.clear();
-  if (_view->_time_viewport) {
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    _view->_time_viewport->setFocus();
+  if (_view->get_time_view()) {
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
+    _view->get_time_view()->setFocus();
   }
 }
 
@@ -315,8 +315,8 @@ void ViewGlitchFilter::on_preview_batch_changed(
     _preview_ranges[sig] =
         pv::data::PulseAnalyzer::preview_filter(pulses, threshold, mode);
   }
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 const std::vector<pv::data::PulseAnalyzer::Pulse> *
@@ -344,8 +344,8 @@ void ViewGlitchFilter::undo_filter() {
     sess.clear_glitch_filter();
   }
   _preview_ranges.clear();
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   pv::ui::Toast::show(_view, View::tr("已撤销滤波"), pv::ui::Toast::Info);
 }
 
@@ -356,8 +356,8 @@ void ViewGlitchFilter::on_glitch_filter_completed() {
   // short pulses are gone). Also clear stale preview ranges — the red
   // overlay from get_filtered_ranges() now shows the actual filtered state.
   _preview_ranges.clear();
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   if (_glitch_filter_popup && _glitch_filter_popup->is_open())
     _glitch_filter_popup->on_filter_completed();
 }
@@ -368,8 +368,8 @@ void ViewGlitchFilter::on_glitch_filter_cleared() {
   // the orange overlay disappears (red overlay already gone because
   // get_filtered_ranges() returns empty after clear_filtered_ranges()).
   _preview_ranges.clear();
-  if (_view->_time_viewport)
-    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view->get_time_view())
+    _view->get_time_view()->update(UpdateEventType::UPDATE_EV_GENERIC);
   if (_glitch_filter_popup && _glitch_filter_popup->is_open())
     _glitch_filter_popup->on_filter_cleared();
 }

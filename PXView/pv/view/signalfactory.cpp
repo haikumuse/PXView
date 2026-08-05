@@ -62,7 +62,7 @@ static void apply_model_properties(Signal *signal,
   signal->set_enabled(model->enabled());
   signal->set_visible(model->enabled());
 
-  if (auto *logic_sig = dynamic_cast<LogicSignal *>(signal)) {
+  if (auto *logic_sig = signal->as_logic()) {
     logic_sig->set_trig(model->trig_type());
     // Establish live sync: subsequent SignalModel::set_trig_type() calls
     // will auto-update this LogicSignal's _trig via Qt signal/slot.

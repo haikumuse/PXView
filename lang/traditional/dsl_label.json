@@ -32,7 +32,7 @@
         "text": "觸發前採樣比例"
     },
     {
-        "id": "Run Length Encoding",
+        "id": "Run length encoding",
         "text": "RLE編碼"
     },
     {
@@ -136,7 +136,7 @@
         "text": "RLE硬體壓縮"
     },
     {
-        "id": "Bandwidth Limit",
+        "id": "Bandwidth limit",
         "text": "頻寬限制"
     },
     {
@@ -242,6 +242,10 @@
     {
         "id": "Disk Cache Path",
         "text": "快取路徑"
+    },
+    {
+        "id": "Clock type",
+        "text": "時鐘類型"
     },
     {
         "id": "Pattern",

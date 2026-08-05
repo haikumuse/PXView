@@ -244,7 +244,7 @@ void Header::paintEvent(QPaintEvent *) {
   // Find the last enabled trace (no divider below it)
   Trace *lastEnabledTrace = nullptr;
   for (auto it = traces.rbegin(); it != traces.rend(); ++it) {
-    if ((*it)->enabled() || dynamic_cast<DsoSignal *>(*it)) {
+    if ((*it)->enabled() || (*it)->as_dso()) {
       lastEnabledTrace = *it;
       break;
     }
@@ -252,7 +252,7 @@ void Header::paintEvent(QPaintEvent *) {
 
   painter.setPen(QPen(dividerColor, 1));
   for (auto t : traces) {
-    if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
+    if (!t->enabled() && !t->as_dso())
       continue;
     if (lastInGroup.count(t))
       continue;
@@ -419,7 +419,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
     const auto mTrace = get_mTrace(action, event->position().toPoint() + QPoint(0, vOff_hit));
     if (action == Trace::COLOR && mTrace) {
       // 解码通道:单击 COLOR 区打开解码器设置对话框(与 ProtocolDock 齿轮入口一致)
-      if (auto *dt = dynamic_cast<DecodeTrace *>(mTrace)) {
+      if (auto *dt = mTrace->as_decode()) {
         _context_trace = mTrace;
         // 模态对话框(QDialog::exec)会捕获鼠标,导致后续 mouseReleaseEvent 不会被调用,
         // 必须在此重置按下态/拖拽缓存,否则 header_is_draging() 恒为 true,
@@ -451,7 +451,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       // ANALOG/DSO 模式:保留原选色流程(主题菜单的 token 改色只覆盖
       // LOGIC 全局色板,模拟/DSO 单通道颜色仍需此入口)
       if (_view.is_logic_rendering_mode()) {
-        auto *sig = dynamic_cast<LogicSignal *>(mTrace);
+        auto *sig = mTrace->as_logic();
         if (sig) {
           _context_trace = mTrace;
           // 同上:弹窗捕获鼠标,需重置按下态,避免滚轮缩放被锁死。
@@ -847,27 +847,18 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
       const auto t = (*i).first;
       if (t) {
         int y = (*i).second + delta;
-        if (t->get_type() == SR_CHANNEL_DSO) {
-          DsoSignal *dsoSig = nullptr;
-          if ((dsoSig = dynamic_cast<DsoSignal *>(t))) {
-            dsoSig->set_zero_vpos(y);
-            _moveFlag = true;
-            traces_moved();
-          }
-        } else if (t->get_type() == SR_CHANNEL_MATH) {
-          MathTrace *mathTrace = nullptr;
-          if ((mathTrace = dynamic_cast<MathTrace *>(t))) {
-            mathTrace->set_zero_vpos(y);
-            _moveFlag = true;
-            traces_moved();
-          }
-        } else if (t->get_type() == SR_CHANNEL_ANALOG) {
-          AnalogSignal *analogSig = nullptr;
-          if ((analogSig = dynamic_cast<AnalogSignal *>(t))) {
-            analogSig->set_zero_vpos(y);
-            _moveFlag = true;
-            traces_moved();
-          }
+        if (auto *dsoSig = t->as_dso()) {
+          dsoSig->set_zero_vpos(y);
+          _moveFlag = true;
+          traces_moved();
+        } else if (auto *mathTrace = t->as_math()) {
+          mathTrace->set_zero_vpos(y);
+          _moveFlag = true;
+          traces_moved();
+        } else if (auto *analogSig = t->as_analog()) {
+          analogSig->set_zero_vpos(y);
+          _moveFlag = true;
+          traces_moved();
         } else {
           if (~QApplication::keyboardModifiers() & Qt::ControlModifier) {
             const int y_snap = ((y + View::SignalSnapGridSize / 2) /
@@ -926,7 +917,7 @@ void Header::keyPressEvent(QKeyEvent *event) {
   // is an extra guard against any other modal popup (QMenu, QInputDialog,
   // QColorDialog, etc.) that may be open.
   if (QApplication::activePopupWidget() == nullptr && _context_trace) {
-    auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+    auto *sig = _context_trace->as_logic();
     if (sig) {
       if (event->key() == Qt::Key_F) {
         emit show_glitch_filter_popup(sig);
@@ -977,7 +968,7 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
   const auto t = get_mTrace(action, pt);
 
   // 解码通道:任何模式下都弹"更改颜色"菜单(左键改色已删除,统一右键入口)
-  if (t && dynamic_cast<DecodeTrace *>(t)) {
+  if (t && t->as_decode()) {
     _context_trace = t;
     QMenu menu(this);
     menu.addAction(
@@ -1059,7 +1050,7 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
   }
 
   // ===== Zone A: D0 名称区域 → 滤波菜单 =====
-  auto *logic_sig = dynamic_cast<LogicSignal *>(target);
+  auto *logic_sig = target->as_logic();
   if (!logic_sig)
     return;
 
@@ -1109,7 +1100,7 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
 void Header::on_filter_glitches_triggered() {
   if (!_context_trace)
     return;
-  auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+  auto *sig = _context_trace->as_logic();
   if (!sig)
     return;
   emit show_glitch_filter_popup(sig);
@@ -1128,7 +1119,7 @@ void Header::on_clear_all_filter_triggered() {
 void Header::on_toggle_invert_triggered() {
   if (!_context_trace)
     return;
-  auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+  auto *sig = _context_trace->as_logic();
   if (!sig)
     return;
   emit toggle_signal_invert_requested(sig);

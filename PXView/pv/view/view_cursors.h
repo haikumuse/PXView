@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <list>
+#include <memory>
 
 #include <QColor>
 #include <QString>
@@ -49,19 +50,13 @@ class View;
 // (cursors_shown, trig_cursor_shown, etc.) forwards to this delegate.
 class ViewCursors : public IViewCursors {
 public:
-  explicit ViewCursors(View *view) : _view(view) {}
+  explicit ViewCursors(View *view);
+  ~ViewCursors();
 
-  // Destructor cleans up all owned cursor objects, including trig/search
-  // cursors. This eliminates the former cross-class deletion-order
-  // dependency where View's destructor had to delete them before
-  // _cursors was destroyed.
-  ~ViewCursors() {
-    for (auto c : _logic_cursors) delete c;
-    for (auto c : _dso_cursors) delete c;
-    for (auto x : _xcursorList) delete x;
-    if (_trig_cursor) { delete _trig_cursor; _trig_cursor = nullptr; }
-    if (_search_cursor) { delete _search_cursor; _search_cursor = nullptr; }
-  }
+  // Destructor defined in .cpp for unique_ptr complete type requirement.
+  // Phase 4: _trig_cursor and _search_cursor now use std::unique_ptr,
+  // so their deletion is automatic. Container cursors still use manual
+  // deletion pending full container migration.
 
   // -- visibility queries (IViewCursors overrides) ------------------
   bool cursors_shown() const override { return _show_cursors; }
@@ -71,8 +66,8 @@ public:
   void set_xcursors_shown(bool show) { _show_xcursors = show; }
 
   // -- cursor accessors (for View inline accessors) ---------------------
-  Cursor *trig_cursor() { return _trig_cursor; }
-  Cursor *search_cursor() { return _search_cursor; }
+  Cursor *trig_cursor() { return _trig_cursor.get(); }
+  Cursor *search_cursor() { return _search_cursor.get(); }
   bool search_hit() const { return _search_hit; }
   uint64_t search_pos() const { return _search_pos; }
   std::list<XCursor *> &xcursor_list() { return _xcursorList; }
@@ -140,9 +135,9 @@ private:
   bool _show_cursors = false;
   std::list<Cursor *> _logic_cursors;
   std::list<Cursor *> _dso_cursors;
-  Cursor *_trig_cursor = nullptr;
+  std::unique_ptr<Cursor> _trig_cursor;
   bool _show_trig_cursor = false;
-  Cursor *_search_cursor = nullptr;
+  std::unique_ptr<Cursor> _search_cursor;
   bool _show_search_cursor = false;
   uint64_t _search_pos = 0;
   bool _search_hit = false;

@@ -55,6 +55,12 @@ private:
     static const int HoverPointSize = 2;
     static const uint8_t DefaultBits = 8;
 
+    // Safe narrow-cast: this is an AnalogSignal.
+    AnalogSignal* as_analog() override { return this; }
+    const AnalogSignal* as_analog() const override { return this; }
+    void accept(TraceVisitor& v) override { v.visit(*this); }
+    void accept(ConstTraceVisitor& v) const override { v.visit(*this); }
+
 public:
     AnalogSignal(data::AnalogSnapshot *data,
                  std::shared_ptr<data::SignalModel> model,
@@ -96,6 +102,11 @@ public:
     }
 
     void set_data(data::AnalogSnapshot *data);
+
+    /// Signal override: extracts AnalogSnapshot from DataSource
+    void set_data_from_source(data::DataSource *source) override;
+    /// Signal override: sets _data to nullptr
+    void clear_data() override;
 
     int get_hw_offset();
     int commit_settings();

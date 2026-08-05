@@ -351,8 +351,6 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     break;
 
   case SR_DF_END: {
-    pxv_info("------------SR_DF_END packet.");
-
     _state->capture_data()->get_logic()->capture_ended();
     _state->capture_data()->get_dso()->capture_ended();
     _state->capture_data()->get_analog()->capture_ended();
@@ -365,8 +363,6 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     _state->set_device_status(ST_STOPPED);
 
     int mode = _state->device_agent().get_work_mode();
-    pxv_info("SR_DF_END work_mode=%d (LOGIC=%d MSO=%d DSO=%d ANALOG=%d)",
-             mode, LOGIC, MSO, DSO, ANALOG);
 
     // Post a message to start all decode tasks.
     if (mode == LOGIC) {
@@ -381,7 +377,6 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
       // paint_mid() 直接 return，模拟通道波形空白。此处补发 RevEndPacket 复用
       // on_event(RevEndPacket) 已有的 MSO 处理分支。
       if (mode == MSO) {
-        pxv_info("SR_DF_END: MSO branch broadcasting RevEndPacket.");
         _event_bus->broadcast_async<interface::RevEndPacket>({});
       }
 

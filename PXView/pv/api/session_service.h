@@ -369,6 +369,38 @@ private:
     void broadcast_event(ServiceEvent event,
                          const std::map<std::string, std::string> &params = {}) const;
     ChannelType sr_channel_type_to_api(int sr_type) const;
+
+    // ---- configure_and_start helper methods (split from 470-line function) ----
+    // Step 0: Ensure device is in LOGIC mode when digital channels are requested.
+    void ensure_logic_mode_for_digital(const std::vector<int16_t>& digital_channels);
+    // Step 1: Enable/disable channels based on caller specification.
+    void configure_capture_channels(const std::vector<int16_t>& digital_channels,
+                                    const std::vector<int16_t>& analog_channels);
+    // Step 2: Set up logic trigger on SignalModel (drives UI rendering).
+    void apply_trigger_to_signal_models(
+        int trigger_channel_index,
+        const std::string& trigger_type,
+        const std::vector<std::pair<int16_t, std::string>>& linked_channels);
+    // Steps 5a-5g: Set device-level options (mode, threshold, filters, etc.).
+    void configure_device_options(
+        const std::string& channel_mode,
+        bool rle_enabled,
+        double stream_buffer_size_gb,
+        double stream_mem_buffer_size_gb,
+        bool disk_cache_enabled,
+        const std::string& disk_cache_path,
+        const std::string& threshold_preset,
+        const std::string& operation_mode,
+        const std::string& buffer_options,
+        const std::string& digital_filter,
+        const std::string& pattern);
+    // Steps 6-7: Set collect mode, repeat interval, capture ratio, duration.
+    void configure_capture_timing(
+        const std::string& capture_mode,
+        double repeat_interval_seconds,
+        int capture_ratio,
+        double duration_seconds,
+        uint64_t sample_count);
     // Returns true when running inside the GUI (QApplication), false when
     // running headless (QCoreApplication only). In headless mode View-related
     // operations are no-ops and QEventLoop-based waits fall back to a plain

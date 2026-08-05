@@ -332,7 +332,7 @@ LogicSignal* WaveformCopyHelper::hit_test_signal(View &view, int click_x, int cl
             int sigY = s->get_v_offset();
             int halfH = s->get_totalHeight() / 2 + View::SignalMargin;
             if (std::abs(mouseY - sigY) < halfH)
-                return dynamic_cast<LogicSignal*>(s);
+                return s->as_logic();
         }
     }
     return nullptr;
@@ -406,7 +406,7 @@ std::vector<LogicSignal*> WaveformCopyHelper::collect_decoder_input_signals(View
             continue;
         if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()) {
             if (channel_indices.count(s->get_index()))
-                result.push_back(dynamic_cast<LogicSignal*>(s));
+                result.push_back(s->as_logic());
         }
     }
 
@@ -420,7 +420,7 @@ std::vector<LogicSignal*> WaveformCopyHelper::collect_all_logic_signals(View &vi
         if (!s)
             continue;
         if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled())
-            result.push_back(dynamic_cast<LogicSignal*>(s));
+            result.push_back(s->as_logic());
     }
     return result;
 }

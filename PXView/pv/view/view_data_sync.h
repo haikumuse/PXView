@@ -119,6 +119,15 @@ private:
   pv::data::SessionDocument *_document = nullptr;
   bool _back_ready = false;
   QElapsedTimer _data_updated_timer;
+
+  // --- DRY helpers (eliminate repeated switch-case boilerplate) ---
+  // Uses Signal::set_data_from_source() polymorphism instead of per-type
+  // static_cast + set_data.
+  void apply_source_to_signals(pv::data::DataSource *source);
+  void clear_all_signal_data();
+  // DSO-specific post-data-refresh: paint_prepare + optional set_scale.
+  void refresh_dso_signal_paint(pv::data::DataSource *source,
+                                 bool set_scale);
 };
 
 } // namespace view

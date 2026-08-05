@@ -275,7 +275,7 @@ public:
    */
   void show_cursors(bool show = true);
 
-  inline const QPoint &hover_point() { return _hover_point; }
+  inline QPoint& hover_point() { return _hover_point; }
 
   void normalize_layout();
 
@@ -671,7 +671,6 @@ signals:
 
 private slots:
   void h_scroll_value_changed(int value);
-  void v_scroll_value_changed(int value);
 
   void on_traces_moved();
   void on_measure_updated();
@@ -692,23 +691,48 @@ private slots:
   void on_preview_batch_changed(const std::vector<pv::view::LogicSignal *> &sigs,
                                 uint32_t threshold, GlitchFilterMode mode);
 
+public:
+  // ---- Internal accessors for delegate classes ----
+  // Phase 2: Replaced friend declarations with public accessor methods.
+  // Delegates (ViewLayout, ViewCursors, etc.) hold a View* pointer and
+  // call these accessors instead of directly touching private members.
+  inline Viewport* fft_viewport() { return _fft_viewport; }
+  inline Header* header_widget() { return _header; }
+  inline DevMode* devmode_widget() { return _devmode; }
+  inline QWidget* viewcenter_widget() { return _viewcenter; }
+  inline ViewStatus* viewstatus_widget() { return _viewbottom; }
+  inline QSplitter* vsplitter_widget() { return _vsplitter; }
+  inline DeviceAgent* device_agent() { return _device_agent; }
+  inline pv::toolbars::SamplingBar* sampling_bar() { return _sampling_bar; }
+  inline std::list<QWidget*>& viewport_list() { return _viewport_list; }
+  inline std::map<int,int>& trace_view_map() { return _trace_view_map; }
+  inline bool header_collapsed() const { return _header_collapsed; }
+  inline bool destroying() const { return _destroying; }
+  inline void set_destroying(bool v) { _destroying = v; }
+  inline Viewport* active_viewport() { return _active_viewport; }
+  inline void set_active_viewport(Viewport* vp) { _active_viewport = vp; }
+  inline ViewLayout* layout_delegate() { return _layout.get(); }
+  inline ViewDataSync* data_sync_delegate() { return _data_sync.get(); }
+  void schedule_visible_range_notify();
+  inline int maxScrollValue() const { return MaxScrollValue; }
+  inline SigSession* session_ptr() { return _session; }
+  inline int rulerHeight() const { return RulerHeight; }
+  inline void set_viewport_margins(int left, int top, int right, int bottom) {
+    setViewportMargins(left, top, right, bottom);
+  }
+  void v_scroll_value_changed(int value);
+
+  // ---- Internal helpers (public for delegate access) ----
+  void get_scroll_layout(int64_t &length, int64_t &offset);
+  void update_scroll();
+  void update_margins();
+  void set_scale(double scale);
+  void set_trig_cursor_posistion(uint64_t percent);
+  void make_cursors_order();
+  void clear();
+  void reconstruct();
+
 private:
-  // ---- Friends (delegates access View's private widgets/state) ----
-  // Delegates own their own state (cursor state in ViewCursors, scale/offset
-  // in ViewLayout, signal list in ViewSignalSync, etc.). The friend
-  // declarations allow them to access View's private widget members
-  // (_ruler, _time_viewport, _fft_viewport, _vsplitter, _header, _viewbottom,
-  // _device_agent, _trace_view_map, _viewport_list, _hover_point, _trig_hoff)
-  // and call private helper methods (signals_changed, viewport_update,
-  // update_margins, update_scroll, etc.) that are not part of the public API.
-  // Phase 8 goal: progressively replace friend access with public accessor
-  // methods or interface pointers (IViewLayout, IViewCursors, etc.).
-  friend class ViewLayout;
-  friend class ViewCursors;
-  friend class ViewDerivedTraces;
-  friend class ViewSignalSync;
-  friend class ViewGlitchFilter;
-  friend class ViewDataSync;
 
   // ---- Private static constants ----
   static const int LabelMarginWidth;
@@ -716,17 +740,7 @@ private:
   static const int MaxScrollValue;
   static const int MaxHeightUnit;
 
-  // ---- Internal helpers (delegate to ViewLayout / ViewCursors) ----
-  void get_scroll_layout(int64_t &length, int64_t &offset);
-  void update_scroll();
-  void update_margins();
-  void set_scale(double scale);
-
-  void set_trig_cursor_posistion(uint64_t percent);
-  void make_cursors_order();
-
-  void clear();
-  void reconstruct();
+  // ---- Event handlers (private) ----
   bool eventFilter(QObject *object, QEvent *event);
   bool viewportEvent(QEvent *e);
   void paintEvent(QPaintEvent *event);
@@ -734,9 +748,8 @@ private:
   void scrollContentsBy(int dx, int dy);
 
   // Restart the visible-range debounce timer. Repeated calls while the
-  // timer is already running restart it (QTimer::start semantics), so only
   // the last call in a burst of drag/zoom events fires visible_range_changed.
-  void schedule_visible_range_notify();
+  // (Declaration in public section above for delegate access.)
 
   // ---- Delegate members (Phase E + J) ----
   std::unique_ptr<ViewLayout> _layout;

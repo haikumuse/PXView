@@ -30,6 +30,14 @@
 #include <vector>
 #include <QPoint>
 
+// Phase 4: unique_ptr<MathTrace/LissajousTrace> requires complete types
+// in the header. These includes could be avoided by using the pimpl
+// idiom, but the current trade-off favors compile simplicity.
+#include "mathtrace.h"
+#include "lissajoustrace.h"
+#include "decodetrace.h"
+#include "spectrumtrace.h"
+
 struct srd_decoder;
 class DecoderStatus;
 
@@ -59,7 +67,8 @@ class LissajousTrace;
 // helper methods (e.g. mark_derived_traces_dirty, signals_changed).
 class ViewDerivedTraces {
 public:
-  explicit ViewDerivedTraces(View *view) : _view(view) {}
+  explicit ViewDerivedTraces(View *view);
+  ~ViewDerivedTraces();
 
   // -- decoder lifecycle -------------------------------------------------
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
@@ -77,13 +86,13 @@ public:
 
   std::vector<DecodeTrace *> &own_decode_traces() { return _own_decode_traces; }
   std::vector<SpectrumTrace *> &own_spectrum_traces() { return _own_spectrum_traces; }
-  MathTrace *own_math_trace() { return _own_math_trace; }
-  LissajousTrace *own_lissajous_trace() { return _own_lissajous_trace; }
+  MathTrace *own_math_trace() { return _own_math_trace.get(); }
+  LissajousTrace *own_lissajous_trace() { return _own_lissajous_trace.get(); }
   bool derived_traces_dirty() const { return _derived_traces_dirty; }
   void set_derived_traces_dirty(bool v) { _derived_traces_dirty = v; }
 
-  void set_own_math_trace(MathTrace *t) { _own_math_trace = t; }
-  void set_own_lissajous_trace(LissajousTrace *t) { _own_lissajous_trace = t; }
+  void set_own_math_trace(MathTrace *t) { _own_math_trace.reset(t); }
+  void set_own_lissajous_trace(LissajousTrace *t) { _own_lissajous_trace.reset(t); }
 
   // -- cleanup (called by View destructor) ------------------------------
   // Deletes all View-owned wrapper traces and clears the lists.
@@ -95,8 +104,8 @@ private:
 
   std::vector<DecodeTrace *> _own_decode_traces;
   std::vector<SpectrumTrace *> _own_spectrum_traces;
-  MathTrace *_own_math_trace = nullptr;
-  LissajousTrace *_own_lissajous_trace = nullptr;
+  std::unique_ptr<MathTrace> _own_math_trace;
+  std::unique_ptr<LissajousTrace> _own_lissajous_trace;
   bool _derived_traces_dirty = true;
 };
 

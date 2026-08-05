@@ -44,9 +44,23 @@ void SessionData::clear() {
   // zero-copy share), the previous data stays alive — ref count > 0.
   // This is the key difference from the old in-place clear(): the document's
   // data is not affected by this reset.
+  //
+  // Construct-time samplerate injection: new snapshots are created with the
+  // current _cur_snap_samplerate, eliminating the W1 window (clear →
+  // set_cur_snap_samplerate gap) where snapshots temporarily had
+  // _samplerate=0. This prevents AnalogSignal::paint_mid from computing
+  // samples_per_pixel=0 → flat-line waveform.
+  // set_cur_snap_samplerate() called after clear() will update to the
+  // device's current samplerate (which may differ if the user changed it).
   _logic = std::make_shared<data::LogicSnapshot>();
   _analog = std::make_shared<data::AnalogSnapshot>();
   _dso = std::make_shared<data::DsoSnapshot>();
+  if (_cur_snap_samplerate > 0) {
+    const double sr = (double)_cur_snap_samplerate;
+    _logic->set_samplerate(sr);
+    _analog->set_samplerate(sr);
+    _dso->set_samplerate(sr);
+  }
   _trig_pos = 0;
   // Track B3: unique_ptr auto-releases on reset
   _logic_backup.reset();
