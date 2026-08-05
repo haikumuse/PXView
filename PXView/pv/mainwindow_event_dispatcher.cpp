@@ -6,6 +6,7 @@
 #include "mainwindow_event_dispatcher.h"
 
 #include <QApplication>
+#include <QObject>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QStatusBar>
@@ -14,6 +15,7 @@
 #include "log.h"
 #include "mainwindow.h"
 #include "mainwindow_dock_manager.h"
+#include "deviceagent.h"
 #include "sigsession.h"
 #include "tabcontext.h"
 #include "data/sessiondocument.h"
@@ -646,5 +648,99 @@ void SessionEventDispatcher::on_service_event(const pv::api::ServiceEventData &d
   default:
     // Not a View event; ignore.
     break;
+  }
+}
+
+// ===========================================================================
+// Phase 2: additional delegated logic (moved from MainWindow)
+// ===========================================================================
+
+void SessionEventDispatcher::handle_session_error() {
+  if (!_window)
+    return;
+
+  QString title;
+  QString details;
+
+  switch (_window->_session->get_error()) {
+  case SigSession::Hw_err:
+    pxv_info("SessionEventDispatcher::handle_session_error(),Hw_err, stop capture");
+    _window->_session->stop_capture();
+    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_HARDWARE_ERROR),
+                "Hardware Operation Failed");
+    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_HARDWARE_ERROR_DET),
+                  "Please replug device to refresh hardware configuration!");
+    break;
+  case SigSession::Malloc_err:
+    pxv_info("SessionEventDispatcher::handle_session_error(),Malloc_err, stop capture");
+    _window->_session->stop_capture();
+    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR), "Malloc Error");
+    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR_DET),
+                  "Memory is not enough for this sample!\nPlease reduce the "
+                  "sample depth!");
+    break;
+  case SigSession::Pkt_data_err:
+    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PACKET_ERROR), "Packet Error");
+    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PACKET_ERROR_DET),
+                  "the content of received packet are not expected!");
+    _window->_session->refresh(0);
+    break;
+  case SigSession::Data_overflow:
+    pxv_info("SessionEventDispatcher::handle_session_error(),Data_overflow, stop capture");
+    _window->_session->stop_capture();
+    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW), "Data Overflow");
+    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW_DET),
+                  "USB bandwidth can not support current sample rate! \nPlease "
+                  "reduce the sample rate!");
+    break;
+  default:
+    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_UNDEFINED_ERROR), "Undefined Error");
+    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_UNDEFINED_ERROR_DET),
+                  "Not expected error!");
+    break;
+  }
+
+  pv::dialogs::DSMessageBox msg(_window, title);
+  msg.mBox()->setText(details);
+  msg.mBox()->setStandardButtons(QMessageBox::Ok);
+  msg.mBox()->setIcon(QMessageBox::Warning);
+  QObject::connect(_window->_session->device_event_object(), &DeviceEventObject::device_updated,
+          &msg, &QDialog::accept);
+  _window->_msg = &msg;
+  msg.exec();
+  _window->_msg = nullptr;
+
+  _window->_session->clear_error();
+}
+
+void SessionEventDispatcher::check_usb_device_speed() {
+  if (!_window)
+    return;
+
+  // USB device speed check
+  if (_window->_device_agent->is_hardware()) {
+    int usb_speed = _window->_device_agent->get_usb_speed();
+    if (usb_speed == PXV_USB_SPEED_UNKNOWN) {
+      return;
+    }
+
+    bool usb30_support = _window->_device_agent->is_usb30();
+    pxv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
+
+    int cable_ver = 1;
+    if (usb_speed == PXV_USB_SPEED_HIGH)
+      cable_ver = 2;
+    else if (usb_speed == PXV_USB_SPEED_SUPER)
+      cable_ver = 3;
+
+    pxv_info("The cable's USB port version: %d.0", cable_ver);
+
+    if (usb30_support && usb_speed == PXV_USB_SPEED_HIGH) {
+      QString str_err(
+          L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHECK_USB_SPEED_ERROR),
+              "Plug the device into a USB 2.0 port will seriously affect its "
+              "performance.\nPlease replug it into a USB 3.0 port."));
+      _window->delay_prop_msg(str_err);
+    }
   }
 }

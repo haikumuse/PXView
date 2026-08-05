@@ -216,6 +216,14 @@ private:
     // members directly. MainWindow's config methods now forward here.
     std::unique_ptr<class MainWindowConfigIO> _config_io;
 
+    // ---- MainWindowSignalConnector delegate ----
+    // Phase 2: signal/slot connect() wiring extracted from setup_ui().
+    std::unique_ptr<class MainWindowSignalConnector> _signal_connector;
+
+    // ---- MainWindowFileOps delegate ----
+    // Phase 2: file load/import/save/export/screenshot extracted.
+    std::unique_ptr<class MainWindowFileOps> _file_ops;
+
     // ---- TabManager delegate ----
     // Phase 2: tab management extracted to a delegate class.
     // Holds _tab_widget, _tab_contexts, _current_tab_index and all tab
@@ -410,6 +418,8 @@ private:
     int _category_help_index;
 
     friend class MainWindowConfigIO;
+    friend class MainWindowSignalConnector;
+    friend class MainWindowFileOps;
     friend class SessionEventDispatcher;
     friend class TabManager;
     friend class DockManager;

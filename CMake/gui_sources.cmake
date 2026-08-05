@@ -17,6 +17,8 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/mainwindow_theme_manager.cpp
     PXView/pv/mainwindow_status_bar.cpp
     PXView/pv/mainwindow_shortcut_manager.cpp
+    PXView/pv/mainwindow_signal_connector.cpp
+    PXView/pv/mainwindow_file_ops.cpp
     PXView/pv/mainframe.cpp
     PXView/pv/submainframe.cpp
     # View layer rendering objects
@@ -175,6 +177,8 @@ set(PXView_HEADERS
     PXView/pv/mainwindow_theme_manager.h
     PXView/pv/mainwindow_status_bar.h
     PXView/pv/mainwindow_shortcut_manager.h
+    PXView/pv/mainwindow_signal_connector.h
+    PXView/pv/mainwindow_file_ops.h
     PXView/pv/dialogs/deviceoptions.h
     PXView/pv/prop/property.h
     PXView/pv/prop/int.h
@@ -249,6 +253,7 @@ set(PXView_HEADERS
     PXView/pv/data/spectrumstack.h
     PXView/pv/data/datasource.h
     PXView/pv/data/signalmodel.h
+    PXView/pv/data/signallistmodel.h
     PXView/pv/data/sessionsnapshot.h
     PXView/pv/data/sessiondocument.h
     PXView/pv/dialogs/mathoptions.h

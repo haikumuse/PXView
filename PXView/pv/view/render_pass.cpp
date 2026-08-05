@@ -31,6 +31,7 @@
 #include "xcursor.h"
 #include "dsosignal.h"
 #include "analogsignal.h"
+#include "lissajoustrace.h"
 #include "ruler.h"
 
 #include <QPainter>
@@ -487,7 +488,6 @@ bool CursorOverlayPass::should_run(const RenderContext &ctx) const {
 }
 
 void CursorOverlayPass::render(QPainter &p, const RenderContext &ctx) {
-  Viewport *vp = ctx.viewport;
   View *view = ctx.view;
   const QRect xrect = view->get_view_rect();
   const QPoint &hover = view->hover_point();
@@ -528,8 +528,8 @@ void CursorOverlayPass::render(QPainter &p, const RenderContext &ctx) {
         hovered = true;
       } else if (!hovered && xrect.contains(hover)) {
         if (qAbs(cursorX - hover.x()) <= Viewport::HitCursorMargin &&
-            hover.y() > min(cursorY0, cursorY1) &&
-            hover.y() < max(cursorY0, cursorY1)) {
+hover.y() > std::min(cursorY0, cursorY1) &&
+hover.y() < std::max(cursorY0, cursorY1)) {
           (*i)->paint(p, xrect, XCursor::XCur_Y);
           hovered = true;
         } else if (qAbs(cursorY0 - hover.y()) <=
@@ -908,8 +908,8 @@ void MeasureOverlayPass::render(QPainter &p, const RenderContext &ctx) {
         };
         p.drawPoints(aft_points, countof(aft_points));
       }
-      int64_t delta = max(vp->_edge_start, vp->_edge_end) -
-                      min(vp->_edge_start, vp->_edge_end);
+      int64_t delta = std::max(vp->_edge_start, vp->_edge_end) -
+                      std::min(vp->_edge_start, vp->_edge_end);
       QString delta_text =
           view->get_index_delta(vp->_edge_start,
                                 vp->_edge_end) +

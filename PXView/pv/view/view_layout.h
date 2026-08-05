@@ -50,23 +50,23 @@ public:
   explicit ViewLayout(View *view) : _view(view) {}
 
   // ---- Public state accessors (for other delegates) ----
-  inline double scale() const { return _scale; }
-  inline int64_t offset() const { return _offset; }
-  inline double maxscale() const { return _maxscale; }
-  inline double minscale() const { return _minscale; }
-  inline double dso_zoom_factor() const { return _dso_zoom_factor; }
+  inline double scale() const override { return _scale; }
+  inline int64_t offset() const override { return _offset; }
+  inline double maxscale() const override { return _maxscale; }
+  inline double minscale() const override { return _minscale; }
+  inline double dso_zoom_factor() const override { return _dso_zoom_factor; }
   inline void set_dso_zoom_factor(double f) { _dso_zoom_factor = f; }
 
   // -- signal height / vertical layout state (migrated from View) --------
-  inline int spanY() const { return _spanY; }
-  inline int signalHeight() const { return _signalHeight; }
-  inline int signalHeightScale() const { return _signalHeightScale; }
+  inline int spanY() const override { return _spanY; }
+  inline int signalHeight() const override { return _signalHeight; }
+  inline int signalHeightScale() const override { return _signalHeightScale; }
   inline void set_signalHeight(int h) { _signalHeight = h; }
   inline void set_signalHeightScale(int h) { _signalHeightScale = h; }
   inline void set_spanY(int s) { _spanY = s; }
 
   // -- scale / offset mutators -------------------------------------------
-  void set_scale_offset(double scale, int64_t offset);
+  void set_scale_offset(double scale, int64_t offset) override;
   void limit_scale_offset();
   void update_scale_offset();
   void set_scale(double scale);
@@ -81,12 +81,12 @@ public:
   // -- scroll ------------------------------------------------------------
   void h_scroll_value_changed(int value);
   void update_scroll();
-  void get_scroll_layout(int64_t &length, int64_t &offset);
+  void get_scroll_layout(int64_t &length, int64_t &offset) override;
   void update_margins();
 
   // -- offset bounds -----------------------------------------------------
-  int64_t get_max_offset();
-  int64_t get_min_offset();
+  int64_t get_max_offset() override;
+  int64_t get_min_offset() override;
 
 private:
   View *_view;

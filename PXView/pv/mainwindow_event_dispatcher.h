@@ -92,6 +92,12 @@ public:
     // to the active View. MainWindow::on_service_event forwards here.
     void on_service_event(const pv::api::ServiceEventData &data);
 
+    // --- Phase 2: additional delegated logic ---
+    // Session error dialog display (moved from MainWindow::on_session_error).
+    void handle_session_error();
+    // USB device speed check (moved from MainWindow::check_usb_device_speed).
+    void check_usb_device_speed();
+
 private:
     QPointer<MainWindow> _window;
 };

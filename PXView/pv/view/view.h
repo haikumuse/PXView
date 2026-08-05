@@ -192,6 +192,14 @@ public:
   inline SigSession &session() { return *_session; }
 
   /**
+   * Phase 8 (Testability): Returns the IViewLayout interface for this View's
+   * layout delegate. Delegates that only need layout state (scale, offset,
+   * signal height, scroll, etc.) should accept IViewLayout* instead of View*
+   * so they can be unit-tested with a MockViewLayout.
+   */
+  inline IViewLayout *view_layout_interface() { return _layout.get(); }
+
+  /**
    * Returns the view time scale in seconds per pixel.
    */
   inline double scale() { return _layout->_scale; }

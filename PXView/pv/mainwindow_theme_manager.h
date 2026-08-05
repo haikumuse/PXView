@@ -33,12 +33,14 @@ namespace pv {
 class MainWindow;
 
 /**
- * @brief Theme management delegate for MainWindow.
+ * @brief Theme & language management delegate for MainWindow.
  *
- * Phase 2 refactoring: extracts the switchTheme() logic from MainWindow.
- * Handles QSS theme token processing, SVG theming, and style application.
+ * Phase 2 refactoring: extracts switchTheme(), switchLanguage(),
+ * and Ribbon UI setup/retranslate from MainWindow.
+ * Handles QSS theme token processing, SVG theming, style application,
+ * language switching, and Ribbon category setup.
  * The delegate is a friend of MainWindow so it can access private members
- * needed for post-theme-update notifications.
+ * needed for post-update notifications.
  */
 class MainWindowThemeManager {
 public:
@@ -49,6 +51,17 @@ public:
      *  schema and user overrides, processes SVG icon theming, and
      *  applies the final stylesheet to qApp. */
     void switchTheme(QString style);
+
+    /** Switch the UI language (LAN_CN / LAN_EN).
+     *  Loads Qt and app translator files, persists the setting,
+     *  and triggers retranslateUi across all components. */
+    void switchLanguage(int language);
+
+    /** Set up Ribbon categories (File / Display / Help). */
+    void setupRibbonCategories();
+
+    /** Retranslate Ribbon category labels. */
+    void retranslateRibbon();
 
 private:
     MainWindow *_wnd;

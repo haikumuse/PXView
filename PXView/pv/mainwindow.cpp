@@ -66,6 +66,8 @@
 #include "mainwindow_config_io.h"
 #include "mainwindow_dock_manager.h"
 #include "mainwindow_event_dispatcher.h"
+#include "mainwindow_file_ops.h"
+#include "mainwindow_signal_connector.h"
 #include "mainwindow_tab_manager.h"
 #include "mainwindow_theme_manager.h"
 #include "mainwindow_status_bar.h"
@@ -182,95 +184,7 @@ make_channel_layout(pv::view::View *view) {
   }
   return layout;
 }
-
-// Phase 2: Renamed to avoid collision with MainWindow::build_channel_layout
-// The anonymous-namespace version is now called by the public wrapper.
-
-/** Build a channel-index → colour-string map from the View's signal list.
- * Task 3 (purify-architecture-concepts): collects per-signal colour so
- * SignalConfigStore can serialize it as the single .pxc channel config path
- * (replaces the old MainWindow::gen_config_json direct view::Signal access).
- * Returns QColor::name() (hex "#RRGGBB") or "default" when invalid. */
-std::map<int, std::string>
-build_channel_colours(pv::view::View *view) {
-  std::map<int, std::string> colours;
-  if (view) {
-    for (auto *sig : view->get_own_signals()) {
-      QColor c = sig->get_colour();
-      colours[sig->get_index()] = c.isValid() ? c.name().toStdString() : "default";
-    }
-  }
-  return colours;
-}
 } // namespace
-
-void MainWindow::MainWindowRibbonHelper() {
-  _category_file_index = _title_bar->addCategory(
-      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-  _category_display_index = _title_bar->addCategory(
-      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-  _category_help_index = _title_bar->addCategory(
-      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
-}
-
-void MainWindow::Ribbon_setupUi() {
-  setupFileCategory();
-  setupDisplayCategory();
-  setupHelpCategory();
-}
-// void MainWindow::setupQuickAccessBar()
-// {
-
-// }
-
-void MainWindow::setupFileCategory() {
-  _title_bar->addAction(_category_file_index, _file_bar->_action_load);
-  _title_bar->addAction(_category_file_index, _file_bar->_action_store);
-  _title_bar->addAction(_category_file_index, _file_bar->_action_default);
-
-  _title_bar->addSeparator(_category_file_index);
-
-  _title_bar->addAction(_category_file_index, _file_bar->_action_open);
-  _title_bar->addAction(_category_file_index, _file_bar->_action_save);
-  _title_bar->addSeparator(_category_file_index);
-
-  _title_bar->addAction(_category_file_index, _file_bar->_action_export);
-  _title_bar->addAction(_category_file_index, _file_bar->_action_import);
-  _title_bar->addAction(_category_file_index, _file_bar->_action_capture);
-}
-
-void MainWindow::setupDisplayCategory() {
-  _title_bar->addAction(_category_display_index, _logo_bar->_action_cn);
-  _title_bar->addAction(_category_display_index,
-                        _logo_bar->_action_traditional);
-  _title_bar->addAction(_category_display_index, _logo_bar->_action_en);
-
-  _title_bar->addSeparator(_category_display_index);
-
-  _title_bar->addAction(_category_display_index,
-                        _trig_bar->_action_dispalyOptions);
-}
-
-void MainWindow::setupHelpCategory() {
-  _title_bar->addAction(_category_help_index, _logo_bar->_about);
-  _title_bar->addAction(_category_help_index, _logo_bar->_manual);
-  _title_bar->addAction(_category_help_index, _logo_bar->_issue);
-  _title_bar->addAction(_category_help_index, _logo_bar->_update);
-}
-
-void MainWindow::Ribbon_retranslateUi() {
-  if (_title_bar) {
-    _title_bar->retranslateUi(
-        _category_file_index,
-        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-    _title_bar->retranslateUi(
-        _category_display_index,
-        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-    _title_bar->retranslateUi(
-        _category_help_index,
-        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
-  }
-}
 
 MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
     : QMainWindow(parent) {
@@ -305,6 +219,8 @@ _dock_manager = std::make_unique<DockManager>(this);
 _theme_manager = std::make_unique<MainWindowThemeManager>(this);
 _status_bar = std::make_unique<MainWindowStatusBar>(this);
 _shortcut_manager = std::make_unique<MainWindowShortcutManager>(this);
+_signal_connector = std::make_unique<MainWindowSignalConnector>(this);
+_file_ops = std::make_unique<MainWindowFileOps>(this);
   // Register as a typed event listener for all notification events.
   _session->add_event_listener(this);
 
@@ -379,18 +295,9 @@ void MainWindow::setup_ui() {
   _tab_manager->create_tab_widget(this, _vertical_layout);
   _tab_manager->init_initial_tab();
 
-  // setIconSize(QSize(40, 40));
-  // addToolBar(Qt::TopToolBarArea, _sampling_bar);  // moved into
-  // device_options_dock addToolBar(_trig_bar); addToolBar(_file_bar);
-  // addToolBar(_logo_bar);
-
-  MainWindowRibbonHelper();
-  Ribbon_setupUi();
+  // Phase 2: Ribbon setup extracted to ThemeManager delegate.
+  _theme_manager->setupRibbonCategories();
   setIconSize(QSize(16, 16));
-  // addToolBar(Qt::TopToolBarArea,_sampling_bar);
-  // addToolBar(Qt::LeftToolBarArea,_trig_bar);
-  // addToolBar(Qt::LeftToolBarArea,_file_bar);
-  // addToolBar(Qt::LeftToolBarArea, _logo_bar);
 
   // Phase 2: dock creation, sliding drawer, sidebar, and connections
   // are all handled by the DockManager delegate.
@@ -415,95 +322,8 @@ void MainWindow::setup_ui() {
 
   _sampling_bar->set_view(initial_view);
 
-  // event
-  connect(&_event, &EventObject::session_error, this,
-          &MainWindow::on_session_error);
-  connect(&_event, &EventObject::signals_changed, this,
-          &MainWindow::on_signals_changed);
-  connect(&_event, &EventObject::signals_changed, _dock_manager->search_widget(),
-          &dock::SearchDock::on_device_updated);
-  connect(&_event, &EventObject::frame_ended, _dock_manager->search_widget(),
-          &dock::SearchDock::on_frame_ended);
-  connect(&_event, &EventObject::receive_trigger, this,
-          &MainWindow::on_receive_trigger);
-  connect(&_event, &EventObject::frame_ended, this, &MainWindow::on_frame_ended,
-          Qt::QueuedConnection);
-  connect(&_event, &EventObject::frame_began, this, &MainWindow::on_frame_began,
-          Qt::QueuedConnection);
-  connect(&_event, &EventObject::decode_done, this,
-          &MainWindow::on_decode_done);
-  // C5 fix: on_data_updated is the no-arg Qt slot connected to
-  // EventObject::data_updated. Use QOverload<>::of to select it.
-  connect(&_event, &EventObject::data_updated, this,
-          QOverload<>::of(&MainWindow::on_data_updated));
-  connect(&_event, &EventObject::cur_snap_samplerate_changed, this,
-          &MainWindow::on_cur_snap_samplerate_changed);
-  connect(&_event, &EventObject::receive_data_len, this,
-          &MainWindow::on_receive_data_len);
-  // Task 1.3: ICaptureCallback signals are emitted from Core capture thread;
-  // route through Qt::QueuedConnection so the on_* slots touch View on GUI
-  // thread.
-  connect(&_event, &EventObject::update_capture_sig, this,
-          &MainWindow::on_update_capture, Qt::QueuedConnection);
-  connect(&_event, &EventObject::show_region_sig, this,
-          &MainWindow::on_show_region, Qt::QueuedConnection);
-  connect(&_event, &EventObject::show_wait_trigger_sig, this,
-          &MainWindow::on_show_wait_trigger, Qt::QueuedConnection);
-  connect(&_event, &EventObject::repeat_hold_sig, this,
-          &MainWindow::on_repeat_hold, Qt::QueuedConnection);
-
-  // view
-  connect(initial_view, &view::View::prgRate, this, &MainWindow::prgRate);
-  connect(initial_view, &view::View::auto_trig, _dock_manager->dso_trigger_widget(),
-          &dock::DsoTriggerDock::auto_trig);
-
-  // trig_bar
-  connect(_trig_bar, &toolbars::TrigBar::sig_setTheme, this,
-          &MainWindow::switchTheme);
-  connect(_trig_bar, &toolbars::TrigBar::sig_show_lissajous, initial_view,
-          &view::View::show_lissajous);
-
-  // file toolbar
-  connect(_file_bar, &toolbars::FileBar::sig_load_file, this,
-          &MainWindow::on_load_file);
-  connect(_file_bar, &toolbars::FileBar::sig_save, this, &MainWindow::on_save);
-  connect(_file_bar, &toolbars::FileBar::sig_export, this,
-          &MainWindow::on_export);
-  connect(_file_bar, &toolbars::FileBar::sig_import_file, this,
-          &MainWindow::on_import_file);
-  connect(_file_bar, &toolbars::FileBar::sig_screenShot, this,
-          &MainWindow::on_screenShot, Qt::QueuedConnection);
-  connect(_file_bar, &toolbars::FileBar::sig_load_session, this,
-          &MainWindow::on_load_session);
-  connect(_file_bar, &toolbars::FileBar::sig_store_session, this,
-          &MainWindow::on_store_session);
-
-  // logobar
-  connect(_logo_bar, &toolbars::LogoBar::sig_open_doc, this,
-          &MainWindow::on_open_doc);
-
-  connect(_dock_manager->protocol_widget(), &dock::ProtocolDock::protocol_updated, this,
-          &MainWindow::on_signals_changed);
-
-  // SamplingBar
-  connect(_sampling_bar, &toolbars::SamplingBar::sig_store_session_data, this,
-          &MainWindow::on_save);
-
-  //
-  connect(_dock_manager->dso_trigger_widget(), &dock::DsoTriggerDock::set_trig_pos,
-          initial_view, &view::View::set_trig_pos);
-
-  _delay_prop_msg_timer.SetCallback(
-      std::bind(&MainWindow::on_delay_prop_msg, this));
-
-  _logo_bar->set_mainform_callback(this);
-
-  // Bind initial context to docks
-  pv::TabContext *initial_ctx = _tab_manager->current_context();
-  _sampling_bar->bind_context(initial_ctx);
-  _dock_manager->bind_context(initial_ctx);
-
-  _tab_manager->setup_connections();
+  // Phase 2: signal/slot wiring extracted to MainWindowSignalConnector.
+  _signal_connector->setup_connections();
 
   // Try load from file.
   QString ldFileName(::AppControl::Instance()->_open_file_name.c_str());
@@ -544,13 +364,6 @@ void MainWindow::setup_ui() {
   _acq_count = 0;
   _status_bar->init(_disk_cache_status_label, _trig_time_label,
                     _sample_period_label, _fps_label);
-  connect(&_fps_timer, &QTimer::timeout, this, [this]() { _status_bar->update_fps(); });
-  _fps_timer.start(1000);
-
-  connect(&_disk_cache_status_timer, &QTimer::timeout, this,
-          [this]() { _status_bar->update_disk_cache_status(); });
-  _disk_cache_status_timer.start(500);
-
   if (!_tab_manager->contexts().isEmpty()) {
     _tab_manager->contexts()[0]->activate();
   }
@@ -567,162 +380,18 @@ void MainWindow::on_load_device_first() {
 
 void MainWindow::retranslateUi() {
   _dock_manager->retranslateUi();
-
-  Ribbon_retranslateUi();
+  _theme_manager->retranslateRibbon();
 }
 
-void MainWindow::on_load_file(QString file_name) {
-  pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-  // phase 2: document owned by DocumentRegistry.
-  size_t new_doc_idx = _session->document_registry()->take_document(
-      std::make_unique<pv::data::SessionDocument>(_session));
-  pv::data::SessionDocument *new_doc =
-      _session->document_registry()->get_document_by_index(new_doc_idx);
-  pv::TabContext *ctx =
-      SessionManager::instance()->create_context(new_view, _session, new_doc,
-                                                 new_doc_idx,
-                                                 _session->document_registry());
+void MainWindow::on_load_file(QString file_name) { _file_ops->on_load_file(file_name); }
 
-  QFileInfo fi(file_name);
-  ctx->set_title(fi.baseName());
-  ctx->set_file_path(file_name);
-
-  add_tab(ctx);
-
-  try {
-    if (_device_agent->is_hardware()) {
-      save_config();
-    }
-
-    // 架构修复：检查 set_file 返回值，失败时不创建空白 tab
-    if (!_session->set_file(file_name)) {
-      QString strMsg(
-          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
-      strMsg += file_name;
-      MsgBox::Show(strMsg);
-      // 回滚已创建的 tab
-      int idx = _tab_manager->contexts().indexOf(ctx);
-      if (idx >= 0)
-        remove_tab(idx);
-      _session->set_default_device();
-      return;
-    }
-    ctx->make_live();
-    ctx->activate();
-    update_tab_style(_tab_manager->contexts().indexOf(ctx));
-  } catch (QString e) {
-    QString strMsg(
-        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
-    strMsg += file_name;
-    MsgBox::Show(strMsg);
-    _session->set_default_device();
-  }
-}
-
-void MainWindow::on_import_file(QString file_name) {
-  pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-  // phase 2: document owned by DocumentRegistry.
-  size_t new_doc_idx = _session->document_registry()->take_document(
-      std::make_unique<pv::data::SessionDocument>(_session));
-  pv::data::SessionDocument *new_doc =
-      _session->document_registry()->get_document_by_index(new_doc_idx);
-  pv::TabContext *ctx =
-      SessionManager::instance()->create_context(new_view, _session, new_doc,
-                                                 new_doc_idx,
-                                                 _session->document_registry());
-
-  QFileInfo fi(file_name);
-  ctx->set_title(fi.baseName());
-  ctx->set_file_path(file_name);
-
-  add_tab(ctx);
-
-  try {
-    // Import external data file using libsigrok input modules
-    // (VCD, CSV, binary, Saleae, etc.) — aligned with PulseView.
-    if (!_session->import_file(file_name)) {
-      QString strMsg(
-          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
-      strMsg += file_name;
-      MsgBox::Show(strMsg);
-      // 回滚已创建的 tab
-      int idx = _tab_manager->contexts().indexOf(ctx);
-      if (idx >= 0)
-        remove_tab(idx);
-      _session->set_default_device();
-      return;
-    }
-    ctx->make_live();
-    ctx->activate();
-    update_tab_style(_tab_manager->contexts().indexOf(ctx));
-  } catch (QString e) {
-    QString strMsg(
-        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
-    strMsg += file_name;
-    MsgBox::Show(strMsg);
-    _session->set_default_device();
-  }
-}
+void MainWindow::on_import_file(QString file_name) { _file_ops->on_import_file(file_name); }
 
 void MainWindow::session_error() { _event.session_error(); }
 
 void MainWindow::session_save() { save_config(); }
 
-void MainWindow::on_session_error() {
-  QString title;
-  QString details;
-  QString ch_status = "";
-
-  switch (_session->get_error()) {
-  case SigSession::Hw_err:
-    pxv_info("MainWindow::on_session_error(),Hw_err, stop capture");
-    _session->stop_capture();
-    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_HARDWARE_ERROR),
-                "Hardware Operation Failed");
-    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_HARDWARE_ERROR_DET),
-                  "Please replug device to refresh hardware configuration!");
-    break;
-  case SigSession::Malloc_err:
-    pxv_info("MainWindow::on_session_error(),Malloc_err, stop capture");
-    _session->stop_capture();
-    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR), "Malloc Error");
-    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR_DET),
-                  "Memory is not enough for this sample!\nPlease reduce the "
-                  "sample depth!");
-    break;
-  case SigSession::Pkt_data_err:
-    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PACKET_ERROR), "Packet Error");
-    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PACKET_ERROR_DET),
-                  "the content of received packet are not expected!");
-    _session->refresh(0);
-    break;
-  case SigSession::Data_overflow:
-    pxv_info("MainWindow::on_session_error(),Data_overflow, stop capture");
-    _session->stop_capture();
-    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW), "Data Overflow");
-    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW_DET),
-                  "USB bandwidth can not support current sample rate! \nPlease "
-                  "reduce the sample rate!");
-    break;
-  default:
-    title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_UNDEFINED_ERROR), "Undefined Error");
-    details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_UNDEFINED_ERROR_DET),
-                  "Not expected error!");
-    break;
-  }
-
-  pv::dialogs::DSMessageBox msg(this, title);
-  msg.mBox()->setText(details);
-  msg.mBox()->setStandardButtons(QMessageBox::Ok);
-  msg.mBox()->setIcon(QMessageBox::Warning);
-  connect(_session->device_event_object(), &DeviceEventObject::device_updated,
-          &msg, &QDialog::accept);
-  _msg = &msg;
-  msg.exec();
-  _msg = nullptr;
-
-  _session->clear_error();
-}
+void MainWindow::on_session_error() { _event_dispatcher->handle_session_error(); }
 
 void MainWindow::save_config() { _config_io->save_config(); }
 
@@ -758,95 +427,11 @@ void MainWindow::on_side_bar_dock_clicked(int index) { _dock_manager->on_side_ba
 
 void MainWindow::on_side_bar_action_clicked(int index) { _dock_manager->on_side_bar_action_clicked(index); }
 
-void MainWindow::on_screenShot() {
-  AppConfig &app = AppConfig::Instance();
-  QString default_name =
-      app.userHistory.screenShotPath + "/" + APP_NAME +
-      QDateTime::currentDateTime().toString("-yyMMdd-hhmmss");
+void MainWindow::on_screenShot() { _file_ops->on_screenShot(); }
 
-  int x = parentWidget()->pos().x();
-  int y = parentWidget()->pos().y();
-  int w = parentWidget()->frameGeometry().width();
-  int h = parentWidget()->frameGeometry().height();
+void MainWindow::on_save() { _file_ops->on_save(); }
 
-  (void)h;
-  (void)w;
-  (void)x;
-  (void)y;
-
-#ifdef _WIN32
-  QPixmap pixmap = parentWidget()->grab();
-#elif __APPLE__
-  x += MainFrame::Margin;
-  y += MainFrame::Margin;
-  w -= MainFrame::Margin * 2;
-  h -= MainFrame::Margin * 2;
-
-  QPixmap pixmap =
-      QGuiApplication::primaryScreen()->grabWindow(winId(), x, y, w, h);
-#else
-  QPixmap pixmap = parentWidget()->grab();
-#endif
-
-  QString format = "png";
-  QString fileName = QFileDialog::getSaveFileName(
-      this, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SAVE_AS), "Save As"), default_name,
-      "png file(*.png);;jpeg file(*.jpeg)", &format);
-
-  if (!fileName.isEmpty()) {
-    QStringList list = format.split('.').last().split(')');
-    QString suffix = list.first();
-
-    QFileInfo f(fileName);
-    if (f.suffix().compare(suffix)) {
-      // tr
-      fileName += "." + suffix;
-    }
-
-    pixmap.save(fileName, suffix.toLatin1());
-
-    fileName = path::GetDirectoryName(fileName);
-
-    if (app.userHistory.screenShotPath != fileName) {
-      app.userHistory.screenShotPath = fileName;
-      app.SaveHistory();
-    }
-  }
-}
-
-// save file
-void MainWindow::on_save() {
-  using pv::dialogs::StoreProgress;
-
-  if (_device_agent->have_instance() == false) {
-    pxv_info("Have no device, can't to save data.");
-    return;
-  }
-
-  if (_session->is_working()) {
-    pxv_info("Save data: stop the current device.");
-    _session->stop_capture();
-  }
-
-  _session->set_saving(true);
-
-  StoreProgress *dlg = new StoreProgress(_session, this);
-  dlg->SetView(current_view());
-  dlg->save_run(this);
-}
-
-void MainWindow::on_export() {
-  using pv::dialogs::StoreProgress;
-
-  if (_session->is_working()) {
-    pxv_info("Export data: stop the current device.");
-    _session->stop_capture();
-  }
-
-  StoreProgress *dlg = new StoreProgress(_session, this);
-  dlg->SetView(current_view());
-  dlg->export_run();
-}
+void MainWindow::on_export() { _file_ops->on_export(); }
 
 bool MainWindow::on_load_session(QString name) {
   return load_config_from_file(name);
@@ -879,33 +464,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
   return false;
 }
 
-void MainWindow::switchLanguage(int language) {
-  if (language == 0)
-    return;
-
-  AppConfig &app = AppConfig::Instance();
-
-  if (app.frameOptions.language != language && language > 0) {
-    app.frameOptions.language = language;
-    app.SaveFrame();
-    LangResource::Instance()->Load(language);
-  }
-
-  if (language == LAN_CN) {
-    (void)_qtTrans.load(":/qt_" + QString::number(language));
-    qApp->installTranslator(&_qtTrans);
-    (void)_myTrans.load(":/my_" + QString::number(language));
-    qApp->installTranslator(&_myTrans);
-  } else if (language == LAN_EN) {
-    qApp->removeTranslator(&_qtTrans);
-    qApp->removeTranslator(&_myTrans);
-  }
-
-  retranslateUi();
-
-  UiManager::Instance()->Update(UI_UPDATE_ACTION_LANG);
-  _session->update_lang_text();
-}
+void MainWindow::switchLanguage(int language) { _theme_manager->switchLanguage(language); }
 
 void MainWindow::switchTheme(QString style) {
   _theme_manager->switchTheme(style);
@@ -1068,40 +627,7 @@ void MainWindow::on_receive_data_len(quint64 len) {
 
 void MainWindow::receive_header() {}
 
-void MainWindow::check_usb_device_speed() {
-  // USB device speed check
-  if (_device_agent->is_hardware()) {
-    // SR_CONF_USB_SPEED/USB30_SUPPORT fork keys were deleted from pxlogic.c.
-    // The link speed is now read directly from libusb via the typed wrapper
-    // DeviceAgent::get_usb_speed() (calls sr_dev_inst_usb_speed_get).
-    int usb_speed = _device_agent->get_usb_speed();
-    if (usb_speed == LIBUSB_SPEED_UNKNOWN) {
-      // Non-USB or speed undeterminable — nothing to check.
-      return;
-    }
-
-    // is_usb30() returns true only for SUPER/SUPER_PLUS. For UNKNOWN we
-    // conservatively treat as USB 2.0 (no warning shown).
-    bool usb30_support = _device_agent->is_usb30();
-    pxv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
-
-    int cable_ver = 1;
-    if (usb_speed == LIBUSB_SPEED_HIGH)
-      cable_ver = 2;
-    else if (usb_speed == LIBUSB_SPEED_SUPER)
-      cable_ver = 3;
-
-    pxv_info("The cable's USB port version: %d.0", cable_ver);
-
-    if (usb30_support && usb_speed == LIBUSB_SPEED_HIGH) {
-      QString str_err(
-          L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHECK_USB_SPEED_ERROR),
-              "Plug the device into a USB 2.0 port will seriously affect its "
-              "performance.\nPlease replug it into a USB 3.0 port."));
-      delay_prop_msg(str_err);
-    }
-  }
-}
+void MainWindow::check_usb_device_speed() { _event_dispatcher->check_usb_device_speed(); }
 
 void MainWindow::reset_all_view() {
   _sampling_bar->reload();

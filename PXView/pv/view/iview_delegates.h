@@ -37,14 +37,14 @@ namespace view {
  * @brief Read-only interface to ViewLayout state.
  *
  * Phase 8 (Testability): extracted so that ViewCursors, ViewSignalSync,
- * ViewDerivedTraces, ViewDataSync etc. can depend on this abstract
- * interface instead of the concrete ViewLayout class. In unit tests,
- * a mock implementation can be substituted.
+ * ViewDerivedTraces, ViewDataSync, ViewportPainter, and RenderPasses can
+ * depend on this abstract interface instead of the concrete ViewLayout /
+ * View classes. In unit tests, a mock implementation (MockViewLayout)
+ * can be substituted — eliminating the need for a real QWidget-based View.
  *
- * Currently ViewLayout already provides these methods; the interface
- * simply formalizes the contract. Future refactoring can have
- * ViewLayout implement IViewLayout, and delegates accept IViewLayout*
- * instead of View* (eliminating the friend relationship).
+ * ViewLayout already implements all these methods; the interface simply
+ * formalizes the contract. Delegates that only need layout state should
+ * accept IViewLayout* instead of View*.
  */
 class IViewLayout {
 public:
@@ -61,8 +61,18 @@ public:
   virtual int signalHeight() const = 0;
   virtual int signalHeightScale() const = 0;
 
+  // -- DSO zoom state (read) --
+  virtual double dso_zoom_factor() const = 0;
+
   // -- Scale / offset mutation --
   virtual void set_scale_offset(double scale, int64_t offset) = 0;
+
+  // -- Offset bounds (read) --
+  virtual int64_t get_max_offset() = 0;
+  virtual int64_t get_min_offset() = 0;
+
+  // -- Scroll layout (read) --
+  virtual void get_scroll_layout(int64_t &length, int64_t &offset) = 0;
 };
 
 /**
@@ -95,6 +105,71 @@ public:
 
   virtual size_t signal_count() const = 0;
   virtual bool rebuild_in_progress() const = 0;
+};
+
+/**
+ * @brief Mock implementation of IViewLayout for unit testing.
+ *
+ * Phase 8 (Testability): provides a simple in-memory implementation
+ * that can be used in unit tests for delegates (ViewportPainter,
+ * RenderPasses, etc.) without creating a real View widget.
+ *
+ * Usage:
+ *   MockViewLayout layout;
+ *   layout.set_scale(10.0);
+ *   layout.set_offset(0);
+ *   // pass &layout to delegate under test
+ */
+class MockViewLayout : public IViewLayout {
+public:
+  MockViewLayout() = default;
+
+  // -- Test setters --
+  void set_scale(double s) { _scale = s; }
+  void set_offset(int64_t o) { _offset = o; }
+  void set_maxscale(double s) { _maxscale = s; }
+  void set_minscale(double s) { _minscale = s; }
+  void set_spanY(int s) { _spanY = s; }
+  void set_signalHeight(int h) { _signalHeight = h; }
+  void set_signalHeightScale(int s) { _signalHeightScale = s; }
+  void set_dso_zoom_factor(double f) { _dso_zoom_factor = f; }
+  void set_max_offset(int64_t v) { _max_offset = v; }
+  void set_min_offset(int64_t v) { _min_offset = v; }
+
+  // -- IViewLayout overrides --
+  double scale() const override { return _scale; }
+  int64_t offset() const override { return _offset; }
+  double maxscale() const override { return _maxscale; }
+  double minscale() const override { return _minscale; }
+  int spanY() const override { return _spanY; }
+  int signalHeight() const override { return _signalHeight; }
+  int signalHeightScale() const override { return _signalHeightScale; }
+  double dso_zoom_factor() const override { return _dso_zoom_factor; }
+  void set_scale_offset(double scale, int64_t offset) override {
+    _scale = scale;
+    _offset = offset;
+  }
+  int64_t get_max_offset() override { return _max_offset; }
+  int64_t get_min_offset() override { return _min_offset; }
+  void get_scroll_layout(int64_t &length, int64_t &offset) override {
+    length = _scroll_length;
+    offset = _offset;
+  }
+
+  void set_scroll_length(int64_t l) { _scroll_length = l; }
+
+private:
+  double _scale = 10.0;
+  int64_t _offset = 0;
+  double _maxscale = 1e9;
+  double _minscale = 1e-15;
+  int _spanY = 0;
+  int _signalHeight = 0;
+  int _signalHeightScale = 24;
+  double _dso_zoom_factor = 1.0;
+  int64_t _max_offset = 0;
+  int64_t _min_offset = 0;
+  int64_t _scroll_length = 0;
 };
 
 } // namespace view

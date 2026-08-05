@@ -24,6 +24,8 @@
 #include "mainwindow_theme_manager.h"
 #include "mainwindow.h"
 
+#include <QApplication>
+#include <QDir>
 #include <QFile>
 #include <QHash>
 #include <QJsonDocument>
@@ -31,10 +33,15 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QStandardPaths>
-#include <QDir>
-#include <QApplication>
+#include <QTranslator>
 
 #include "config/appconfig.h"
+#include "pxvdef.h"
+#include "toolbars/filebar.h"
+#include "toolbars/logobar.h"
+#include "toolbars/titlebar.h"
+#include "toolbars/trigbar.h"
+#include "ui/langresource.h"
 #include "ui/uimanager.h"
 #include "sigsession.h"
 #include "view/view.h"
@@ -159,7 +166,84 @@ void MainWindowThemeManager::switchTheme(QString style) {
   UiManager::Instance()->Update(UI_UPDATE_ACTION_FONT);
 
   _wnd->data_updated();
-  _wnd->Ribbon_retranslateUi();
+  retranslateRibbon();
+}
+
+void MainWindowThemeManager::switchLanguage(int language) {
+  if (language == 0)
+    return;
+
+  AppConfig &app = AppConfig::Instance();
+
+  if (app.frameOptions.language != language && language > 0) {
+    app.frameOptions.language = language;
+    app.SaveFrame();
+    LangResource::Instance()->Load(language);
+  }
+
+  if (language == LAN_CN) {
+    (void)_wnd->_qtTrans.load(":/qt_" + QString::number(language));
+    qApp->installTranslator(&_wnd->_qtTrans);
+    (void)_wnd->_myTrans.load(":/my_" + QString::number(language));
+    qApp->installTranslator(&_wnd->_myTrans);
+  } else if (language == LAN_EN) {
+    qApp->removeTranslator(&_wnd->_qtTrans);
+    qApp->removeTranslator(&_wnd->_myTrans);
+  }
+
+  _wnd->retranslateUi();
+
+  UiManager::Instance()->Update(UI_UPDATE_ACTION_LANG);
+  _wnd->_session->update_lang_text();
+}
+
+void MainWindowThemeManager::setupRibbonCategories() {
+  // Add Ribbon categories
+  _wnd->_category_file_index = _wnd->_title_bar->addCategory(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+  _wnd->_category_display_index = _wnd->_title_bar->addCategory(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
+  _wnd->_category_help_index = _wnd->_title_bar->addCategory(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
+
+  // File category
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_load);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_store);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_default);
+  _wnd->_title_bar->addSeparator(_wnd->_category_file_index);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_open);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_save);
+  _wnd->_title_bar->addSeparator(_wnd->_category_file_index);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_export);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_import);
+  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_capture);
+
+  // Display category
+  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_cn);
+  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_traditional);
+  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_en);
+  _wnd->_title_bar->addSeparator(_wnd->_category_display_index);
+  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_trig_bar->_action_dispalyOptions);
+
+  // Help category
+  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_about);
+  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_manual);
+  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_issue);
+  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_update);
+}
+
+void MainWindowThemeManager::retranslateRibbon() {
+  if (_wnd->_title_bar) {
+    _wnd->_title_bar->retranslateUi(
+        _wnd->_category_file_index,
+        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+    _wnd->_title_bar->retranslateUi(
+        _wnd->_category_display_index,
+        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
+    _wnd->_title_bar->retranslateUi(
+        _wnd->_category_help_index,
+        L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
+  }
 }
 
 } // namespace pv
