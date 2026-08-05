@@ -11,6 +11,12 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/appcontrol.cpp
     PXView/pv/mainwindow.cpp
     PXView/pv/mainwindow_config_io.cpp
+    PXView/pv/mainwindow_event_dispatcher.cpp
+    PXView/pv/mainwindow_dock_manager.cpp
+    PXView/pv/mainwindow_tab_manager.cpp
+    PXView/pv/mainwindow_theme_manager.cpp
+    PXView/pv/mainwindow_status_bar.cpp
+    PXView/pv/mainwindow_shortcut_manager.cpp
     PXView/pv/mainframe.cpp
     PXView/pv/submainframe.cpp
     # View layer rendering objects
@@ -26,6 +32,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/view_signal_sync.cpp
     PXView/pv/view/view_glitch_filter.cpp
     PXView/pv/view/view_data_sync.cpp
+    PXView/pv/view/render_pass.cpp
     PXView/pv/view/timemarker.cpp
     PXView/pv/view/signal.cpp
     PXView/pv/view/signalfactory.cpp
@@ -162,6 +169,12 @@ set(PXView_HEADERS
     PXView/pv/interface/icontextaware.h
     PXView/pv/mainwindow.h
     PXView/pv/mainwindow_config_io.h
+    PXView/pv/mainwindow_event_dispatcher.h
+    PXView/pv/mainwindow_dock_manager.h
+    PXView/pv/mainwindow_tab_manager.h
+    PXView/pv/mainwindow_theme_manager.h
+    PXView/pv/mainwindow_status_bar.h
+    PXView/pv/mainwindow_shortcut_manager.h
     PXView/pv/dialogs/deviceoptions.h
     PXView/pv/prop/property.h
     PXView/pv/prop/int.h
@@ -173,6 +186,8 @@ set(PXView_HEADERS
     PXView/pv/view/viewport_painter.h
     PXView/pv/view/viewport_interaction.h
     PXView/pv/view/viewport_drag.h
+    PXView/pv/view/render_pass.h
+    PXView/pv/view/iview_delegates.h
     PXView/pv/view/edge_nav_button.h
     PXView/pv/view/view.h
     PXView/pv/view/dock_ui_state.h

@@ -80,11 +80,11 @@ void ViewCursors::set_trig_cursor_posistion(uint64_t trig_pos) {
   // Trigger is enabled if any logic channel has a non-NONTRIG trig_type
   // (Simple mode), or if trigger_config mode is Adv/Serial (always enabled).
   bool trigger_enabled = false;
-  const auto &trig_cfg = _view->_data_source->trigger_config();
+  const auto &trig_cfg = _view->data_source()->trigger_config();
   if (trig_cfg.mode() != pv::data::TriggerConfig::Simple) {
     trigger_enabled = true;
   } else {
-    for (const auto &m : _view->_data_source->get_signal_models()) {
+    for (const auto &m : _view->data_source()->get_signal_models()) {
       if (m && m->type() == SR_CHANNEL_LOGIC &&
           m->trig_type() != pv::data::SignalModel::NONTRIG) {
         trigger_enabled = true;
@@ -301,7 +301,7 @@ int ViewCursors::get_cursor_index_by_key(uint64_t key) {
 // set_cursor_position returns false and we silently drop the write — this
 // matches the historical behaviour where cursor positions were View-only.
 void ViewCursors::sync_cursor_position_to_core(TimeMarker *marker) {
-  if (!marker || !_view->_data_source)
+  if (!marker || !_view->data_source())
     return;
 
   // Find the positional index of the marker in the cursor list by pointer
@@ -318,7 +318,7 @@ void ViewCursors::sync_cursor_position_to_core(TimeMarker *marker) {
   if (!found)
     return;
 
-  _view->_data_source->set_cursor_position(idx, marker->index());
+  _view->data_source()->set_cursor_position(idx, marker->index());
 }
 
 // Task C2.7: reconcile the View's rendering cursor list with the Core-layer
@@ -329,10 +329,10 @@ void ViewCursors::sync_cursor_position_to_core(TimeMarker *marker) {
 // by index are left untouched (their position is not overwritten — the user
 // may have dragged them since).
 void ViewCursors::sync_cursors_from_core() {
-  if (!_view->_data_source)
+  if (!_view->data_source())
     return;
 
-  auto core_entries = _view->_data_source->get_cursors();
+  auto core_entries = _view->data_source()->get_cursors();
   auto &view_cursors = get_cursorList();
 
   int core_count = static_cast<int>(core_entries.size());

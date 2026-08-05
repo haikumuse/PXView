@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QCoreApplication>
 #include <QEvent>
+#include <memory>
+#include <shared_mutex>
 #include <thread>
 #include <functional>
 #include <vector>
@@ -50,13 +52,17 @@ public:
     void remove_event_listener(interface::IEventListener *l);
 
     // ---- Listener queries ----
-    bool has_callbacks() const { return !_callbacks.empty(); }
+    bool has_callbacks() const {
+        std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
+        return !_callbacks.empty();
+    }
 
     // ---- Sync typed event broadcast ----
     // Synchronous dispatch to all registered IEventListener consumers. Called
     // from within the async-dispatched handler (or directly from the main
     // thread), so it stays sync and can't re-enter the caller.
     template <typename EventType> void broadcast(const EventType &ev) {
+        std::shared_lock<std::shared_mutex> lk(_listeners_mutex);
         ++_broadcast_depth;
         if (_broadcast_depth > 1) {
             pxv_err("Event broadcast loop detected (depth=%d), suppressing",
@@ -83,6 +89,7 @@ public:
     // Shares the same thread_local _broadcast_depth re-entrancy guard as
     // broadcast().
     template <typename EventType> void broadcast_sync(const EventType &ev) {
+        std::shared_lock<std::shared_mutex> lk(_listeners_mutex);
         ++_broadcast_depth;
         if (_broadcast_depth > 1) {
             pxv_err("Event broadcast_sync loop detected (depth=%d), suppressing",
@@ -142,16 +149,20 @@ public:
         requires std::invocable<F, Iface*>
     void dispatch_to(F fn) {
         if (std::this_thread::get_id() == _main_thread_id) {
+            std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
             for (auto *cb : _callbacks) {
                 if (auto *iface = dynamic_cast<Iface *>(cb))
                     fn(iface);
             }
         } else {
-            // Copy the callback pointer vector — safe because add_callback/
-            // remove_callback only run at startup/shutdown, not during
-            // capture. All callback objects (MainWindow, SessionService)
-            // outlive worker threads.
-            auto callbacks = _callbacks;
+            // Copy the callback pointer vector under the read lock — safe
+            // because we hold the shared lock during the copy, preventing
+            // concurrent modification by add_callback/remove_callback.
+            std::vector<ISessionCallbackBase *> callbacks;
+            {
+                std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
+                callbacks = _callbacks;
+            }
             post_async_dispatch([fn, callbacks]() {
                 for (auto *cb : callbacks) {
                     if (auto *iface = dynamic_cast<Iface *>(cb))
@@ -172,22 +183,28 @@ public:
     // Uses std::this_thread::get_id() — NOT QThread::currentThread() —
     // to avoid creating a QThreadData on worker threads.
     static bool on_main_thread() {
+        // If _main_thread_id hasn't been initialized yet (default-constructed),
+        // return false as a safe fallback. This can happen if on_main_thread()
+        // is called before EventBus is constructed.
+        if (_main_thread_id == std::thread::id{})
+            return false;
         return std::this_thread::get_id() == _main_thread_id;
     }
 
 private:
     std::vector<ISessionCallbackBase *> _callbacks;
     std::vector<interface::IEventListener *> _event_listeners;
+    mutable std::shared_mutex _callbacks_mutex;
+    mutable std::shared_mutex _listeners_mutex;
     static thread_local int _broadcast_depth;
-    // Cached main thread ID — used for thread checks without calling
-    // QThread::currentThread() (which may create QThreadData on worker threads).
-    // Static: initialized at first use (main thread constructs EventBus).
+    // Cached main thread ID — initialized in the EventBus constructor (NOT
+    // via static initialization) to guarantee it's set on the main thread.
     static std::thread::id _main_thread_id;
 
     // Event filter installed on qApp to process custom async-dispatch events.
-    // Forward-declared to avoid exposing Qt internals in the header.
+    // Owned via unique_ptr for automatic cleanup (Track B4).
     class AsyncEventFilter;
-    AsyncEventFilter *_async_filter = nullptr;
+    std::unique_ptr<AsyncEventFilter> _async_filter;
 };
 
 } // namespace core

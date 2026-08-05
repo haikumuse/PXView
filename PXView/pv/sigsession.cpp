@@ -1733,13 +1733,13 @@ void SigSession::spectrum_rebuild() {
 
 void SigSession::lissajous_rebuild(bool enable, int xindex, int yindex,
                                    double percent) {
-  delete _state->lissajous_model();
-  auto *m = new data::LissajousModel();
+  // Track B2: LissajousModel owned via unique_ptr — assignment auto-frees old
+  auto m = std::make_unique<data::LissajousModel>();
   m->set_enabled(enable);
   m->set_x_index(xindex);
   m->set_y_index(yindex);
   m->set_percent((int)percent);
-  _state->set_lissajous_model(m);
+  _state->set_lissajous_model(std::move(m));
   signals_changed();
 }
 
@@ -1817,7 +1817,7 @@ void SigSession::Close() {
   // (a joinable std::thread would otherwise std::terminate on destruction).
   join_copy_thread();
 
-  for (auto p : _state->data_list()) {
+  for (auto &p : _state->data_list()) {
     p->clear();
   }
 }
@@ -2551,9 +2551,9 @@ void SigSession::clear_glitch_filter_state_for_capture() {
   // 新采集开始时调用:清除滤波激活状态和 backup,
   // 但保留 thresholds/modes(供 auto-apply 使用)。
   // 不恢复数据 — _state->view_data()->get_logic() 已被 clear(),无数据可恢复。
+  // Track B3: unique_ptr reset() replaces manual delete
   if (_state->view_data()->_logic_backup) {
-    delete _state->view_data()->_logic_backup;
-    _state->view_data()->_logic_backup = nullptr;
+    _state->view_data()->_logic_backup.reset();
   }
   if (_state->view_data()->_glitch_filter_active) {
     _state->view_data()->_glitch_filter_active = false;

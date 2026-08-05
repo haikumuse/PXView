@@ -26,6 +26,8 @@
 
 #include <cstdint>
 
+#include "iview_delegates.h"
+
 namespace pv {
 namespace view {
 
@@ -39,7 +41,11 @@ class View;
 // (ViewCursors, ViewDataSync, ViewSignalSync) access this state via View's
 // public API (scale(), offset(), set_scale_offset(), etc.) which forward to
 // this delegate.
-class ViewLayout {
+//
+// Phase 8: implements IViewLayout so that future refactoring can have
+// delegates depend on the abstract interface instead of the concrete
+// class (enabling mock-based unit testing).
+class ViewLayout : public IViewLayout {
 public:
   explicit ViewLayout(View *view) : _view(view) {}
 
@@ -50,6 +56,14 @@ public:
   inline double minscale() const { return _minscale; }
   inline double dso_zoom_factor() const { return _dso_zoom_factor; }
   inline void set_dso_zoom_factor(double f) { _dso_zoom_factor = f; }
+
+  // -- signal height / vertical layout state (migrated from View) --------
+  inline int spanY() const { return _spanY; }
+  inline int signalHeight() const { return _signalHeight; }
+  inline int signalHeightScale() const { return _signalHeightScale; }
+  inline void set_signalHeight(int h) { _signalHeight = h; }
+  inline void set_signalHeightScale(int h) { _signalHeightScale = h; }
+  inline void set_spanY(int s) { _spanY = s; }
 
   // -- scale / offset mutators -------------------------------------------
   void set_scale_offset(double scale, int64_t offset);
@@ -88,6 +102,11 @@ private:
   int _vOffset = 0;
   int _lastWidth = -1;
   bool _updating_scroll = false;
+
+  // ---- Signal height / vertical layout state (migrated from View) ----
+  int _spanY = 0;
+  int _signalHeight = 0;
+  int _signalHeightScale = 24;  // default = View::MaxHeightUnit
 
   // Allow View to access state directly (for inline accessors and init)
   friend class View;

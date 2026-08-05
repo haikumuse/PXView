@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <vector>
 #include <QPoint>
 
 struct srd_decoder;
@@ -44,6 +45,9 @@ namespace view {
 
 class View;
 class DecodeTrace;
+class SpectrumTrace;
+class MathTrace;
+class LissajousTrace;
 
 // ViewDerivedTraces — delegate for View's decoder / spectrum / math /
 // lissajous derived-trace responsibilities. Extracted from the View
@@ -71,8 +75,26 @@ public:
   void sync_derived_traces();
   void mark_derived_traces_dirty();
 
+  std::vector<DecodeTrace *> &own_decode_traces() { return _own_decode_traces; }
+  std::vector<SpectrumTrace *> &own_spectrum_traces() { return _own_spectrum_traces; }
+  MathTrace *own_math_trace() { return _own_math_trace; }
+  LissajousTrace *own_lissajous_trace() { return _own_lissajous_trace; }
+  bool derived_traces_dirty() const { return _derived_traces_dirty; }
+  void set_derived_traces_dirty(bool v) { _derived_traces_dirty = v; }
+
+  void set_own_math_trace(MathTrace *t) { _own_math_trace = t; }
+  void set_own_lissajous_trace(LissajousTrace *t) { _own_lissajous_trace = t; }
+
 private:
   View *_view;
+
+  std::vector<DecodeTrace *> _own_decode_traces;
+  std::vector<SpectrumTrace *> _own_spectrum_traces;
+  MathTrace *_own_math_trace = nullptr;
+  LissajousTrace *_own_lissajous_trace = nullptr;
+  bool _derived_traces_dirty = true;
+
+  friend class View;
 };
 
 } // namespace view

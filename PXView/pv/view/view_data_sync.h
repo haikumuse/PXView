@@ -26,7 +26,8 @@
 
 #include <cstdint>
 
-#include <QtGlobal>  // quint64
+#include <QtGlobal>
+#include <QElapsedTimer>  // quint64
 
 class QObject;
 class QEvent;
@@ -104,8 +105,22 @@ public:
   bool eventFilter(QObject *object, QEvent *event);
   void resizeEvent(QResizeEvent *event);
 
+  // -- state accessors (for View) ---------------------------------------
+  pv::data::DataSource *data_source_ptr() const { return _data_source; }
+  pv::data::SessionDocument *document_ptr() const { return _document; }
+  bool back_ready() const { return _back_ready; }
+  void set_back_ready(bool v) { _back_ready = v; }
+  QElapsedTimer &data_updated_timer() { return _data_updated_timer; }
+
 private:
   View *_view;
+
+  pv::data::DataSource *_data_source = nullptr;
+  pv::data::SessionDocument *_document = nullptr;
+  bool _back_ready = false;
+  QElapsedTimer _data_updated_timer;
+
+  friend class View;
 };
 
 } // namespace view

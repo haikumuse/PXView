@@ -46,9 +46,11 @@ void FilterProcessor::set_glitch_filter(
     const std::map<int, GlitchFilterMode> &filter_modes) {
   if (_glitch_filter_running) {
     // 架构修复：不再静默丢弃，排队最近一次请求，滤波完成后自动执行
+    // Track A4: protect pending data with _pending_mutex
+    std::lock_guard<std::mutex> lk(_pending_mutex);
     _pending_glitch_thresholds = thresholds;
     _pending_glitch_modes = filter_modes;
-    _has_pending_glitch = true;
+    _has_pending_glitch.store(true);
     return;
   }
 
@@ -81,12 +83,12 @@ void FilterProcessor::glitch_filter_task(
     const std::map<int, uint32_t> thresholds,
     const std::map<int, GlitchFilterMode> filter_modes) {
   if (!_state->view_data()->_logic_backup) {
-    _state->view_data()->_logic_backup = new data::LogicSnapshot();
+    // Track B3: use make_unique instead of raw new
+    _state->view_data()->_logic_backup = std::make_unique<data::LogicSnapshot>();
     _state->view_data()->_logic_backup->copy_from(
         *(_state->view_data()->get_logic()));
     if (_state->view_data()->_logic_backup->memory_failed()) {
-      delete _state->view_data()->_logic_backup;
-      _state->view_data()->_logic_backup = nullptr;
+      _state->view_data()->_logic_backup.reset();
       _glitch_filter_running = false;
       _event_bus->broadcast_async<interface::GlitchFilterCompleted>({});
       return;
@@ -133,13 +135,23 @@ void FilterProcessor::glitch_filter_task(
   _state->data_updated();
 
   // 架构修复：如果有排队的 pending 请求，立即执行
-  if (_has_pending_glitch) {
-    _has_pending_glitch = false;
-    auto pend_th = std::move(_pending_glitch_thresholds);
-    auto pend_md = std::move(_pending_glitch_modes);
-    _pending_glitch_thresholds.clear();
-    _pending_glitch_modes.clear();
-    set_glitch_filter(pend_th, pend_md);
+  // Track A4: read pending data under _pending_mutex
+  if (_has_pending_glitch.load()) {
+    std::map<int, uint32_t> pend_th;
+    std::map<int, GlitchFilterMode> pend_md;
+    {
+      std::lock_guard<std::mutex> lk(_pending_mutex);
+      if (_has_pending_glitch.load()) {
+        pend_th = std::move(_pending_glitch_thresholds);
+        pend_md = std::move(_pending_glitch_modes);
+        _pending_glitch_thresholds.clear();
+        _pending_glitch_modes.clear();
+        _has_pending_glitch.store(false);
+      }
+    }
+    if (!pend_th.empty()) {
+      set_glitch_filter(pend_th, pend_md);
+    }
   }
 }
 
@@ -153,8 +165,8 @@ void FilterProcessor::clear_glitch_filter() {
   if (_state->view_data()->_logic_backup) {
     _state->view_data()->get_logic()->copy_from(
         *_state->view_data()->_logic_backup);
-    delete _state->view_data()->_logic_backup;
-    _state->view_data()->_logic_backup = nullptr;
+    // Track B3: unique_ptr reset() replaces manual delete
+    _state->view_data()->_logic_backup.reset();
   }
 
   // 清除滤波后清空持久化区间，恢复原始数据无 overlay
@@ -206,12 +218,12 @@ void FilterProcessor::set_signal_invert(const std::vector<bool> &channels) {
 
 void FilterProcessor::signal_invert_task(const std::vector<bool> channels) {
   if (!_state->view_data()->_logic_backup) {
-    _state->view_data()->_logic_backup = new data::LogicSnapshot();
+    // Track B3: use make_unique instead of raw new
+    _state->view_data()->_logic_backup = std::make_unique<data::LogicSnapshot>();
     _state->view_data()->_logic_backup->copy_from(
         *(_state->view_data()->get_logic()));
     if (_state->view_data()->_logic_backup->memory_failed()) {
-      delete _state->view_data()->_logic_backup;
-      _state->view_data()->_logic_backup = nullptr;
+      _state->view_data()->_logic_backup.reset();
       _signal_invert_running = false;
       _event_bus->broadcast_async<interface::SignalInvertCompleted>({});
       return;
@@ -258,8 +270,8 @@ void FilterProcessor::clear_signal_invert() {
   if (_state->view_data()->_logic_backup) {
     _state->view_data()->get_logic()->copy_from(
         *_state->view_data()->_logic_backup);
-    delete _state->view_data()->_logic_backup;
-    _state->view_data()->_logic_backup = nullptr;
+    // Track B3: unique_ptr reset() replaces manual delete
+    _state->view_data()->_logic_backup.reset();
   }
 
   // If glitch filter is active, re-apply on the restored (non-inverted) data

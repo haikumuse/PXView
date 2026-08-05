@@ -32,18 +32,19 @@ SessionStateContext::SessionStateContext() {
   _sampling_mutex = std::make_unique<std::mutex>();
   _data_mutex = std::make_unique<std::mutex>();
 
-  _data_list.push_back(new SessionData());
-  _data_list.push_back(new SessionData());
-  _view_data = _data_list[0];
-  _capture_data = _data_list[0];
+  // Track B1: data buffers owned via unique_ptr
+  _data_list.push_back(std::make_unique<SessionData>());
+  _data_list.push_back(std::make_unique<SessionData>());
+  _view_data = _data_list[0].get();
+  _capture_data = _data_list[0].get();
 }
 
 SessionStateContext::~SessionStateContext() {
-  for (auto p : _data_list) {
-    if (p) {
+  // Track B1: unique_ptr auto-releases SessionData objects.
+  // Still call clear() on each to release snapshot data before destruction.
+  for (auto &p : _data_list) {
+    if (p)
       p->clear();
-      delete p;
-    }
   }
   _data_list.clear();
 }
@@ -411,9 +412,9 @@ void SessionStateContext::clear_glitch_filter_state_for_capture() {
   // 新采集开始时调用:清除滤波激活状态和 backup,
   // 但保留 thresholds/modes(供 auto-apply 使用)。
   // 不恢复数据 — _view_data->get_logic() 已被 clear(),无数据可恢复。
+  // Track B3: _logic_backup is now unique_ptr — use reset() instead of delete
   if (_view_data->_logic_backup) {
-    delete _view_data->_logic_backup;
-    _view_data->_logic_backup = nullptr;
+    _view_data->_logic_backup.reset();
   }
   if (_view_data->_glitch_filter_active) {
     _view_data->_glitch_filter_active = false;

@@ -48,10 +48,8 @@ void SessionData::clear() {
   _analog = std::make_shared<data::AnalogSnapshot>();
   _dso = std::make_shared<data::DsoSnapshot>();
   _trig_pos = 0;
-  if (_logic_backup) {
-    delete _logic_backup;
-    _logic_backup = nullptr;
-  }
+  // Track B3: unique_ptr auto-releases on reset
+  _logic_backup.reset();
   _glitch_filter_active = false;
   // 架构修复：clear() 不清除 thresholds/modes/auto_apply。
   // 这些是用户配置（滤波面板滑块位置），不是数据。

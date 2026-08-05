@@ -11,6 +11,7 @@
 
 #include "cursorregistry.h"
 #include "../data/datasource.h"
+#include "../data/lissajousmodel.h"
 #include "../data/mathstack.h"
 #include "../data/sessiondata.h"
 #include "../data/signalmodel.h"
@@ -111,8 +112,9 @@ public:
   std::vector<std::shared_ptr<data::SpectrumStack>> &spectrum_stacks() {
     return _spectrum_stacks;
   }
-  data::LissajousModel *lissajous_model() { return _lissajous_model; }
-  void set_lissajous_model(data::LissajousModel *m) { _lissajous_model = m; }
+  // Track B2: LissajousModel owned via unique_ptr
+  data::LissajousModel *lissajous_model() const { return _lissajous_model.get(); }
+  void set_lissajous_model(std::unique_ptr<data::LissajousModel> m) { _lissajous_model = std::move(m); }
   const std::shared_ptr<data::MathStack> &math_stack() const {
     return _math_stack;
   }
@@ -127,16 +129,17 @@ public:
   void set_trig_time(QDateTime t) { _trig_time = t; }
 
   // --- Bool state ---
-  bool is_triged() const { return _is_triged; }
-  void set_is_triged(bool v) { _is_triged = v; }
-  bool trigger_flag() const { return _trigger_flag; }
-  void set_trigger_flag(bool v) { _trigger_flag = v; }
-  bool hw_replied() const { return _hw_replied; }
-  void set_hw_replied(bool v) { _hw_replied = v; }
-  bool bClose() const { return _bClose; }
-  void set_bClose(bool v) { _bClose = v; }
-  bool is_saving() const { return _is_saving; }
-  void set_saving(bool v) { _is_saving = v; }
+  // Track A5: cross-thread bool flags use std::atomic<bool>
+  bool is_triged() const { return _is_triged.load(); }
+  void set_is_triged(bool v) { _is_triged.store(v); }
+  bool trigger_flag() const { return _trigger_flag.load(); }
+  void set_trigger_flag(bool v) { _trigger_flag.store(v); }
+  bool hw_replied() const { return _hw_replied.load(); }
+  void set_hw_replied(bool v) { _hw_replied.store(v); }
+  bool bClose() const { return _bClose.load(); }
+  void set_bClose(bool v) { _bClose.store(v); }
+  bool is_saving() const { return _is_saving.load(); }
+  void set_saving(bool v) { _is_saving.store(v); }
 
   // --- Numeric state ---
   uint8_t trigger_ch() const { return _trigger_ch; }
@@ -166,7 +169,8 @@ public:
   void set_view_data(SessionData *d) { _view_data = d; }
   SessionData *capture_data() { return _capture_data; }
   void set_capture_data(SessionData *d) { _capture_data = d; }
-  std::vector<SessionData *> &data_list() { return _data_list; }
+  // Track B1: _data_list owns SessionData via unique_ptr
+  std::vector<std::unique_ptr<SessionData>> &data_list() { return _data_list; }
   bool is_single_buffer() const { return _view_data == _capture_data; }
 
   // --- Trigger config ---
@@ -239,13 +243,18 @@ private:
 
   std::vector<std::shared_ptr<data::SignalModel>> _signal_models;
   std::vector<std::shared_ptr<data::SpectrumStack>> _spectrum_stacks;
-  data::LissajousModel *_lissajous_model = nullptr;
+  // Track B2: LissajousModel owned via unique_ptr
+  std::unique_ptr<data::LissajousModel> _lissajous_model;
   std::shared_ptr<data::MathStack> _math_stack = nullptr;
 
   QDateTime _session_time, _trig_time;
 
-  bool _is_triged = false, _trigger_flag = false, _hw_replied = false;
-  bool _bClose = false, _is_saving = false;
+  // Track A5: cross-thread bool flags use std::atomic<bool>
+  std::atomic<bool> _is_triged{false};
+  std::atomic<bool> _trigger_flag{false};
+  std::atomic<bool> _hw_replied{false};
+  std::atomic<bool> _bClose{false};
+  std::atomic<bool> _is_saving{false};
 
   uint8_t _trigger_ch = 0;
   SESSION_ERROR_STATUS _error = No_err;
@@ -260,7 +269,8 @@ private:
 
   SessionData *_view_data = nullptr;
   SessionData *_capture_data = nullptr;
-  std::vector<SessionData *> _data_list;
+  // Track B1: data buffers owned via unique_ptr
+  std::vector<std::unique_ptr<SessionData>> _data_list;
 
   data::TriggerConfig _trigger_config;
 

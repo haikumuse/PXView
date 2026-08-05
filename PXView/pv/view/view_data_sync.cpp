@@ -74,7 +74,7 @@ namespace pv {
 namespace view {
 
 void ViewDataSync::set_data_source(pv::data::DataSource *source) {
-  _view->_data_source = source;
+  _data_source = source;
   _view->mark_derived_traces_dirty();
   _view->rebuild_signals();
 
@@ -88,7 +88,7 @@ void ViewDataSync::set_data_source(pv::data::DataSource *source) {
 }
 
 void ViewDataSync::clear_signal_data() {
-  for (auto sig : _view->_own_signals) {
+  for (auto sig : _view->get_own_signals()) {
     int type = sig->signal_type();
     switch (type) {
     case SR_CHANNEL_LOGIC: {
@@ -120,7 +120,7 @@ void ViewDataSync::clear_signal_data() {
 
 void ViewDataSync::set_signal_data_from_source(
     pv::data::DataSource *source) {
-  for (auto sig : _view->_own_signals) {
+  for (auto sig : _view->get_own_signals()) {
     int type = sig->signal_type();
     switch (type) {
     case SR_CHANNEL_LOGIC: {
@@ -156,9 +156,9 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
   // causing use-after-free when the View received paint events before its
   // deleteLater() was processed.
   if (!doc) {
-    _view->_document = nullptr;
+    _document = nullptr;
     // Clear signal data pointers so paint events don't dereference freed data.
-    for (auto sig : _view->_own_signals) {
+    for (auto sig : _view->get_own_signals()) {
       int type = sig->signal_type();
       switch (type) {
       case SR_CHANNEL_LOGIC: {
@@ -181,21 +181,21 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
     return;
   }
 
-  _view->_document = doc;
+  _document = doc;
   _view->mark_derived_traces_dirty();
 
   if (!doc->has_data())
     return;
 
-  if (_view->_own_signals.empty()) {
+  if (_view->get_own_signals().empty()) {
     auto created_sigs =
-        SignalFactory::create_signals(_view->_data_source, _view->_data_source);
+        SignalFactory::create_signals(_data_source, _data_source);
     for (auto sig : created_sigs) {
-      _view->_own_signals.push_back(sig);
+      _view->get_own_signals().push_back(sig);
     }
   }
 
-  for (auto sig : _view->_own_signals) {
+  for (auto sig : _view->get_own_signals()) {
     int type = sig->signal_type();
     switch (type) {
     case SR_CHANNEL_LOGIC: {
@@ -236,12 +236,12 @@ void ViewDataSync::clone_signals_for_document(
   if (!doc)
     return;
 
-  _view->_own_signals.clear();
+  _view->get_own_signals().clear();
 
   auto created_sigs =
-      SignalFactory::create_signals(_view->_data_source, _view->_data_source);
+      SignalFactory::create_signals(_data_source, _data_source);
   for (auto sig : created_sigs) {
-    _view->_own_signals.push_back(sig);
+    _view->get_own_signals().push_back(sig);
   }
 
   set_data_document(doc);
@@ -269,15 +269,15 @@ pv::data::DataSource *ViewDataSync::document_snapshot_source() {
   // capture_init() had already cleared to a fresh empty snapshot -> blank
   // screen. Use is_repeating() (excludes instant) so a single shot always
   // keeps reading the document.
-  if (_view->_data_source && _view->_data_source->is_running_status() &&
-      _view->_data_source->is_repeating() &&
-      !_view->_data_source->is_realtime_refresh())
-    return _view->_data_source;
+  if (_data_source && _data_source->is_running_status() &&
+      _data_source->is_repeating() &&
+      !_data_source->is_realtime_refresh())
+    return _data_source;
 
-  if (_view->_document && _view->_document->has_data()) {
-    return _view->_document;
+  if (_document && _document->has_data()) {
+    return _document;
   }
-  return _view->_data_source;
+  return _data_source;
 }
 
 void ViewDataSync::frame_began() {
@@ -327,8 +327,8 @@ void ViewDataSync::receive_trigger(quint64 trig_pos1) {
 void ViewDataSync::data_updated() {
   // Detect DSO continuous (running) mode for the fast-path below.
   const bool is_dso_running =
-      (_view->get_work_mode() == DSO && _view->_data_source &&
-       _view->_data_source->is_running_status());
+      (_view->get_work_mode() == DSO && _data_source &&
+       _data_source->is_running_status());
 
   // --- DSO continuous fast path ---
   // In DSO continuous mode the demo/hardware driver sends ~40 packets/sec.
@@ -337,29 +337,29 @@ void ViewDataSync::data_updated() {
   // frames. We throttle to ~30 FPS (33ms) and only update data pointers +
   // paint_prepare, skipping layout/scroll rebuilds.
   if (is_dso_running) {
-    if (_view->_data_updated_timer.isValid() &&
-        _view->_data_updated_timer.elapsed() < 33) {
+    if (_data_updated_timer.isValid() &&
+        _data_updated_timer.elapsed() < 33) {
       _view->set_update(_view->_time_viewport, true);
       return;
     }
 
     auto *source = _view->document_snapshot_source();
     if (source) {
-      for (auto sig : _view->_own_signals) {
+      for (auto sig : _view->get_own_signals()) {
         if (sig->signal_type() == SR_CHANNEL_DSO) {
           auto *s = static_cast<view::DsoSignal *>(sig);
           s->set_data(source->get_dso_snapshot());
           s->paint_prepare();
         }
       }
-      if (_view->_own_lissajous_trace)
-        _view->_own_lissajous_trace->set_data(source->get_dso_snapshot());
+      if (_view->get_own_lissajous_trace())
+        _view->get_own_lissajous_trace()->set_data(source->get_dso_snapshot());
     }
 
     _view->set_update(_view->_time_viewport, true);
     _view->set_update(_view->_fft_viewport, true);
     _view->viewport_update();
-    _view->_data_updated_timer.start();
+    _data_updated_timer.start();
     return;
   }
 
@@ -371,11 +371,11 @@ void ViewDataSync::data_updated() {
   // (< 16ms), data_updated() is deduplicated and signal _data pointers
   // remain null/stale. The subsequent viewport_update() (from signals_changed)
   // triggers paint, but paint_mid_align checks !_data → returns → blank screen.
-  if (_view->_data_updated_timer.isValid() &&
-      _view->_data_updated_timer.elapsed() < 16) {
+  if (_data_updated_timer.isValid() &&
+      _data_updated_timer.elapsed() < 16) {
     auto *source = _view->document_snapshot_source();
     if (source) {
-      for (auto sig : _view->_own_signals) {
+      for (auto sig : _view->get_own_signals()) {
         int type = sig->signal_type();
         switch (type) {
         case SR_CHANNEL_LOGIC: {
@@ -405,7 +405,7 @@ void ViewDataSync::data_updated() {
   // Refresh data pointers in render objects (does NOT rebuild them).
   auto *source = _view->document_snapshot_source();
   if (source) {
-    for (auto sig : _view->_own_signals) {
+    for (auto sig : _view->get_own_signals()) {
       int type = sig->signal_type();
       switch (type) {
         case SR_CHANNEL_LOGIC: {
@@ -435,8 +435,8 @@ void ViewDataSync::data_updated() {
       }
     }
 
-    if (_view->_own_lissajous_trace) {
-      _view->_own_lissajous_trace->set_data(source->get_dso_snapshot());
+    if (_view->get_own_lissajous_trace()) {
+      _view->get_own_lissajous_trace()->set_data(source->get_dso_snapshot());
     }
   }
 
@@ -451,7 +451,7 @@ void ViewDataSync::data_updated() {
   _view->viewport_update();
   _view->_ruler->update();
 
-  _view->_data_updated_timer.start();
+  _data_updated_timer.start();
 }
 
 void ViewDataSync::set_receive_len(uint64_t len) {
@@ -521,7 +521,7 @@ void ViewDataSync::capture_init() {
 
   if (mode == DSO)
     _view->show_trig_cursor(true);
-  else if (!_view->_data_source->is_repeating())
+  else if (!_data_source->is_repeating())
     _view->show_trig_cursor(false);
 
   double sampletime = _view->document_snapshot_source()->cur_sampletime();
@@ -549,7 +549,7 @@ void ViewDataSync::show_region(uint64_t start, uint64_t end, bool keep) {
   if (keep) {
     _view->set_all_update(true);
     _view->update();
-  } else if (_view->_data_source->get_map_zoom() == 0) {
+  } else if (_data_source->get_map_zoom() == 0) {
     const double ideal_scale = (end - start) * 2.0 /
                                _view->document_snapshot_source()->cur_snap_samplerate() /
                                width;
@@ -583,7 +583,7 @@ void ViewDataSync::timebase_changed() {
   double hori_res = _view->_sampling_bar->get_hori_res();
 
   if (hori_res > 0) {
-    scale = _view->_data_source->cur_view_time() / width;
+    scale = _data_source->cur_view_time() / width;
   }
 
   _view->set_scale_offset(scale, _view->offset());
@@ -615,7 +615,7 @@ void ViewDataSync::auto_set_max_scale() {
 int ViewDataSync::get_view_width() {
   int view_width = 0;
   if (_view->get_work_mode() == DSO) {
-    for (auto s : _view->_own_signals) {
+    for (auto s : _view->get_own_signals()) {
       view_width = max(view_width, s->get_view_rect().width());
     }
   } else {
@@ -632,7 +632,7 @@ int ViewDataSync::get_view_width() {
 int ViewDataSync::get_view_height() {
   int view_height = 0;
   if (_view->get_work_mode() == DSO) {
-    for (auto s : _view->_own_signals) {
+    for (auto s : _view->get_own_signals()) {
       view_height = max(view_height, s->get_view_rect().height());
     }
   } else {
@@ -644,7 +644,7 @@ int ViewDataSync::get_view_height() {
 
 QRect ViewDataSync::get_view_rect() {
   if (_view->get_work_mode() == DSO) {
-    const auto &sigs = _view->_own_signals;
+    const auto &sigs = _view->get_own_signals();
     if (sigs.size() > 0) {
       return sigs[0]->get_view_rect();
     }
@@ -657,7 +657,7 @@ int64_t ViewDataSync::get_logic_lst_data_offset() {
   int width = _view->get_view_width();
   assert(width > 0);
 
-  return ceil((_view->_data_source->get_logic_data_view_time() / _view->_layout->_scale) -
+  return ceil((_data_source->get_logic_data_view_time() / _view->_layout->_scale) -
               (width * View::MaxViewRate));
 }
 
@@ -755,7 +755,7 @@ void ViewDataSync::resizeEvent(QResizeEvent *event) {
   _view->signals_changed(nullptr);
 
   if (_view->get_work_mode() == DSO) {
-    _view->set_scale_offset(_view->_data_source->cur_view_time() / width, _view->_layout->_offset);
+    _view->set_scale_offset(_data_source->cur_view_time() / width, _view->_layout->_offset);
   }
 
   if (_view->get_work_mode() != DSO) {

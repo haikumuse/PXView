@@ -22,6 +22,7 @@
  */
 
 #include "viewport_painter.h"
+#include "render_pass.h"
 #include "viewport.h"
 #include "ruler.h"
 #include "viewstatus.h"
@@ -252,79 +253,22 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   p.save();
   p.translate(0, -_viewport->_view.get_vOffset());
 
-  if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.is_logic_rendering_mode()) {
-    const auto &groups = _viewport->_view.get_signal_groups();
-    if (!groups.empty()) {
-      std::vector<size_t> group_indices(groups.size());
-      for (size_t i = 0; i < groups.size(); i++)
-        group_indices[i] = i;
-      std::sort(group_indices.begin(), group_indices.end(),
-                [&groups](size_t a, size_t b) {
-                  if (groups[a].traces.empty())
-                    return false;
-                  if (groups[b].traces.empty())
-                    return true;
-                  return groups[a].traces[0]->get_v_offset() <
-                         groups[b].traces[0]->get_v_offset();
-                });
-
-      for (size_t idx = 0; idx < group_indices.size(); idx++) {
-        const auto &group = groups[group_indices[idx]];
-        if (group.traces.empty())
-          continue;
-        double groupTop = 1e9;
-        double groupBottom = -1e9;
-        for (auto gt : group.traces) {
-          double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 -
-                            View::SignalMargin;
-          double traceBottom = gt->get_v_offset() +
-                               gt->get_totalHeight() * 0.5 + View::SignalMargin;
-          groupTop = min(groupTop, traceTop);
-          groupBottom = max(groupBottom, traceBottom);
-        }
-
-        double cardTop = groupTop - View::GroupGap * 0.5;
-        double cardHeight = groupBottom - groupTop + View::GroupGap;
-
-        QRectF cardRect(-View::GroupCardRadius, cardTop,
-                        _viewport->width() + View::GroupCardRadius + 1,
-                        cardHeight);
-        QPainterPath groupPath;
-        groupPath.addRoundedRect(cardRect, View::GroupCardRadius,
-                                 View::GroupCardRadius);
-
-        if (_viewport->_view.is_colored_card_mode()) {
-          p.save();
-          p.setClipPath(groupPath);
-          p.setPen(Qt::NoPen);
-
-          for (size_t i = 0; i < group.traces.size(); i++) {
-            auto gt = group.traces[i];
-            double tTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 -
-                          View::SignalMargin;
-            double tBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 +
-                             View::SignalMargin;
-
-            if (i == 0)
-              tTop -= View::GroupGap * 0.5;
-            if (i == group.traces.size() - 1)
-              tBottom += View::GroupGap * 0.5;
-
-            QRectF traceRect(-View::GroupCardRadius, tTop,
-                             _viewport->width() + View::GroupCardRadius + 1,
-                             tBottom - tTop);
-            p.setBrush(_viewport->_view.get_trace_card_color(gt));
-            p.drawRect(traceRect);
-          }
-          p.restore();
-        } else {
-          p.setPen(Qt::NoPen);
-          p.setBrush(_viewport->_view.get_group_card_color());
-          p.drawPath(groupPath);
-        }
-      }
-    }
+  // Phase 5: Group card background rendering now via RenderPass.
+  // The pass is called directly (not via RenderPipeline) since it is
+  // the only pass migrated so far. As more passes are wired in, a
+  // full RenderPipeline will be used.
+  {
+    GroupCardBackgroundPass cardPass;
+    RenderContext ctx;
+    ctx.view = &_viewport->_view;
+    ctx.viewport = _viewport;
+    ctx.type = _viewport->_type;
+    ctx.viewWidth = _viewport->width();
+    ctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
+    if (ctx.type == TIME_VIEW && ctx.is_logic_mode)
+      ctx.groups = &_viewport->_view.get_signal_groups();
+    if (cardPass.should_run(ctx))
+      cardPass.render(p, ctx);
   }
 
   QColor dividerColor =

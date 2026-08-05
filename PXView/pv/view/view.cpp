@@ -95,17 +95,14 @@ const QString View::Unknown_Str = "########";
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
            QWidget *parent)
     : QScrollArea(parent), _sampling_bar(sampling_bar),
-      _trig_hoff(0), _signalHeightScale(MaxHeightUnit),
-      _hover_point(-1, -1), _dso_auto(true), _show_lissajous(false),
-      _back_ready(false) {
+      _trig_hoff(0),
+      _hover_point(-1, -1), _dso_auto(true), _show_lissajous(false) {
   _session = session;
-  _data_source = session;
-  _document = nullptr;
   _device_agent = session->device();
 
   // Phase E: initialise the three delegate classes. Must happen before any
   // call that forwards through the inline facades (e.g. headerWidth() →
-  // get_traces() → get_own_decode_traces() → sync_derived_traces()).
+  // get_traces() → get_derived->_own_decode_traces() → sync_derived_traces()).
   _layout = std::make_unique<ViewLayout>(this);
   _cursors = std::make_unique<ViewCursors>(this);
   _derived = std::make_unique<ViewDerivedTraces>(this);
@@ -115,6 +112,13 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _signal_sync = std::make_unique<ViewSignalSync>(this);
   _glitch_filter = std::make_unique<ViewGlitchFilter>(this);
   _data_sync = std::make_unique<ViewDataSync>(this);
+
+  // The data source must be assigned only after every delegate exists.
+  // During construction we set the fields directly instead of going through
+  // set_data_source(), because that path calls rebuild_signals() and updates
+  // the viewports, none of which are created yet at this point.
+  _data_sync->_data_source = session;
+  _data_sync->_document = nullptr;
 
   // Visible-range debounce timer: coalesce bursts of scale/offset/resize
   // changes into a single visible_range_changed() emission so listeners
@@ -238,27 +242,27 @@ _cursors->_search_cursor->set_colour(fore);
   connect(_devmode, &DevMode::header_collapse_changed, this,
           &View::on_header_collapse_changed);
   connect(_devmode, &DevMode::mode_change_requested, this,
-          [this](int mode) { _data_source->switch_work_mode(mode); });
+          [this](int mode) { _data_sync->_data_source->switch_work_mode(mode); });
   connect(_devmode, &DevMode::stop_capture_requested, this,
-          [this]() { _data_source->stop_capture(); });
+          [this]() { _data_sync->_data_source->stop_capture(); });
   connect(_devmode, &DevMode::save_session_requested, this,
-          [this]() { _data_source->session_save(); });
+          [this]() { _data_sync->_data_source->session_save(); });
   connect(_devmode, &DevMode::close_file_requested, this,
-          [this](ds_device_handle dev_handle) { _data_source->close_file(dev_handle); });
+          [this](ds_device_handle dev_handle) { _data_sync->_data_source->close_file(dev_handle); });
 
   // Glitch filter popup (View-owned). Created up-front and reused via
   // open_for_signal() so the histogram cache persists across open/close.
-  _glitch_filter_popup = new GlitchFilterPopup(*this, this);
-  _glitch_filter_popup->hide();
-  connect(_glitch_filter_popup, &GlitchFilterPopup::preview_changed, this,
+  _glitch_filter->_glitch_filter_popup = new GlitchFilterPopup(*this, this);
+  _glitch_filter->_glitch_filter_popup->hide();
+  connect(_glitch_filter->_glitch_filter_popup, &GlitchFilterPopup::preview_changed, this,
           &View::on_glitch_preview_changed);
-  connect(_glitch_filter_popup, &GlitchFilterPopup::apply_requested, this,
+  connect(_glitch_filter->_glitch_filter_popup, &GlitchFilterPopup::apply_requested, this,
           &View::on_glitch_apply_requested);
-  connect(_glitch_filter_popup, &GlitchFilterPopup::closed, this,
+  connect(_glitch_filter->_glitch_filter_popup, &GlitchFilterPopup::closed, this,
           &View::on_glitch_popup_closed);
-  connect(_glitch_filter_popup, &GlitchFilterPopup::apply_batch_requested, this,
+  connect(_glitch_filter->_glitch_filter_popup, &GlitchFilterPopup::apply_batch_requested, this,
           &View::on_apply_batch_requested);
-  connect(_glitch_filter_popup, &GlitchFilterPopup::preview_batch_changed, this,
+  connect(_glitch_filter->_glitch_filter_popup, &GlitchFilterPopup::preview_batch_changed, this,
           &View::on_preview_batch_changed);
 
   ADD_UI(this);
@@ -271,8 +275,8 @@ View::~View() {
   // to prevent callbacks on partially-destroyed View
   disconnect(_header, nullptr, this, nullptr);
   disconnect(_devmode, nullptr, this, nullptr);
-  if (_glitch_filter_popup) {
-    disconnect(_glitch_filter_popup, nullptr, this, nullptr);
+  if (_glitch_filter->_glitch_filter_popup) {
+    disconnect(_glitch_filter->_glitch_filter_popup, nullptr, this, nullptr);
   }
   _header->removeEventFilter(this);
   _ruler->removeEventFilter(this);
@@ -280,38 +284,38 @@ View::~View() {
   _time_viewport->removeEventFilter(this);
   _fft_viewport->removeEventFilter(this);
 
-  for (auto sig : _own_signals)
+  for (auto sig : _signal_sync->_own_signals)
     delete sig;
-  _own_signals.clear();
+  _signal_sync->_own_signals.clear();
   // Drop preview-range cache keys (LogicSignal pointers now dangling).
-  _preview_ranges.clear();
+  _glitch_filter->_preview_ranges.clear();
 
   // Clean up View-owned wrapper traces (these wrap Core layer Stack/Model
   // objects and are owned by the View, not by the data source).
-  for (auto dt : _own_decode_traces)
+  for (auto dt : _derived->_own_decode_traces)
     delete dt;
-  _own_decode_traces.clear();
+  _derived->_own_decode_traces.clear();
 
-  for (auto st : _own_spectrum_traces)
+  for (auto st : _derived->_own_spectrum_traces)
     delete st;
-  _own_spectrum_traces.clear();
+  _derived->_own_spectrum_traces.clear();
 
-  if (_own_math_trace) {
-    delete _own_math_trace;
-    _own_math_trace = nullptr;
+  if (_derived->_own_math_trace) {
+    delete _derived->_own_math_trace;
+    _derived->_own_math_trace = nullptr;
   }
 
-  if (_own_lissajous_trace) {
-    delete _own_lissajous_trace;
-    _own_lissajous_trace = nullptr;
+  if (_derived->_own_lissajous_trace) {
+    delete _derived->_own_lissajous_trace;
+    _derived->_own_lissajous_trace = nullptr;
   }
 
   // Destroy the glitch filter popup (View-owned QWidget). Qt would also
   // delete it as a child widget, but explicit deletion here guarantees the
   // closed() signal cannot fire mid-destruction.
-  if (_glitch_filter_popup) {
-    delete _glitch_filter_popup;
-    _glitch_filter_popup = nullptr;
+  if (_glitch_filter->_glitch_filter_popup) {
+    delete _glitch_filter->_glitch_filter_popup;
+    _glitch_filter->_glitch_filter_popup = nullptr;
   }
 
 // Cursor state is now owned by ViewCursors. The delegate's destructor
@@ -436,7 +440,7 @@ void View::receive_trigger(quint64 trig_pos1) {
 void View::set_trig_pos(int percent) {
   uint64_t index = document_snapshot_source()->cur_samplelimits() * percent / 100;
 
-  if (_data_source->have_view_data() == false || _data_source->is_working()) {
+  if (_data_sync->_data_source->have_view_data() == false || _data_sync->_data_source->is_working()) {
     set_trig_cursor_posistion(index);
   }
 }
@@ -549,8 +553,8 @@ void View::on_state_changed(bool stop) {
 QRect View::get_view_rect() { return _data_sync->get_view_rect(); }
 
 int View::get_work_mode() const {
-  if (_document && _document->has_signal_config()) {
-    return _document->get_signal_config().work_mode;
+  if (_data_sync->_document && _data_sync->_document->has_signal_config()) {
+    return _data_sync->_document->get_signal_config().work_mode;
   }
   return _device_agent->get_work_mode();
 }
@@ -624,8 +628,8 @@ void View::clear() {
   // 设备切换早期（CurrentDeviceChangePrev 阶段）_dev_handle 可能为 nullptr，
   // 此时 work_mode 查询会失败。用 document 配置或默认值（非 DSO）避免警告刷屏。
   int mode = LOGIC;
-  if (_document && _document->has_signal_config()) {
-    mode = _document->get_signal_config().work_mode;
+  if (_data_sync->_document && _data_sync->_document->has_signal_config()) {
+    mode = _data_sync->_document->get_signal_config().work_mode;
   } else if (_device_agent && _device_agent->have_instance()) {
     mode = _device_agent->get_work_mode();
   }
@@ -640,8 +644,8 @@ void View::clear() {
 void View::reconstruct() {
   // 同上：设备切换早期避免查询设备
   int mode = LOGIC;
-  if (_document && _document->has_signal_config()) {
-    mode = _document->get_signal_config().work_mode;
+  if (_data_sync->_document && _data_sync->_document->has_signal_config()) {
+    mode = _data_sync->_document->get_signal_config().work_mode;
   } else if (_device_agent && _device_agent->have_instance()) {
     mode = _device_agent->get_work_mode();
   }

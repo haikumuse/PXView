@@ -47,8 +47,11 @@ public:
                                  data::SessionDocument *doc = nullptr);
 
   /// Used by feed_in_logic to check if any decode task is in flight.
-  /// Preserves the existing lock-free read behavior.
-  bool has_running_tasks() const { return !_running_tasks.empty(); }
+  /// Thread-safe: locks _running_tasks_mutex for a consistent read.
+  bool has_running_tasks() const {
+      std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+      return !_running_tasks.empty();
+  }
 
   /// Used by remove_decoder to check if a specific stack is still being
   /// processed by a decode thread. Locks the mutex for a consistent read.

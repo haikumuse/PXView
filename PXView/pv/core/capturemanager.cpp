@@ -39,13 +39,8 @@ static QString get_default_disk_cache_path() {
 }
 
 CaptureManager::CaptureManager(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state), _noData_cnt(0), _data_lock(false),
-      _data_updated(false), _data_auto_lock(0), _repeat_intvl(1),
-      _repeat_hold_prg(0), _repeat_wait_prog_step(10), _is_instant(false),
-      _work_time_id(0), _capture_times(0), _confirm_store_time_id(0),
-      _rt_refresh_time_id(0), _rt_ck_refresh_time_id(0),
-      _clt_mode(COLLECT_SINGLE), _is_stream_mode(false), _is_action(false),
-      _dso_packet_count(0) {
+    : _event_bus(bus), _state(state),
+      _clt_mode(COLLECT_SINGLE) {
   _feed_timer.SetCallback(std::bind(&CaptureManager::feed_timeout, this));
   _repeat_timer.SetCallback(
       std::bind(&CaptureManager::repeat_capture_wait_timeout, this));
@@ -69,11 +64,11 @@ void CaptureManager::capture_init() {
   _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
   _state->set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
-  _data_updated = false;
+  _data_updated.store(false);
   _state->set_trigger_flag(false);
   _state->set_trigger_ch(0);
   _state->set_hw_replied(false);
-  _rt_refresh_time_id = 0;
+  _rt_refresh_time_id.store(0);
 
   // CRITICAL FIX (fork 迁移遗漏): 旧版 fork libsigrok 在 DS_EV_DEVICE_RUNNING
   // 事件中调用 set_receive_data_len(0) 重置 viewport 的 _sample_received 进度，
@@ -82,8 +77,8 @@ void CaptureManager::capture_init() {
   // 必须在此重置进度，否则用户在等待触发时会看到残留的 100% 进度。
   // set_receive_len(0) 内部会 start_trigger_timer(333) 并将 _transfer_started=false。
   _state->set_receive_data_len(0);
-  _rt_ck_refresh_time_id = 0;
-  _noData_cnt = 0;
+  _rt_ck_refresh_time_id.store(0);
+  _noData_cnt.store(0);
 
   data_unlock();
 
@@ -115,9 +110,9 @@ void CaptureManager::capture_init() {
 }
 
 bool CaptureManager::start_capture(bool instant, data::SessionDocument *owner) {
-  _is_action = true;
+  _is_action.store(true);
   int ret = action_start_capture(instant, owner);
-  _is_action = false;
+  _is_action.store(false);
   return ret;
 }
 
@@ -141,6 +136,7 @@ bool CaptureManager::action_start_capture(bool instant,
   if (_state->device_agent().have_instance() == false) {
     pxv_err("Error!No device selected");
     assert(false);
+    return false;
   }
   if (_state->device_status() == ST_RUNNING ||
       _state->device_agent().is_collecting()) {
@@ -156,9 +152,9 @@ bool CaptureManager::action_start_capture(bool instant,
   // 清除毛刺滤波状态(backup 悬垂、active 标志过期),保留 thresholds/modes
   // 供 auto-apply 使用
   _state->clear_glitch_filter_state_for_capture();
-  _is_stream_mode = false;
-  _capture_times = 0;
-  _dso_packet_count = 0;
+  _is_stream_mode.store(false);
+  _capture_times.store(0);
+  _dso_packet_count.store(0);
 
   _state->set_capture_data(_state->view_data());
   _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
@@ -174,12 +170,13 @@ bool CaptureManager::action_start_capture(bool instant,
     }
 
     if (_state->device_agent().is_hardware()) {
-      _is_stream_mode = _state->device_agent().is_stream_mode();
-    } else if (_state->device_agent().is_file()) {
-      _is_stream_mode = true;
+      _is_stream_mode.store(_state->device_agent().is_stream_mode());
+    } else if (_state->device_agent().is_demo() ||
+               _state->device_agent().is_file()) {
+      _is_stream_mode.store(true);
     }
 
-    if (is_loop_mode() && !_is_stream_mode) {
+    if (is_loop_mode() && !_is_stream_mode.load()) {
       set_collect_mode(COLLECT_SINGLE); // Reset the capture mode.
     }
 
@@ -190,8 +187,9 @@ bool CaptureManager::action_start_capture(bool instant,
       }
     }
 
-    if (_state->device_agent().is_hardware()) {
-      bool bv = is_loop_mode() && _is_stream_mode;
+    if (_state->device_agent().is_hardware() ||
+        _state->device_agent().is_demo()) {
+      bool bv = is_loop_mode() && _is_stream_mode.load();
       _state->device_agent().set_config_bool(SR_CONF_LOOP_MODE, bv);
     }
   }
@@ -230,9 +228,9 @@ bool CaptureManager::action_start_capture(bool instant,
 
   pxv_info(
       "SigSession::start_capture: _is_stream_mode=%d, disk_cache_enabled=%d",
-      _is_stream_mode, disk_cache_enabled);
+      _is_stream_mode.load(), disk_cache_enabled);
 
-  if (_is_stream_mode && disk_cache_enabled) {
+  if (_is_stream_mode.load() && disk_cache_enabled) {
     _disk_cache_config.enabled = true;
 
     QString cache_path;
@@ -264,9 +262,9 @@ bool CaptureManager::action_start_capture(bool instant,
 
   // update setting
   if (_state->device_agent().is_file())
-    _is_instant = true;
+    _is_instant.store(true);
   else
-    _is_instant = instant;
+    _is_instant.store(instant);
 
   // modernize-core-layer-radical Task 11: pre-broadcast synchronously so
   // MainWindow can commit trigger settings + capture_init + on_state_changed
@@ -277,7 +275,7 @@ bool CaptureManager::action_start_capture(bool instant,
   _event_bus->broadcast_sync<interface::StartCollectWorkPrev>({});
 
   if (exec_capture()) {
-    _work_time_id++;
+    _work_time_id.fetch_add(1);
     // CaptureOwnerGuard manages _is_working + _capture_owner_document +
     // CaptureOwnerChanged broadcast as a single RAII unit. Replaces the
     // manual _is_working=true / _capture_owner_document=... pattern.
@@ -314,7 +312,7 @@ bool CaptureManager::exec_capture() {
     return false;
   }
 
-  _capture_times++;
+  _capture_times.fetch_add(1);
   _state->set_is_triged(false);
 
   int mode = _state->device_agent().get_work_mode();
@@ -399,18 +397,18 @@ bool CaptureManager::exec_capture() {
   if (bSwapBuffer) {
     int buf_index = -1;
     for (int i = 0; i < (int)_state->data_list().size(); i++) {
-      if (_state->data_list()[i] != _state->view_data()) {
+      if (_state->data_list()[i].get() != _state->view_data()) {
         buf_index = i;
         break;
       }
     }
 
     if (buf_index < 0) {
-      _state->data_list().push_back(new SessionData());
+      _state->data_list().push_back(std::make_unique<SessionData>());
       buf_index = (int)_state->data_list().size() - 1;
     }
 
-    _state->set_capture_data(_state->data_list()[buf_index]);
+    _state->set_capture_data(_state->data_list()[buf_index].get());
     _state->capture_data()->clear();
     _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
     _state->set_cur_samplelimits(_state->device_agent().get_sample_limit());
@@ -428,7 +426,7 @@ bool CaptureManager::exec_capture() {
   // demo 驱动读取 devc->instant 决定 DSO 单帧/连续采集语义；其他驱动
   // 不支持此 key 时 set_config_bool 静默失败（pxv_dbg 日志），无副作用。
   // 旧注释"driver no longer reads instant mode"是错误的——demo 驱动确实读取。
-  _state->device_agent().set_config_bool(SR_CONF_INSTANT, _is_instant);
+    _state->device_agent().set_config_bool(SR_CONF_INSTANT, _is_instant.load());
 
   // Core→libsigrok 触发配置唯一同步点。在 ds_start_collect 前一次性同步，
   // 消除 TriggerDock/SessionService 各自调 ds_trigger_* 导致的互相覆盖。
@@ -436,7 +434,7 @@ bool CaptureManager::exec_capture() {
   // instant 模式下禁用所有触发（硬件+软件），让 driver 立即采集数据，
   // 恢复旧版 fork 的 instant 语义（"立即采集不等待触发"）。统一在
   // sync_trigger_to_libsigrok 入口处理，避免每个 driver 单独判断 instant。
-  _state->sync_trigger_to_libsigrok(_is_instant);
+  _state->sync_trigger_to_libsigrok(_is_instant.load());
 
   if (_state->device_agent().start() == false) {
     pxv_err("Start collect error!");
@@ -456,7 +454,7 @@ bool CaptureManager::exec_capture() {
       if (bAddDecoder) {
         // 彻底禁止 Stream 模式下“边采边解”（会导致严重的内存锁竞争和 GUI 渲染卡死）。
         // 采集结束时（收到 RevEndPacket 后），底层的 start_all_decode_tasks() 会自动启动离线解码。
-        if (!_is_stream_mode) {
+        if (!_is_stream_mode.load()) {
           de->set_capture_end_flag(false);
           de->frame_ended();
           _state->add_decode_task(de);
@@ -469,9 +467,9 @@ bool CaptureManager::exec_capture() {
 }
 
 bool CaptureManager::stop_capture() {
-  _is_action = true;
+  _is_action.store(true);
   int ret = action_stop_capture();
-  _is_action = false;
+  _is_action.store(false);
   return ret;
 }
 
@@ -504,9 +502,9 @@ bool CaptureManager::action_stop_capture() {
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
 
-    if (_repeat_hold_prg != 0 && is_repeat_mode()) {
-      _repeat_hold_prg = 0;
-      _state->repeat_hold(_repeat_hold_prg);
+    if (_repeat_hold_prg.load() != 0 && is_repeat_mode()) {
+      _repeat_hold_prg.store(0);
+      _state->repeat_hold(0);
     }
 
     // modernize-core-layer-radical Task 11: pre-broadcast synchronously so
@@ -568,7 +566,7 @@ bool CaptureManager::action_stop_capture() {
 }
 
 void CaptureManager::exit_capture() {
-  _is_instant = false;
+  _is_instant.store(false);
 
   _feed_timer.Stop();
 
@@ -632,7 +630,7 @@ void CaptureManager::check_update() {
   if (_state->device_agent().is_collecting() == false)
     return;
 
-  if (_data_updated) {
+  if (_data_updated.load()) {
     // DSO mode: skip data_updated() here — the async DataUpdated event
     // (broadcast_async from feed_in_dso) already drives ViewDataSync::
     // data_updated() on the GUI thread. Calling it again from paintEvent
@@ -642,8 +640,8 @@ void CaptureManager::check_update() {
         _state->device_agent().get_work_mode() != DSO)
       _state->data_updated();
 
-    _data_updated = false;
-    _noData_cnt = 0;
+    _data_updated.store(false);
+    _noData_cnt.store(0);
     data_auto_unlock();
   } else {
     if (++_noData_cnt >= (CaptureManager::WaitShowTime / CaptureManager::FeedInterval))
@@ -669,15 +667,15 @@ void CaptureManager::nodata_timeout() {
 void CaptureManager::feed_timeout() {
   data_unlock();
 
-  if (!_data_updated) {
+  if (!_data_updated.load()) {
     if (++_noData_cnt >= (CaptureManager::WaitShowTime / CaptureManager::FeedInterval))
       nodata_timeout();
   }
 }
 
-int CaptureManager::get_repeat_hold() {
+int CaptureManager::get_repeat_hold() const {
   if (_state->is_working() && is_repeat_mode())
-    return _repeat_hold_prg;
+    return _repeat_hold_prg.load();
   else
     return 0;
 }
@@ -695,7 +693,7 @@ void CaptureManager::set_collect_mode(DEVICE_COLLECT_MODE m) {
 
   if (_clt_mode != m) {
     _clt_mode = m;
-    _repeat_hold_prg = 0;
+    _repeat_hold_prg.store(0);
   }
 
   _event_bus->broadcast_async<interface::CollectModeChanged>({});
@@ -705,30 +703,31 @@ void CaptureManager::repeat_capture_wait_timeout() {
   _repeat_timer.Stop();
   _repeat_wait_prog_timer.Stop();
 
-  _repeat_hold_prg = 0;
+  _repeat_hold_prg.store(0);
 
   if (_state->is_working()) {
-    _state->repeat_hold(_repeat_hold_prg);
+    _state->repeat_hold(_repeat_hold_prg.load());
     exec_capture();
   }
 }
 
 void CaptureManager::repeat_wait_prog_timeout() {
-  _repeat_hold_prg -= _repeat_wait_prog_step;
-
-  if (_repeat_hold_prg < 0)
-    _repeat_hold_prg = 0;
+  int val = _repeat_hold_prg.load() - _repeat_wait_prog_step.load();
+  if (val < 0)
+    val = 0;
+  _repeat_hold_prg.store(val);
 
   if (_state->is_working())
-    _state->repeat_hold(_repeat_hold_prg);
+    _state->repeat_hold(val);
 }
 
-void CaptureManager::realtime_refresh_timeout() { _rt_refresh_time_id++; }
+void CaptureManager::realtime_refresh_timeout() { _rt_refresh_time_id.fetch_add(1); }
 
 bool CaptureManager::have_new_realtime_refresh(bool keep) {
-  if (_rt_ck_refresh_time_id != _rt_refresh_time_id) {
+  uint64_t cur = _rt_refresh_time_id.load();
+  if (_rt_ck_refresh_time_id.load() != cur) {
     if (!keep) {
-      _rt_ck_refresh_time_id = _rt_refresh_time_id;
+      _rt_ck_refresh_time_id.store(cur);
     }
     return true;
   }
@@ -744,8 +743,9 @@ void CaptureManager::clear_decode_result() {
 }
 
 bool CaptureManager::is_first_store_confirm() {
-  if (_work_time_id != _confirm_store_time_id) {
-    _confirm_store_time_id = _work_time_id;
+  int cur = _work_time_id.load();
+  if (_confirm_store_time_id.load() != cur) {
+    _confirm_store_time_id.store(cur);
     return true;
   }
   return false;
@@ -789,21 +789,22 @@ void CaptureManager::refresh(int holdtime) {
 
   _out_timer.TimeOut(holdtime,
                      std::bind(&CaptureManager::feed_timeout, this));
-  _data_updated = true;
+  _data_updated.store(true);
 }
 
-void CaptureManager::data_auto_lock(int lock) { _data_auto_lock = lock; }
+void CaptureManager::data_auto_lock(int lock) { _data_auto_lock.store(lock); }
 
 void CaptureManager::data_auto_unlock() {
-  if (_data_auto_lock > 0)
-    _data_auto_lock--;
-  else if (_data_auto_lock < 0)
-    _data_auto_lock = 0;
+  int val = _data_auto_lock.load();
+  if (val > 0)
+    _data_auto_lock.store(val - 1);
+  else if (val < 0)
+    _data_auto_lock.store(0);
 }
 
-bool CaptureManager::get_data_auto_lock() { return _data_auto_lock != 0; }
+bool CaptureManager::get_data_auto_lock() const { return _data_auto_lock.load() != 0; }
 
-bool CaptureManager::is_realtime_refresh() {
+bool CaptureManager::is_realtime_refresh() const {
   // After stopping (is_working == false), there is no live capture to
   // refresh from. Returning false here ensures that get_signal_snapshot()
   // and get_*_snapshot() fall back to view_data (the last completed
@@ -816,24 +817,24 @@ bool CaptureManager::is_realtime_refresh() {
     return false;
   if (is_loop_mode())
     return true;
-  if (_is_stream_mode && is_single_mode())
+  if (_is_stream_mode.load() && is_single_mode())
     return true;
-  if (_is_stream_mode && is_repeat_mode())
+  if (_is_stream_mode.load() && is_repeat_mode())
     return true;
   return false;
 }
 
-bool CaptureManager::is_repeating() {
-  return _clt_mode == COLLECT_REPEAT && !_is_instant;
+bool CaptureManager::is_repeating() const {
+  return _clt_mode == COLLECT_REPEAT && !_is_instant.load();
 }
 
-bool CaptureManager::is_single_mode() { return _clt_mode == COLLECT_SINGLE; }
+bool CaptureManager::is_single_mode() const { return _clt_mode == COLLECT_SINGLE; }
 
-bool CaptureManager::is_repeat_mode() { return _clt_mode == COLLECT_REPEAT; }
+bool CaptureManager::is_repeat_mode() const { return _clt_mode == COLLECT_REPEAT; }
 
-bool CaptureManager::is_loop_mode() { return _clt_mode == COLLECT_LOOP; }
+bool CaptureManager::is_loop_mode() const { return _clt_mode == COLLECT_LOOP; }
 
-int CaptureManager::get_collect_mode() { return (int)_clt_mode; }
+int CaptureManager::get_collect_mode() const { return (int)_clt_mode; }
 
 } // namespace core
 } // namespace pv

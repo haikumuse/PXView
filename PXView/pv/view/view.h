@@ -38,8 +38,11 @@
 #include "../ui/uimanager.h"
 #include "dock_ui_state.h"
 #include "view_cursors.h"
+#include "view_data_sync.h"
+#include "view_derived_traces.h"
 #include "view_glitch_filter.h"
 #include "view_layout.h"
+#include "view_signal_sync.h"
 
 // Forward declarations (replaces the former includes of signal.h, viewport.h,
 // cursor.h, xcursor.h, viewstatus.h, view_derived_traces.h, view_layout.h,
@@ -103,16 +106,10 @@ class XCursor;
 class ViewStatus;
 class Signal;
 
-// Phase K forward declarations for the unique_ptr delegate types. Full
-// definitions live in view_layout.h / view_data_sync.h /
-// view_derived_traces.h / view_signal_sync.h, which are
-// included by view.cpp (and by other TUs that touch the delegate types
-// directly). view_cursors.h is included directly above because Cursor /
-// XCursor are used by too many TUs as complete types.
-class ViewLayout;
-class ViewDataSync;
-class ViewDerivedTraces;
-class ViewSignalSync;
+// Phase K: delegate types are now fully included above (view_layout.h,
+// view_cursors.h, view_data_sync.h, view_derived_traces.h,
+// view_signal_sync.h, view_glitch_filter.h) so that inline accessors in
+// View can reach their member variables directly.
 
 struct SignalGroup {
   int group_id;
@@ -172,7 +169,7 @@ public:
 
   // ---- Data source / document binding ----
   void set_data_source(pv::data::DataSource *source);
-  inline pv::data::DataSource* data_source() { return _data_source; }
+  inline pv::data::DataSource* data_source() { return _data_sync->data_source_ptr(); }
   void set_data_document(pv::data::SessionDocument *doc);
   void clone_signals_for_document(pv::data::SessionDocument *doc);
   void set_signal_data_from_source(pv::data::DataSource *source);
@@ -263,21 +260,21 @@ public:
   void show_search_cursor(bool show = true);
 
   // ---- Vertical layout ----
-  inline int get_spanY() { return _spanY; }
+  inline int get_spanY() { return _layout->_spanY; }
 
-  inline int get_signalHeight() { return _signalHeight; }
+  inline int get_signalHeight() { return _layout->_signalHeight; }
 
   inline int get_vOffset() { return _layout->_vOffset; }
   inline void set_vOffset(int offset) { _layout->_vOffset = offset; }
   void zoom_vertical(double steps);
   void compute_signal_groups();
   inline const std::vector<SignalGroup> &get_signal_groups() {
-    return _signal_groups;
+    return _signal_sync->_signal_groups;
   }
   QColor get_group_card_color();
   QColor get_group_card_color(int group_index);
   QColor get_trace_card_color(Trace *trace);
-  void set_group_card_color(QColor color) { _group_card_color = color; }
+  void set_group_card_color(QColor color) { _signal_sync->_group_card_color = color; }
   bool is_colored_card_mode();
 
   int headerWidth();
@@ -366,9 +363,9 @@ public:
   /*
    * back paint status
    */
-  inline bool back_ready() { return _back_ready; }
+  inline bool back_ready() { return _data_sync->_back_ready; }
 
-  inline void set_back(bool ready) { _back_ready = ready; }
+  inline void set_back(bool ready) { _data_sync->_back_ready = ready; }
 
   /*
    * untils
@@ -455,7 +452,7 @@ public:
    */
   bool rst_decoder_by_key_handel(void *handel, QPoint anchor = QPoint());
 
-  inline std::vector<Signal *> &get_own_signals() { return _own_signals; }
+  inline std::vector<Signal *> &get_own_signals() { return _signal_sync->_own_signals; }
 
   /**
    * View-owned wrapper lists for derived trace types.
@@ -467,19 +464,19 @@ public:
    */
   inline std::vector<DecodeTrace *> &get_own_decode_traces() {
     sync_derived_traces();
-    return _own_decode_traces;
+    return _derived->_own_decode_traces;
   }
   inline std::vector<SpectrumTrace *> &get_own_spectrum_traces() {
     sync_derived_traces();
-    return _own_spectrum_traces;
+    return _derived->_own_spectrum_traces;
   }
   inline MathTrace *get_own_math_trace() {
     sync_derived_traces();
-    return _own_math_trace;
+    return _derived->_own_math_trace;
   }
   inline LissajousTrace *get_own_lissajous_trace() {
     sync_derived_traces();
-    return _own_lissajous_trace;
+    return _derived->_own_lissajous_trace;
   }
   void sync_derived_traces();
   void mark_derived_traces_dirty();
@@ -517,14 +514,10 @@ public:
    * exact previous state: if was_active==true, set_glitch_filter(thresholds,
    * modes) is called; if was_active==false, clear_glitch_filter() is called.
    */
-  struct FilterSnapshot {
-    std::map<int, uint32_t> thresholds;
-    std::map<int, GlitchFilterMode> modes;
-    bool was_active;
-  };
+  using FilterSnapshot = ViewGlitchFilter::FilterSnapshot;
 
   void undo_filter();
-  bool can_undo_filter() const { return !_filter_undo_stack.empty(); }
+  bool can_undo_filter() const { return !_glitch_filter->_filter_undo_stack.empty(); }
 
   /**
    * Forwards glitch filter completion/clearing notifications (originating
@@ -727,25 +720,10 @@ private:
 
   // ---- Session / data source ----
   SigSession *_session;
-  pv::data::DataSource *_data_source;
-  pv::data::SessionDocument *_document;
   pv::toolbars::SamplingBar *_sampling_bar;
   DockUiState _dock_ui_state;
-  // Re-entrancy guard for rebuild_signals_from_config(). Set while a rebuild
-  // is in progress so a nested broadcast (e.g. DeviceOptionsUpdated) cannot
-  // recurse into another rebuild and stack-overflow. The RAII guard in
-  // rebuild_signals_from_config() resets it on all exit paths.
-  bool _rebuild_in_progress = false;
 
   // ---- View-owned signal/trace wrappers ----
-  std::vector<Signal *> _own_signals;
-  // View-owned wrapper traces for derived types. Synced lazily from the
-  // Core layer's Stack/Model objects via sync_derived_traces().
-  std::vector<DecodeTrace *> _own_decode_traces;
-  std::vector<SpectrumTrace *> _own_spectrum_traces;
-  MathTrace *_own_math_trace = nullptr;
-  LissajousTrace *_own_lissajous_trace = nullptr;
-  bool _derived_traces_dirty = true;
 
   // ---- Viewport / widgets ----
   QWidget *_viewcenter;
@@ -762,14 +740,8 @@ private:
   bool _header_collapsed;
 
   // ---- Scale / offset ----
-  // Scale/offset state migrated to ViewLayout delegate (Phase 1).
-  // Remaining layout-related state still on View (not yet migrated).
+  // Scale/offset/signal-height state migrated to ViewLayout delegate.
   double _trig_hoff;
-  int _spanY;
-  int _signalHeight;
-  int _signalHeightScale;
-  std::vector<SignalGroup> _signal_groups;
-  QColor _group_card_color;
 
   // ---- Visible-range notify debounce ----
   // Single-shot 100ms timer coalescing bursts of scale/offset/resize changes
@@ -787,19 +759,9 @@ private:
 
   bool _dso_auto;
   bool _show_lissajous;
-  bool _back_ready;
   bool _destroying = false;
   DeviceAgent *_device_agent;
-  QElapsedTimer _data_updated_timer;
 
-  // ---- Glitch filter popup (View-owned, Task 7) ----
-  GlitchFilterPopup *_glitch_filter_popup = nullptr;
-  // Per-signal cached preview ranges (orange overlay) while the popup is open.
-  std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>>
-      _preview_ranges;
-  // Undo stack for glitch filter applications (Task 9). Accessed only on the
-  // GUI thread (slots + Ctrl+Z handler), so no synchronization needed.
-  std::vector<FilterSnapshot> _filter_undo_stack;
 };
 
 } // namespace view

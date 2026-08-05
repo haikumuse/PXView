@@ -71,6 +71,9 @@ public:
     inline size_t doc_index() const { return _doc_index; }
 
   private:
+    // Track C4: Extracted release() method to de-duplicate the cleanup
+    // logic shared between destructor and move-assignment operator.
+    void release();
     DocumentRegistry *_registry;
     size_t _doc_index;
   };

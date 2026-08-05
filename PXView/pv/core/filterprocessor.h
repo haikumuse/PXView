@@ -4,6 +4,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include <cstdint>
@@ -66,9 +67,12 @@ private:
   std::unique_ptr<std::thread> _glitch_filter_thread;
   std::atomic<bool> _glitch_filter_running;
   // 架构修复：滤波运行中排队最近一次请求，不再静默丢弃
-  bool _has_pending_glitch = false;
+  // Track A4: pending data protected by _pending_mutex; _has_pending_glitch
+  // uses std::atomic<bool> as a fast flag, but map data still needs mutex.
+  std::atomic<bool> _has_pending_glitch{false};
   std::map<int, uint32_t> _pending_glitch_thresholds;
   std::map<int, GlitchFilterMode> _pending_glitch_modes;
+  std::mutex _pending_mutex;
   std::unique_ptr<std::thread> _signal_invert_thread;
   std::atomic<bool> _signal_invert_running;
 };

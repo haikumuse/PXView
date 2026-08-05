@@ -25,6 +25,7 @@
 #define PXVIEW_PV_VIEW_VIEW_GLITCH_FILTER_H
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 #include "../data/logicsnapshot.h"  // GlitchFilterMode
@@ -36,6 +37,7 @@ namespace view {
 class View;
 class LogicSignal;
 class DecodeTrace;
+class GlitchFilterPopup;
 
 // ViewGlitchFilter — delegate for View's glitch-filter popup / preview /
 // apply / undo responsibilities. Extracted from the View God-class during
@@ -78,8 +80,24 @@ public:
   void on_glitch_filter_completed();
   void on_glitch_filter_cleared();
 
+  struct FilterSnapshot {
+    std::map<int, uint32_t> thresholds;
+    std::map<int, GlitchFilterMode> modes;
+    bool was_active;
+  };
+
+  GlitchFilterPopup *glitch_filter_popup() const { return _glitch_filter_popup; }
+  void set_glitch_filter_popup(GlitchFilterPopup *p) { _glitch_filter_popup = p; }
+  bool filter_undo_empty() const { return _filter_undo_stack.empty(); }
+
 private:
   View *_view;
+
+  GlitchFilterPopup *_glitch_filter_popup = nullptr;
+  std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>> _preview_ranges;
+  std::vector<FilterSnapshot> _filter_undo_stack;
+
+  friend class View;
 };
 
 } // namespace view

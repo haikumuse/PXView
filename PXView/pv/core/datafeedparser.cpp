@@ -78,6 +78,13 @@ void DataFeedParser::feed_in_trigger() {
 }
 
 void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
+  // P2: a non-zero length with a NULL data pointer would make the underlying
+  // LogicSnapshot memcpy into/append from an invalid address → segfault.
+  if (o.length > 0 && o.data == nullptr) {
+    pxv_err("feed_in_logic: length=%llu but data is NULL",
+            (unsigned long long)o.length);
+    return;
+  }
   if (_state->capture_data()->get_logic()->memory_failed()) {
     pxv_err("Unexpected logic packet");
     return;
@@ -135,6 +142,12 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
 }
 
 void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
+  // P2: guard against NULL data with non-zero sample count (memcpy would crash).
+  if (o.num_samples > 0 && o.data == nullptr) {
+    pxv_err("feed_in_analog: num_samples=%llu but data is NULL",
+            (unsigned long long)o.num_samples);
+    return;
+  }
   if (_state->capture_data()->get_analog()->memory_failed()) {
     pxv_err("Unexpected analog packet");
     return; // This analog packet was not expected.
@@ -177,6 +190,12 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
 
 void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   // Hot-path debug logging removed for performance — was printing 40+ lines/sec
+  // P2: guard against NULL data with non-zero sample count (memcpy would crash).
+  if (o.num_samples > 0 && o.data == nullptr) {
+    pxv_err("feed_in_dso: num_samples=%llu but data is NULL",
+            (unsigned long long)o.num_samples);
+    return;
+  }
   if (_state->capture_data()->get_dso()->memory_failed()) {
     pxv_err("Unexpected dso packet");
     return;
@@ -272,8 +291,8 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     pxv_warn("%s", "SigSession::data_feed_in: packet is nullptr");
     return;
   }
-  assert(sdi);
-  assert(packet);
+  // Track C1: redundant assert(sdi)/assert(packet) removed —
+  // already guarded by nullptr checks + early return above.
 
   // Static packet counter removed — was only used by the removed timing log.
 
@@ -292,7 +311,12 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     break;
 
   case SR_DF_META:
-    assert(packet->payload);
+    // P2: assert() is compiled out in Release builds — a NULL payload would
+    // dereference and segfault. Guard with a hard early-return instead.
+    if (!packet->payload) {
+      pxv_err("SR_DF_META packet with NULL payload");
+      break;
+    }
     feed_in_meta(sdi, *(const sr_datafeed_meta *)packet->payload);
     break;
 
@@ -302,17 +326,27 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     break;
 
   case SR_DF_LOGIC:
-    assert(packet->payload);
+    // P2: see above — never trust payload in Release builds.
+    if (!packet->payload) {
+      pxv_err("SR_DF_LOGIC packet with NULL payload");
+      break;
+    }
     feed_in_logic(*(const sr_datafeed_logic *)packet->payload);
     break;
 
   case SR_DF_ANALOG:
-    assert(packet->payload);
+    if (!packet->payload) {
+      pxv_err("SR_DF_ANALOG packet with NULL payload");
+      break;
+    }
     feed_in_analog(*(const sr_datafeed_analog *)packet->payload);
     break;
 
   case SR_DF_DSO:
-    assert(packet->payload);
+    if (!packet->payload) {
+      pxv_err("SR_DF_DSO packet with NULL payload");
+      break;
+    }
     feed_in_dso(*(const sr_datafeed_dso *)packet->payload);
     break;
 

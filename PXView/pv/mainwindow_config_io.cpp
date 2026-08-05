@@ -24,6 +24,7 @@
 #include "mainwindow_config_io.h"
 
 #include "mainwindow.h"
+#include "mainwindow_dock_manager.h"
 
 #include "data/decoderstack.h"
 #include "data/sessiondocument.h"
@@ -413,7 +414,7 @@ bool MainWindowConfigIO::load_config_from_file(QString file) {
     assert(false);
   }
 
-  _wnd->_protocol_widget->del_all_protocol();
+  _wnd->_dock_manager->protocol_widget()->del_all_protocol();
 
   std::string file_name = pv::path::ToUnicodePath(file);
   pxv_info("Load device profile: \"%s\"", file_name.c_str());
@@ -439,7 +440,7 @@ bool MainWindowConfigIO::load_config_from_file(QString file) {
   int ret = load_config_from_json(doc, bDecoder);
 
   if (ret && _wnd->_device_agent->get_work_mode() == DSO) {
-    _wnd->_dso_trigger_widget->update_view();
+    _wnd->_dock_manager->dso_trigger_widget()->update_view();
   }
 
   if (_wnd->_device_agent->is_hardware()) {
@@ -788,14 +789,14 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
 
   // update UI settings
   _wnd->_sampling_bar->update_sample_rate_list();
-  _wnd->_trigger_widget->device_updated();
+  _wnd->_dock_manager->trigger_widget()->device_updated();
   _wnd->current_view()->header_updated();
 
   // load trigger settings
   if (sessionObj.contains("trigger")) {
     _wnd->_session->set_trigger_config(
         data::TriggerConfig::from_json(sessionObj["trigger"].toObject()));
-    _wnd->_trigger_widget->refresh_ui_from_core();
+    _wnd->_dock_manager->trigger_widget()->refresh_ui_from_core();
   }
 
   // load decoders
@@ -804,7 +805,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
     if (deArray.empty() == false) {
       haveDecoder = true;
       StoreSession ss(_wnd->_session);
-      ss.load_decoders(_wnd->_protocol_widget, deArray);
+      ss.load_decoders(_wnd->_dock_manager->protocol_widget(), deArray);
       _wnd->current_view()->update_all_trace_postion();
     }
   }
@@ -974,7 +975,7 @@ void MainWindowConfigIO::load_demo_decoder_config(QString optname) {
 
   if (bLoadSurccess) {
     StoreSession ss(_wnd->_session);
-    ss.load_decoders(_wnd->_protocol_widget, deArray);
+    ss.load_decoders(_wnd->_dock_manager->protocol_widget(), deArray);
   }
 
   _wnd->current_view()->update_all_trace_postion();

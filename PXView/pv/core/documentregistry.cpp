@@ -28,18 +28,7 @@ DocumentRegistry::CaptureOwnerGuard::CaptureOwnerGuard(DocumentRegistry *reg,
 
 DocumentRegistry::CaptureOwnerGuard::~CaptureOwnerGuard() {
   if (_registry) {
-    // join_copy_thread() MUST be outside the lock — the copy thread may
-    // need to acquire _capture_state_mutex (e.g. in copy_to_doc_done).
-    _registry->join_copy_thread();
-    {
-      std::lock_guard<std::mutex> lock(_registry->_capture_state_mutex);
-      _registry->_capture_owner_index = SIZE_MAX;
-      _registry->_state->set_is_working(false);
-    }
-    // Broadcast outside the lock to minimize critical section and avoid
-    // listener callbacks re-entering the mutex.
-    _registry->_event_bus->broadcast_async<interface::CaptureOwnerChanged>(
-        {nullptr, _registry->get_capture_owner_document()});
+    release();
   }
 }
 
@@ -52,21 +41,31 @@ DocumentRegistry::CaptureOwnerGuard &
 DocumentRegistry::CaptureOwnerGuard::operator=(CaptureOwnerGuard &&o) noexcept {
   if (this != &o) {
     if (_registry) {
-      // join_copy_thread() MUST be outside the lock — see destructor note.
-      _registry->join_copy_thread();
-      {
-        std::lock_guard<std::mutex> lock(_registry->_capture_state_mutex);
-        _registry->_capture_owner_index = SIZE_MAX;
-        _registry->_state->set_is_working(false);
-      }
-      _registry->_event_bus->broadcast_async<interface::CaptureOwnerChanged>(
-        {nullptr, _registry->get_capture_owner_document()});
+      release();
     }
     _registry = o._registry;
     _doc_index = o._doc_index;
     o._registry = nullptr;
   }
   return *this;
+}
+
+// ---------------------------------------------------------------------------
+// CaptureOwnerGuard::release() — Track C4: shared cleanup logic
+// ---------------------------------------------------------------------------
+void DocumentRegistry::CaptureOwnerGuard::release() {
+  // join_copy_thread() MUST be outside the lock — the copy thread may
+  // need to acquire _capture_state_mutex (e.g. in copy_to_doc_done).
+  _registry->join_copy_thread();
+  {
+    std::lock_guard<std::mutex> lock(_registry->_capture_state_mutex);
+    _registry->_capture_owner_index = SIZE_MAX;
+    _registry->_state->set_is_working(false);
+  }
+  // Broadcast outside the lock to minimize critical section and avoid
+  // listener callbacks re-entering the mutex.
+  _registry->_event_bus->broadcast_async<interface::CaptureOwnerChanged>(
+      {nullptr, _registry->get_capture_owner_document()});
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +189,14 @@ void DocumentRegistry::join_copy_thread() {
 
 void DocumentRegistry::acquire_capture_owner(data::SessionDocument *doc) {
   size_t idx = doc ? find_index_for_document(doc) : SIZE_MAX;
-  _capture_owner_guard = std::make_unique<CaptureOwnerGuard>(this, idx);
+  // Track A6: protect guard creation + assignment under _capture_state_mutex
+  // to prevent concurrent acquire/release races on _capture_owner_guard.
+  std::unique_ptr<CaptureOwnerGuard> new_guard =
+      std::make_unique<CaptureOwnerGuard>(this, idx);
+  {
+    std::lock_guard<std::mutex> lock(_capture_state_mutex);
+    _capture_owner_guard = std::move(new_guard);
+  }
 }
 
 void DocumentRegistry::release_capture_owner() {

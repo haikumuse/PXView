@@ -45,8 +45,10 @@
 #include "tabcontext.h"
 #include "widgets/slidingdrawer.h"
 #include "widgets/sidebar.h"
+#include <map>
 #include "config/appconfig.h"
 #include "api/types.h"
+#include "data/sessiondocument.h"
 
 class QAction;
 class QMenu;
@@ -167,8 +169,11 @@ signals:
 public:
     //IMainForm
     void switchLanguage(int language) override;
-    bool able_to_close();    
+    bool able_to_close();
     QWidget* GetBodyView();
+
+    // Phase 2: exposed for SessionEventDispatcher
+    std::map<int, pv::data::ChannelLayoutState> build_channel_layout(pv::view::View *view);
     
 private: 
 	void setup_ui();
@@ -211,6 +216,35 @@ private:
     // members directly. MainWindow's config methods now forward here.
     std::unique_ptr<class MainWindowConfigIO> _config_io;
 
+    // ---- TabManager delegate ----
+    // Phase 2: tab management extracted to a delegate class.
+    // Holds _tab_widget, _tab_contexts, _current_tab_index and all tab
+    // operation logic. MainWindow forwards tab methods here.
+    std::unique_ptr<class TabManager> _tab_manager;
+
+    // ---- DockManager delegate ----
+    // Phase 2: dock management extracted to a delegate class.
+    // Holds all QDockWidget pointers, SlidingDrawer + page indices,
+    // SideBar, and all dock operation logic. MainWindow forwards dock
+    // methods here.
+    std::unique_ptr<class DockManager> _dock_manager;
+
+    // ---- ThemeManager delegate ----
+    // Phase 2: theme switching extracted to a delegate class.
+    // Handles QSS token processing, SVG theming, and style application.
+    std::unique_ptr<class MainWindowThemeManager> _theme_manager;
+
+    // ---- StatusBar delegate ----
+    // Phase 2: status bar updates extracted to a delegate class.
+    // Manages disk cache status, FPS counter, and sample period display.
+    std::unique_ptr<class MainWindowStatusBar> _status_bar;
+
+    // ---- ShortcutManager delegate ----
+    // Phase 2: keyboard shortcut resolution and event filter handling
+    // extracted to a delegate class (~340 lines). MainWindow::eventFilter()
+    // forwards KeyPress events to this delegate.
+    std::unique_ptr<class MainWindowShortcutManager> _shortcut_manager;
+
   
 private:
     //IDataCallback
@@ -246,14 +280,17 @@ private:
     //events are simply not consumed.
     void on_service_event(const pv::api::ServiceEventData &data) override;
 
-    //IEventListener (Task 12) — typed event bus consumer. All 41 event structs
-    //have a typed override below. Each override contains its handler body
-    //directly (no int dispatch, no switch). The former per-responsibility
-    //(int,int) helpers and the legacy IMessageListener / DSV_MSG_* /
-    //broadcast_msg / trigger_message infrastructure have been removed.
-    //broadcast<T>() / broadcast_sync<T>() / broadcast_async<T>() are the only
-    //dispatch paths. Overrides for events with no GUI work (CopyToDocDone /
-    //DecodeDone / SignalsChanged / DataUpdated / DeviceConfigUpdated) are empty.
+    // ---- SessionEventDispatcher delegate ----
+    // Phase 2: IEventListener implementation extracted to a delegate class.
+    // All 45 typed on_event overrides live in SessionEventDispatcher.
+    // MainWindow holds a unique_ptr to the dispatcher and forwards the
+    // IEventListener interface to it.
+    std::unique_ptr<class SessionEventDispatcher> _event_dispatcher;
+
+    // IEventListener forwarding — delegates to _event_dispatcher.
+    // These are kept on MainWindow so that EventBus registration still works
+    // (MainWindow is the registered listener). Each just forwards to the
+    // dispatcher's override.
     void on_event(const pv::interface::CaptureStateChanged &) override;
     void on_event(const pv::interface::CaptureOwnerChanged &) override;
     void on_event(const pv::interface::TriggerConfigChanged &) override;
@@ -302,10 +339,7 @@ private:
     void on_event(const pv::interface::StartCollectWorkPrev &) override;
     void on_event(const pv::interface::EndCollectWorkPrev &) override;
 
-private: 
-	pv::ui::DraggableTabWidget *_tab_widget;
-    QList<pv::TabContext*> _tab_contexts;
-    int _current_tab_index;
+private:
     dialogs::DSMessageBox   *_msg;
 
 	QWidget                 *_central_widget;
@@ -317,37 +351,6 @@ private:
     toolbars::LogoBar       *_logo_bar; //help button, on top right
     toolbars::TitleBar      *_title_bar;
 
-
-    QDockWidget             *_protocol_dock;
-    dock::ProtocolDock      *_protocol_widget;
-    QDockWidget             *_trigger_dock;
-    dock::TriggerDock       *_trigger_widget;
-    QDockWidget             *_dso_trigger_dock;
-    dock::DsoTriggerDock    *_dso_trigger_widget;
-    QDockWidget             *_measure_dock;
-    dock::MeasureDock       *_measure_widget;
-    QDockWidget             *_search_dock;
-    dock::SearchDock        *_search_widget;
-    QDockWidget             *_device_options_dock;
-    dock::DeviceOptionsDock *_device_options_widget;
-    QDockWidget             *_log_dock;
-    dock::LogDock           *_log_widget;
-    dock::McpControlDock       *_mcp_control_widget;
-    dock::FunctionDock        *_function_widget;
-    QDockWidget               *_function_dock;
-
-    // Sliding drawer panel
-    widgets::SlidingDrawer  *_sliding_drawer;
-    int _drawer_page_protocol;
-    int _drawer_page_trigger;
-    int _drawer_page_dso_trigger = 0;
-    int _drawer_page_measure;
-    int _drawer_page_search;
-    int _drawer_page_device_options;
-    int _drawer_page_log;
-    int _drawer_page_mcp;
-    int _drawer_page_function;
-    int _drawer_current_page; // -1 = no page open
 
     QTranslator     _qtTrans;
     QTranslator     _myTrans;
@@ -382,12 +385,9 @@ private:
     void Ribbon_setupUi();
     void Ribbon_retranslateUi();
     void setupQuickAccessBar();
-    void setupSideBar();
     void setupFileCategory();
     void setupDisplayCategory();
     void setupHelpCategory();
-
-    widgets::SideBar* _side_bar;
 
     enum {
         SIDEBAR_TRIGGER = 0,
@@ -402,6 +402,7 @@ private:
         SIDEBAR_INSTANT = 9
     };
 
+    // Phase 2: getDockOptions forwarded to DockManager
     ::DockOptions* getDockOptions();
 
     int _category_file_index;
@@ -409,6 +410,12 @@ private:
     int _category_help_index;
 
     friend class MainWindowConfigIO;
+    friend class SessionEventDispatcher;
+    friend class TabManager;
+    friend class DockManager;
+    friend class MainWindowThemeManager;
+    friend class MainWindowStatusBar;
+    friend class MainWindowShortcutManager;
 
     QMenuBar      *_menu_bar;
     QMenu         *_category_file;

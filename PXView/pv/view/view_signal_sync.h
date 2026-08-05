@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <QColor>
 
 class QColor;
 class QString;
@@ -41,14 +42,18 @@ namespace view {
 
 class View;
 class Trace;
+class Signal;
+
+struct SignalGroup;
 
 // ViewSignalSync — delegate for View's signal-group / signal-rebuild /
 // signals-changed layout responsibilities. Extracted from the View
-// God-class during Phase J of the modernize-view-layer-v3 spec. All
-// signal state (_own_signals / _signal_groups / _rebuild_in_progress)
-// still lives on View; this class only owns the *behaviour*. View
-// declares `friend class ViewSignalSync;` so the delegate can read and
-// mutate those private members directly.
+// God-class during Phase J of the modernize-view-layer-v3 spec. Signal
+// state (_own_signals / _signal_groups / _rebuild_in_progress /
+// _group_card_color) lives here. Signal height state (_spanY /
+// _signalHeight / _signalHeightScale) lives on ViewLayout (migrated
+// from View in Phase 1). View declares `friend class ViewSignalSync;`
+// so the delegate can read and mutate those private members directly.
 class ViewSignalSync {
 public:
   explicit ViewSignalSync(View *view) : _view(view) {}
@@ -87,8 +92,22 @@ public:
   QColor get_trace_card_color(Trace *trace);
   bool is_colored_card_mode();
 
+  std::vector<Signal *> &own_signals() { return _own_signals; }
+  std::vector<SignalGroup> &signal_groups() { return _signal_groups; }
+  QColor group_card_color() const { return _group_card_color; }
+  void set_group_card_color(QColor c) { _group_card_color = c; }
+  bool rebuild_in_progress() const { return _rebuild_in_progress; }
+  void set_rebuild_in_progress(bool v) { _rebuild_in_progress = v; }
+
 private:
   View *_view;
+
+  std::vector<Signal *> _own_signals;
+  std::vector<SignalGroup> _signal_groups;
+  QColor _group_card_color;
+  bool _rebuild_in_progress = false;
+
+  friend class View;
 };
 
 } // namespace view

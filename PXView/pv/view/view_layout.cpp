@@ -88,7 +88,7 @@ void ViewLayout::limit_scale_offset() {
     // updating scroll here the horizontal scrollbar range stays at its
     // pre-capture value (often 0), making the bar un-draggable even after
     // the user zoomed in.
-    const double base_scale = _view->_data_source->cur_view_time() / width;
+    const double base_scale = _view->data_source()->cur_view_time() / width;
     if (base_scale > 0) {
       _maxscale = 1e9;
       _minscale = base_scale * 1e-6;
@@ -128,7 +128,7 @@ void ViewLayout::update_scale_offset() {
     // mutates the factor; this re-derives _scale every frame). This lets
     // the user zoom in and pan horizontally like LOGIC mode, instead of
     // the original DSView design that stepped discrete timebase values.
-    const double base_scale = _view->_data_source->cur_view_time() / width;
+    const double base_scale = _view->data_source()->cur_view_time() / width;
     if (base_scale > 0) {
       // Keep original _maxscale=1e9 (no zoom-out beyond fit-frame is
       // naturally prevented because get_max_offset() would go negative,
@@ -210,8 +210,8 @@ bool ViewLayout::zoom(double steps, int offset) {
     // nothing" (it changed the zoom factor, not the timebase).
     // The instant-mode running guard is retained: don't zoom while an
     // instant capture is in progress.
-    if (_view->_data_source->is_running_status() &&
-        _view->_data_source->is_instant()) {
+    if (_view->data_source()->is_running_status() &&
+        _view->data_source()->is_instant()) {
       return ret;
     }
     double hori_res = -1;
@@ -221,7 +221,7 @@ bool ViewLayout::zoom(double steps, int offset) {
       hori_res = _view->_sampling_bar->hori_knob(1);
 
     if (hori_res > 0) {
-      const double scale = _view->_data_source->cur_view_time() / width;
+      const double scale = _view->data_source()->cur_view_time() / width;
       _scale = max(min(scale, _maxscale), _minscale);
     } else {
       ret = false;
