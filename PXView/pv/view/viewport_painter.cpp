@@ -24,32 +24,20 @@
 #include "viewport_painter.h"
 #include "render_pass.h"
 #include "viewport.h"
-#include "ruler.h"
 #include "viewstatus.h"
 
-#include "../dialogs/dsomeasure.h"
 #include "../sigsession.h"
-#include "analogsignal.h"
 #include "dsosignal.h"
 #include "signal.h"
-#include "spectrumtrace.h"
 
-#include <QDebug>
-#include <QKeyEvent>
-#include <QMouseEvent>
 #include <QPainter>
-#include <QPainterPath>
-#include <QScrollBar>
 #include <QStyleOption>
-#include <QWheelEvent>
 #include <cmath>
 #include <set>
 
 #include "../config/appconfig.h"
 #include "../pxvdef.h"
-#include "../log.h"
 #include "../ui/dockfonts.h"
-#include "../ui/fn.h"
 #include "../ui/langresource.h"
 
 using namespace std;
@@ -59,142 +47,6 @@ thread_local DsoPaintTiming s_dso_timing;
 
 namespace pv {
 namespace view {
-
-struct BrutalStyle {
-  QColor bg;
-  QColor text;
-};
-
-static BrutalStyle getBrutalStyle(const QColor &back, const QColor &panelBg,
-                                  const QColor &panelText) {
-  double luminance =
-      (back.red() * 0.299 + back.green() * 0.587 + back.blue() * 0.114);
-  bool isDark = luminance < 128;
-
-  if (isDark) {
-    return {panelBg, panelText};
-  } else {
-    return {panelText, panelBg};
-  }
-}
-
-static void drawFloatingPanel(QPainter &p, const QPointF &cursorPos,
-                              double viewWidth, double viewHeight,
-                              const QColor &back, const QColor &panelBg,
-                              const QColor &panelText,
-                              const vector<pair<QString, QString>> &rows) {
-  BrutalStyle style = getBrutalStyle(back, panelBg, panelText);
-
-  QFont labelFont = p.font();
-  labelFont.setPixelSize(floating_panel_font_label_size());
-  labelFont.setWeight(QFont::Black);
-  labelFont.setCapitalization(QFont::AllUppercase);
-  labelFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
-  apply_global_font_strategy(labelFont);
-
-  QFont valueFont = p.font();
-  valueFont.setPixelSize(floating_panel_font_value_size());
-  valueFont.setWeight(QFont::Black);
-  valueFont.setFamily("Space Mono, Courier New, monospace");
-  apply_global_font_strategy(valueFont);
-
-  QFontMetrics fmLabel(labelFont);
-  QFontMetrics fmValue(valueFont);
-
-  const int pad = 14;
-  const int gridGapH = 14;
-  const int gridGapV = 10;
-  const int labelValueGap = 2;
-
-  bool hasLabels = false;
-  for (const auto &row : rows) {
-    if (!row.first.isEmpty()) {
-      hasLabels = true;
-      break;
-    }
-  }
-
-  int cols = (hasLabels && rows.size() >= 2) ? 2 : 1;
-  int gridRows = ((int)rows.size() + cols - 1) / cols;
-
-  int cellH = fmLabel.height() + labelValueGap + fmValue.height();
-  int cellH_noLabel = fmValue.height();
-
-  int colWidths[2] = {0, 0};
-  for (size_t i = 0; i < rows.size(); i++) {
-    int col = (int)i % cols;
-    QString cleanLabel = rows[i].first.trimmed().toUpper();
-    if (cleanLabel.endsWith(':'))
-      cleanLabel.chop(1);
-    int labelW =
-        cleanLabel.isEmpty() ? 0 : fmLabel.horizontalAdvance(cleanLabel);
-
-    QString val = rows[i].second;
-    if (val.startsWith('+'))
-      val.remove(0, 1);
-    int valW = fmValue.horizontalAdvance(val);
-
-    colWidths[col] = qMax(colWidths[col], qMax(labelW, valW));
-  }
-
-  double panelW, panelH;
-  if (cols == 2)
-    panelW = pad * 2 + colWidths[0] + gridGapH + colWidths[1];
-  else
-    panelW = pad * 2 + colWidths[0];
-
-  int usedCellH = hasLabels ? cellH : cellH_noLabel;
-  panelH = pad * 2 + gridRows * usedCellH + (gridRows - 1) * gridGapV;
-
-  const double offsetX = 15, offsetY = 20;
-  double px = cursorPos.x() + offsetX;
-  double py = cursorPos.y() + offsetY;
-  if (px + panelW > viewWidth)
-    px = cursorPos.x() - panelW - offsetX;
-  if (py + panelH > viewHeight)
-    py = cursorPos.y() - panelH - offsetY;
-
-  QRectF panelRect(px, py, panelW, panelH);
-
-  p.setRenderHint(QPainter::Antialiasing, false);
-
-  p.setPen(Qt::NoPen);
-  p.setBrush(style.bg);
-  p.drawRect(panelRect);
-
-  double y = panelRect.top() + pad;
-  for (size_t i = 0; i < rows.size(); i++) {
-    int col = (int)i % cols;
-    int row = (int)i / cols;
-
-    double cellX = panelRect.left() + pad + col * (colWidths[0] + gridGapH);
-    double cellY = y + row * (usedCellH + gridGapV);
-
-    QString cleanLabel = rows[i].first.trimmed();
-    if (cleanLabel.endsWith(':') || cleanLabel.endsWith(QChar(0xFF1A)))
-      cleanLabel.chop(1);
-    cleanLabel = cleanLabel.trimmed();
-
-    if (!cleanLabel.isEmpty()) {
-      p.setFont(labelFont);
-      p.setPen(style.text);
-      QString upperLabel = cleanLabel.toUpper();
-      double labelY = cellY + fmLabel.ascent();
-      p.drawText(QPointF(cellX, labelY), upperLabel);
-    }
-
-    p.setFont(valueFont);
-    p.setPen(style.text);
-    double valueY = cleanLabel.isEmpty() ? cellY + fmValue.ascent()
-                                         : cellY + fmLabel.height() +
-                                               labelValueGap + fmValue.ascent();
-
-    QString valText = rows[i].second;
-    if (valText.startsWith('+'))
-      valText.remove(0, 1);
-    p.drawText(QPointF(cellX, valueY), valText);
-  }
-}
 
 ViewportPainter::ViewportPainter(Viewport *viewport) : _viewport(viewport) {}
 
@@ -249,10 +101,9 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   p.translate(0, -_viewport->_view.get_vOffset());
 
   // Phase 5: Group card background rendering via RenderPass.
-  // All four passes are now wired in (GroupCardBackgroundPass here in
-  // doPaint, SignalPixmapPass/DecodeTracePass/CursorOverlayPass in
-  // paintSignals). Passes are called directly rather than via
-  // RenderPipeline since each needs slightly different context setup.
+  // All six passes are now wired in: GroupCardBackgroundPass (here in
+  // doPaint), SignalPixmapPass/DecodeTracePass/CursorOverlayPass/
+  // MeasureOverlayPass/TriggerInfoPass (in paintSignals).
   {
     GroupCardBackgroundPass cardPass;
     RenderContext ctx;
@@ -447,92 +298,32 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
           QRectF(_viewport->_mouse_down_point, _viewport->_mouse_point));
     }
 
-    // plot measure arrow
-    paintMeasure(p, fore, back);
+    // Phase 5: measurement overlay via MeasureOverlayPass.
+    {
+      RenderContext mctx;
+      mctx.view = &_viewport->_view;
+      mctx.viewport = _viewport;
+      mctx.type = _viewport->_type;
+      mctx.fore = fore;
+      mctx.back = back;
 
-    // plot trigger information
-    auto *dev = _viewport->_view.data_source()->device();
-    if (_viewport->_view.get_work_mode() == DSO &&
-        _viewport->_view.session().is_running_status() && dev &&
-        dev->is_dsl_device()) {
-      int type;
-      bool roll = false;
-      QString type_str = "";
-      bool ret = false;
+      MeasureOverlayPass measurePass;
+      if (measurePass.should_run(mctx))
+        measurePass.render(p, mctx);
+    }
 
-      dev->get_config_bool(SR_CONF_ROLL, roll);
+    // Phase 5: DSO trigger info via TriggerInfoPass.
+    {
+      RenderContext tctx;
+      tctx.view = &_viewport->_view;
+      tctx.viewport = _viewport;
+      tctx.type = _viewport->_type;
+      tctx.fore = fore;
+      tctx.back = back;
 
-      ret = dev->get_config_byte(SR_CONF_TRIGGER_SOURCE, type);
-      if (ret) {
-        bool bDot = false;
-
-        if (type == DSO_TRIGGER_AUTO && roll) {
-          type_str =
-              L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_ROLL), "Auto(Roll)");
-
-          if (_viewport->_view.session().is_instant()) {
-            type_str += ", ";
-            type_str += L_S(STR_PAGE_DLG, S_ID(IDS_DLG_VIEW_CAPTURE),
-                            "Capturing");
-            bDot = true;
-          }
-        } else if (type == DSO_TRIGGER_AUTO &&
-                   !_viewport->_view.session().trigd()) {
-          type_str = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO), "Auto");
-
-          if (_viewport->_view.session().is_instant()) {
-            type_str += ", ";
-            type_str += L_S(STR_PAGE_DLG, S_ID(IDS_DLG_VIEW_CAPTURE),
-                            "Capturing");
-            bDot = true;
-          }
-        } else if (_viewport->_waiting_trig > 0) {
-          type_str = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAITING_TRIG),
-                         "Waiting Trig");
-          bDot = true;
-        } else {
-          type_str = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIG_D), "Trig'd");
-        }
-
-        if (bDot) {
-          for (int i = 0; i < _viewport->_tigger_wait_times; i++) {
-            type_str += ".";
-          }
-
-          high_resolution_clock::time_point cur_time =
-              high_resolution_clock::now();
-          milliseconds timeInterval = std::chrono::duration_cast<milliseconds>(
-              cur_time - _viewport->_lst_wait_tigger_time);
-          int64_t time_keep = timeInterval.count();
-
-          if (time_keep >= 500) {
-            _viewport->_tigger_wait_times++;
-            _viewport->_lst_wait_tigger_time = cur_time;
-          }
-
-          if (_viewport->_tigger_wait_times > 4)
-            _viewport->_tigger_wait_times = 0;
-        }
-      }
-      p.setPen(fore);
-      p.drawText(_viewport->_view.get_view_rect(),
-                 Qt::AlignLeft | Qt::AlignTop, type_str);
-
-      if (dev->is_hardware()) {
-        if (_viewport->_view.session().dso_data_is_out_off_range()) {
-          QString data_status = L_S(STR_PAGE_DLG,
-                                    S_ID(IDS_DLG_DATA_OUT_OFF_RANGE),
-                                    "Out off range");
-          data_status += "! ";
-          QColor warnRed = AppConfig::Instance().GetThemeColor("@warn-red");
-          if (!warnRed.isValid())
-            warnRed = QColor(255, 0, 0, 200);
-          p.setPen(warnRed);
-          p.drawText(_viewport->_view.get_view_rect(),
-                     Qt::AlignRight | Qt::AlignTop, data_status);
-          p.setPen(fore);
-        }
-      }
+      TriggerInfoPass trigPass;
+      if (trigPass.should_run(tctx))
+        trigPass.render(p, tctx);
     }
   }
 }
@@ -638,361 +429,6 @@ void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
   p.setFont(font);
 
   p.setRenderHint(QPainter::Antialiasing, false);
-}
-
-void ViewportPainter::paintMeasure(QPainter &p, QColor fore, QColor back) {
-  QColor active_color = back.black() > 0x80 ? View::Orange : View::Purple;
-  _viewport->_hover_hit = false;
-
-  int v_offset = _viewport->_view.get_vOffset();
-  int screen_midY = _viewport->_cur_midY - v_offset;
-  int screen_preY = _viewport->_cur_preY - v_offset;
-  int screen_aftY = _viewport->_cur_aftY - v_offset;
-  QPointF screen_hover_point =
-      _viewport->_view.hover_point() - QPointF(0, v_offset);
-
-  if (_viewport->_action_type == NO_ACTION &&
-      _viewport->_measure_type == LOGIC_FREQ) {
-    p.setPen(active_color);
-    p.drawLine(QLineF(_viewport->_cur_preX, screen_midY,
-                      _viewport->_cur_aftX, screen_midY));
-    p.drawLine(QLineF(_viewport->_cur_preX, screen_midY, _viewport->_cur_preX + 2,
-                      screen_midY - 2));
-    p.drawLine(QLineF(_viewport->_cur_preX, screen_midY, _viewport->_cur_preX + 2,
-                      screen_midY + 2));
-    p.drawLine(QLineF(_viewport->_cur_aftX - 2, screen_midY - 2,
-                      _viewport->_cur_aftX, screen_midY));
-    p.drawLine(QLineF(_viewport->_cur_aftX - 2, screen_midY + 2,
-                      _viewport->_cur_aftX, screen_midY));
-    if (_viewport->_thd_sample != 0) {
-      p.drawLine(QLineF(_viewport->_cur_aftX, screen_midY, _viewport->_cur_thdX,
-                        screen_midY));
-      p.drawLine(QLineF(_viewport->_cur_aftX, screen_midY, _viewport->_cur_aftX + 2,
-                        screen_midY - 2));
-      p.drawLine(QLineF(_viewport->_cur_aftX, screen_midY, _viewport->_cur_aftX + 2,
-                        screen_midY + 2));
-      p.drawLine(QLineF(_viewport->_cur_thdX - 2, screen_midY - 2,
-                        _viewport->_cur_thdX, screen_midY));
-      p.drawLine(QLineF(_viewport->_cur_thdX - 2, screen_midY + 2,
-                        _viewport->_cur_thdX, screen_midY));
-    }
-
-    if (_viewport->_measure_en) {
-      vector<pair<QString, QString>> rows = {
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FREQUENCY), "Frequency: "),
-           _viewport->_mm_freq},
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PERIOD), "Period: "),
-           _viewport->_mm_period},
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WIDTH), "Width: "),
-           _viewport->_mm_width},
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DUTY_CYCLE), "Duty Cycle: "),
-           _viewport->_mm_duty}};
-
-      drawFloatingPanel(p, screen_hover_point,
-                        _viewport->_view.get_view_width(),
-                        _viewport->_view.viewport()->height(), back,
-                        _viewport->_panelBgColor, _viewport->_panelTextColor,
-                        rows);
-    }
-  }
-
-  if (_viewport->_action_type == NO_ACTION &&
-      _viewport->_measure_type == DSO_VALUE) {
-
-    for (auto s : _viewport->_view.get_own_signals()) {
-      if (s->signal_type() == SR_CHANNEL_DSO) {
-        uint64_t index;
-        double value;
-        view::DsoSignal *dsoSig = (DsoSignal *)s;
-        QPointF hpoint;
-        if (dsoSig->get_hover(index, hpoint, value)) {
-          p.setPen(QPen(fore, 1, Qt::DashLine));
-          p.setBrush(Qt::NoBrush);
-          p.drawLine(hpoint.x(), dsoSig->get_view_rect().top(), hpoint.x(),
-                     dsoSig->get_view_rect().bottom());
-        }
-      } else if (s->signal_type() == SR_CHANNEL_ANALOG) {
-        uint64_t index;
-        double value;
-        QPointF hpoint;
-        view::AnalogSignal *analogSig = (AnalogSignal *)s;
-        if (analogSig->get_hover(index, hpoint, value)) {
-          p.setPen(QPen(fore, 1, Qt::DashLine));
-          p.setBrush(Qt::NoBrush);
-          p.drawLine(hpoint.x(), analogSig->get_view_rect().top(), hpoint.x(),
-                     analogSig->get_view_rect().bottom());
-        }
-      }
-    }
-  }
-
-  if (_viewport->_dso_ym_valid) {
-    for (auto s : _viewport->_view.get_own_signals()) {
-      if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (DsoSignal *)s;
-        if (dsoSig->get_index() == _viewport->_dso_ym_sig_index) {
-          p.setPen(QPen(dsoSig->get_colour(), 1, Qt::DotLine));
-          QFontMetrics fm(p.font());
-          const int text_height = fm.height();
-          const int64_t x =
-              _viewport->_view.index2pixel(_viewport->_dso_ym_index);
-          p.drawLine(x - 10, _viewport->_dso_ym_start, x + 10,
-                     _viewport->_dso_ym_start);
-          p.drawLine(x, _viewport->_dso_ym_start, x, _viewport->_dso_ym_end);
-          p.drawLine(0, _viewport->_dso_ym_end,
-                     _viewport->_view.get_view_width(),
-                     _viewport->_dso_ym_end);
-
-          // -- vertical delta value
-          double hrate = (_viewport->_dso_ym_start - _viewport->_dso_ym_end) *
-                         1.0f / _viewport->_view.get_view_height();
-          double value = hrate * dsoSig->get_vDialValue() *
-                         dsoSig->get_factor() * DS_CONF_DSO_VDIVS;
-          QString value_str =
-              abs(value) > 1000
-                  ? QString::number(value / 1000.0, 'f', 2) + "V"
-                  : QString::number(value, 'f', 2) + "mV";
-          int value_rect_width = p.boundingRect(
-                                      0, 0, INT_MAX, INT_MAX,
-                                      Qt::AlignLeft | Qt::AlignVCenter, value_str)
-                                      .width();
-          p.drawText(QRect(x + 10,
-                           abs(_viewport->_dso_ym_start +
-                                _viewport->_dso_ym_end) / 2,
-                           value_rect_width, text_height),
-                     value_str);
-
-          // -- start value
-          value_str = abs(_viewport->_dso_ym_sig_value) > 1000
-                          ? QString::number(
-                                _viewport->_dso_ym_sig_value / 1000.0, 'f', 2) +
-                                "V"
-                          : QString::number(_viewport->_dso_ym_sig_value, 'f',
-                                            2) +
-                                "mV";
-          value_rect_width = p.boundingRect(
-                                 0, 0, INT_MAX, INT_MAX,
-                                 Qt::AlignLeft | Qt::AlignVCenter, value_str)
-                                 .width();
-          int str_y = value > 0 ? _viewport->_dso_ym_start
-                                : _viewport->_dso_ym_start - text_height;
-          p.drawText(QRect(x - 0.5 * value_rect_width, str_y,
-                           value_rect_width, text_height),
-                     value_str);
-
-          // -- end value
-          double end_value = _viewport->_dso_ym_sig_value + value;
-          value_str = abs(end_value) > 1000
-                          ? QString::number(end_value / 1000.0, 'f', 2) + "V"
-                          : QString::number(end_value, 'f', 2) + "mV";
-          value_rect_width = p.boundingRect(
-                                 0, 0, INT_MAX, INT_MAX,
-                                 Qt::AlignLeft | Qt::AlignVCenter, value_str)
-                                 .width();
-          str_y = value > 0 ? _viewport->_dso_ym_end - text_height
-                            : _viewport->_dso_ym_end;
-          p.drawText(QRect(x - 0.5 * value_rect_width, str_y,
-                           value_rect_width, text_height),
-                     value_str);
-          break;
-        }
-      }
-    }
-  }
-
-  if (_viewport->_dso_xm_valid) {
-    p.setPen(QPen(Qt::red, 1, Qt::DotLine));
-    int measure_line_count = 6;
-    const int text_height =
-        p.boundingRect(0, 0, INT_MAX, INT_MAX, Qt::AlignLeft | Qt::AlignTop,
-                       "W")
-            .height();
-    const uint64_t sample_rate =
-        _viewport->_view.session().cur_snap_samplerate();
-    QLineF *line;
-    QLineF *const measure_lines = new QLineF[measure_line_count];
-    line = measure_lines;
-    int64_t x[Viewport::DsoMeasureStages];
-    int dso_xm_stage = 0;
-    if (_viewport->_action_type == DSO_XM_STEP1)
-      dso_xm_stage = 1;
-    else if (_viewport->_action_type == DSO_XM_STEP2)
-      dso_xm_stage = 2;
-    else
-      dso_xm_stage = 3;
-
-    for (int i = 0; i < dso_xm_stage; i++) {
-      x[i] = _viewport->_view.index2pixel(_viewport->_dso_xm_index[i]);
-    }
-    measure_line_count = 0;
-    if (dso_xm_stage > 0) {
-      *line++ = QLine(x[0], _viewport->_dso_xm_y - 10, x[0],
-                      _viewport->_dso_xm_y + 10);
-      measure_line_count += 1;
-    }
-    if (dso_xm_stage > 1) {
-      *line++ = QLine(x[1], _viewport->_dso_xm_y - 10, x[1],
-                      _viewport->_dso_xm_y + 10);
-      *line++ = QLine(x[0], _viewport->_dso_xm_y, x[1], _viewport->_dso_xm_y);
-      _viewport->_mm_width = _viewport->_view.get_ruler()->format_real_time(
-          _viewport->_dso_xm_index[1] - _viewport->_dso_xm_index[0],
-          sample_rate);
-
-      // -- width show
-      const QString w_ctr = "W=" + _viewport->_mm_width;
-      int w_rect_width = p.boundingRect(
-                             0, 0, INT_MAX, INT_MAX,
-                             Qt::AlignLeft | Qt::AlignVCenter, w_ctr)
-                             .width();
-      p.drawText(QRect(x[0] + 10, _viewport->_dso_xm_y - text_height,
-                       w_rect_width, text_height),
-                 w_ctr);
-      measure_line_count += 2;
-    }
-    if (dso_xm_stage > 2) {
-      *line++ = QLineF(x[0], _viewport->_dso_xm_y + 20, x[0],
-                       _viewport->_dso_xm_y + 40);
-      *line++ = QLineF(x[0], _viewport->_dso_xm_y + 30, x[2],
-                       _viewport->_dso_xm_y + 30);
-      *line++ = QLineF(x[2], _viewport->_dso_xm_y + 20, x[2],
-                       _viewport->_dso_xm_y + 40);
-      _viewport->_mm_period = _viewport->_view.get_ruler()->format_real_time(
-          _viewport->_dso_xm_index[2] - _viewport->_dso_xm_index[0],
-          sample_rate);
-      _viewport->_mm_freq = _viewport->_view.get_ruler()->format_real_freq(
-          _viewport->_dso_xm_index[2] - _viewport->_dso_xm_index[0],
-          sample_rate);
-      _viewport->_mm_duty =
-          QString::number((_viewport->_dso_xm_index[1] -
-                            _viewport->_dso_xm_index[0]) *
-                               100.0 /
-                               (_viewport->_dso_xm_index[2] -
-                                _viewport->_dso_xm_index[0]),
-                           'f', 2) +
-          "%";
-
-      // -- period show
-      const QString p_ctr = "P=" + _viewport->_mm_period;
-      int p_rect_width = p.boundingRect(
-                             0, 0, INT_MAX, INT_MAX,
-                             Qt::AlignLeft | Qt::AlignVCenter, p_ctr)
-                             .width();
-      p.drawText(QRect(x[0] + 10, _viewport->_dso_xm_y + 30 - text_height,
-                       p_rect_width, text_height),
-                 p_ctr);
-
-      // -- frequency show
-      const QString f_ctr = "F=" + _viewport->_mm_freq;
-      int f_rect_width = p.boundingRect(
-                             0, 0, INT_MAX, INT_MAX,
-                             Qt::AlignLeft | Qt::AlignVCenter, f_ctr)
-                             .width();
-      p.drawText(QRect(x[0] + 20 + p_rect_width,
-                       _viewport->_dso_xm_y + 30 - text_height, f_rect_width,
-                       text_height),
-                 f_ctr);
-
-      // -- duty show
-      const QString d_ctr = "D=" + _viewport->_mm_duty;
-      int d_rect_width = p.boundingRect(
-                             0, 0, INT_MAX, INT_MAX,
-                             Qt::AlignLeft | Qt::AlignVCenter, d_ctr)
-                             .width();
-      p.drawText(QRect(x[1] + 10, _viewport->_dso_xm_y - 0.5 * text_height,
-                       d_rect_width, text_height),
-                 d_ctr);
-
-      measure_line_count += 3;
-    }
-    p.drawLines(measure_lines, measure_line_count);
-    if (dso_xm_stage < Viewport::DsoMeasureStages) {
-      p.drawLine(x[dso_xm_stage - 1], _viewport->_dso_xm_y,
-                 _viewport->_mouse_point.x(), _viewport->_dso_xm_y);
-      p.drawLine(_viewport->_mouse_point.x(), 0,
-                 _viewport->_mouse_point.x(), _viewport->height());
-    }
-    _viewport->measure_updated();
-  }
-
-  if (_viewport->_action_type == LOGIC_EDGE &&
-      _viewport->_view.session().have_view_data()) {
-    p.setPen(active_color);
-    p.drawLine(
-        QLineF(_viewport->_cur_preX, screen_midY - 5, _viewport->_cur_preX,
-               screen_midY + 5));
-    p.drawLine(
-        QLineF(_viewport->_cur_aftX, screen_midY - 5, _viewport->_cur_aftX,
-               screen_midY + 5));
-    p.drawLine(QLineF(_viewport->_cur_preX, screen_midY, _viewport->_cur_aftX,
-                      screen_midY));
-
-    vector<pair<QString, QString>> rows = {{"", _viewport->_em_edges},
-                                           {"", _viewport->_em_rising},
-                                           {"", _viewport->_em_falling}};
-
-    drawFloatingPanel(p, screen_hover_point,
-                      _viewport->_view.get_view_width(),
-                      _viewport->_view.viewport()->height(), back,
-                      _viewport->_panelBgColor, _viewport->_panelTextColor,
-                      rows);
-  }
-
-  if (_viewport->_action_type == LOGIC_JUMP) {
-    p.setPen(active_color);
-    p.setBrush(Qt::NoBrush);
-    const QPoint pre_points[] = {
-        QPoint(_viewport->_cur_preX, screen_preY),
-        QPoint(_viewport->_cur_preX - 1, screen_preY - 1),
-        QPoint(_viewport->_cur_preX + 1, screen_preY - 1),
-        QPoint(_viewport->_cur_preX - 1, screen_preY + 1),
-        QPoint(_viewport->_cur_preX + 1, screen_preY + 1),
-        QPoint(_viewport->_cur_preX - 2, screen_preY - 2),
-        QPoint(_viewport->_cur_preX + 2, screen_preY - 2),
-        QPoint(_viewport->_cur_preX - 2, screen_preY + 2),
-        QPoint(_viewport->_cur_preX + 2, screen_preY + 2),
-    };
-    p.drawPoints(pre_points, countof(pre_points));
-    if (abs(_viewport->_cur_aftX - _viewport->_cur_preX) +
-            abs(_viewport->_cur_aftY - _viewport->_cur_preY) >
-        20) {
-      if (_viewport->_edge_hit) {
-        const QPoint aft_points[] = {
-            QPoint(_viewport->_cur_aftX, screen_aftY),
-            QPoint(_viewport->_cur_aftX - 1, screen_aftY - 1),
-            QPoint(_viewport->_cur_aftX + 1, screen_aftY - 1),
-            QPoint(_viewport->_cur_aftX - 1, screen_aftY + 1),
-            QPoint(_viewport->_cur_aftX + 1, screen_aftY + 1),
-            QPoint(_viewport->_cur_aftX - 2, screen_aftY - 2),
-            QPoint(_viewport->_cur_aftX + 2, screen_aftY - 2),
-            QPoint(_viewport->_cur_aftX - 2, screen_aftY + 2),
-            QPoint(_viewport->_cur_aftX + 2, screen_aftY + 2),
-        };
-        p.drawPoints(aft_points, countof(aft_points));
-      }
-      int64_t delta = max(_viewport->_edge_start, _viewport->_edge_end) -
-                      min(_viewport->_edge_start, _viewport->_edge_end);
-      QString delta_text =
-          _viewport->_view.get_index_delta(_viewport->_edge_start,
-                                           _viewport->_edge_end) +
-          "/" + QString::number(delta);
-
-      vector<pair<QString, QString>> rows = {{"", delta_text}};
-
-      drawFloatingPanel(p, screen_hover_point,
-                        _viewport->_view.get_view_width(),
-                        _viewport->_view.viewport()->height(), back,
-                        _viewport->_panelBgColor, _viewport->_panelTextColor,
-                        rows);
-
-      QPainterPath path(QPoint(_viewport->_cur_preX, screen_preY));
-      QPoint c1((_viewport->_cur_preX + _viewport->_cur_aftX) / 2,
-                screen_preY);
-      QPoint c2((_viewport->_cur_preX + _viewport->_cur_aftX) / 2,
-                screen_aftY);
-      path.cubicTo(c1, c2, QPoint(_viewport->_cur_aftX, screen_aftY));
-      p.drawPath(path);
-    }
-  }
 }
 
 } // namespace view

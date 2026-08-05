@@ -165,6 +165,30 @@ public:
   bool should_run(const RenderContext &ctx) const override;
 };
 
+/**
+ * Renders measurement overlays: logic frequency arrows + floating panel,
+ * DSO hover lines, DSO Y-measure, DSO X-measure, logic edge/jump markers.
+ * Painted on top of cursors so measurement readouts are always visible.
+ */
+class MeasureOverlayPass : public RenderPass {
+public:
+  void render(QPainter &p, const RenderContext &ctx) override;
+  int z_order() const override { return 50; }
+  bool should_run(const RenderContext &ctx) const override;
+};
+
+/**
+ * Renders DSO trigger status text (Auto/Roll/Waiting Trig/Trig'd) and
+ * the out-of-range data warning. Only visible in DSO running mode on
+ * DSL devices.
+ */
+class TriggerInfoPass : public RenderPass {
+public:
+  void render(QPainter &p, const RenderContext &ctx) override;
+  int z_order() const override { return 60; }
+  bool should_run(const RenderContext &ctx) const override;
+};
+
 } // namespace view
 } // namespace pv
 
