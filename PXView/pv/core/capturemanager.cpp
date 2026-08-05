@@ -61,8 +61,11 @@ void CaptureManager::capture_init() {
   // directly by capture logic (e.g. is_repeat_action()).
   _state->update_capture();
 
-  _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
-  _state->set_cur_samplelimits(_state->device_agent().get_sample_limit());
+  // Store samplerate/limits before clear() (these are device properties,
+  // not snapshot state). set_cur_snap_samplerate() will be called again
+  // AFTER clear() to inject the samplerate into the NEW snapshots.
+  const uint64_t dev_samplerate = _state->device_agent().get_sample_rate();
+  const uint64_t dev_samplelimits = _state->device_agent().get_sample_limit();
 
   _data_updated.store(false);
   _state->set_trigger_flag(false);
@@ -82,8 +85,20 @@ void CaptureManager::capture_init() {
 
   data_unlock();
 
-  // Init data container
+  // Init data container — clear() creates fresh snapshots (samplerate=0).
   _state->capture_data()->clear();
+
+  // CRITICAL: set_cur_snap_samplerate MUST be called AFTER clear(), because
+  // clear() replaces the shared_ptr snapshots with new instances. Calling it
+  // before clear() sets the samplerate on the OLD snapshots, which are then
+  // discarded. The new snapshots would have _samplerate=0, causing
+  // AnalogSignal::paint_mid to compute samples_per_pixel=0 → flat-line waveform.
+  // get_logic() has a fallback injection, but get_analog()/get_dso() did not
+  // (fixed in sessiondata.h). This explicit call after clear() is the
+  // authoritative path; the get_*() injection is a safety net.
+  _state->set_cur_snap_samplerate(dev_samplerate);
+  _state->set_cur_samplelimits(dev_samplelimits);
+
   _state->capture_data()->get_logic()->set_disk_cache_config(_disk_cache_config);
 
   int mode = _state->device_agent().get_work_mode();

@@ -195,34 +195,6 @@ static void drawFloatingPanel(QPainter &p, const QPointF &cursorPos,
 }
 
 // ---------------------------------------------------------------------------
-// RenderPipeline
-// ---------------------------------------------------------------------------
-
-void RenderPipeline::add_pass(std::unique_ptr<RenderPass> pass) {
-  _passes.push_back(std::move(pass));
-}
-
-void RenderPipeline::render(QPainter &p, const RenderContext &ctx) {
-  // Sort passes by z_order (stable to preserve insertion order for
-  // equal z_orders).
-  std::stable_sort(_passes.begin(), _passes.end(),
-                   [](const std::unique_ptr<RenderPass> &a,
-                      const std::unique_ptr<RenderPass> &b) {
-                     return a->z_order() < b->z_order();
-                   });
-
-  for (auto &pass : _passes) {
-    if (pass->should_run(ctx)) {
-      pass->render(p, ctx);
-    }
-  }
-}
-
-void RenderPipeline::clear() {
-  _passes.clear();
-}
-
-// ---------------------------------------------------------------------------
 // GroupCardBackgroundPass
 // ---------------------------------------------------------------------------
 
@@ -371,7 +343,7 @@ void SignalPixmapPass::render(QPainter &p, const RenderContext &ctx) {
             color = Viewport::PROBE_COLORS[idx];
           }
           if (t->signal_type() == SR_CHANNEL_LOGIC) {
-            LogicSignal *logic_signal = (LogicSignal *)t;
+            auto *logic_signal = dynamic_cast<LogicSignal *>(t);
             if (bFirst && logic_signal->data())
               end_align_sample =
                   logic_signal->data()->get_ring_sample_count();
@@ -484,7 +456,13 @@ void DecodeTracePass::render(QPainter &p, const RenderContext &ctx) {
 // ---------------------------------------------------------------------------
 
 bool CursorOverlayPass::should_run(const RenderContext &ctx) const {
-  return ctx.type == TIME_VIEW && ctx.viewport && ctx.view;
+  if (ctx.type != TIME_VIEW || !ctx.viewport || !ctx.view)
+    return false;
+  // Skip entirely if no cursor type is visible — avoids entering render()
+  // (which does multiple if-branch checks) on every paint frame.
+  View *view = ctx.view;
+  return view->cursors_shown() || view->xcursors_shown() ||
+         view->trig_cursor_shown() || view->search_cursor_shown();
 }
 
 void CursorOverlayPass::render(QPainter &p, const RenderContext &ctx) {
@@ -574,7 +552,14 @@ hover.y() < std::max(cursorY0, cursorY1)) {
 // ---------------------------------------------------------------------------
 
 bool MeasureOverlayPass::should_run(const RenderContext &ctx) const {
-  return ctx.type == TIME_VIEW && ctx.viewport && ctx.view;
+  if (ctx.type != TIME_VIEW || !ctx.viewport || !ctx.view)
+    return false;
+  // Skip entirely if no measurement mode is active — avoids entering
+  // render() (which checks 6 separate if-branches) on every paint frame.
+  Viewport *vp = ctx.viewport;
+  return vp->_measure_en || vp->_action_type != NO_ACTION ||
+         vp->_dso_ym_valid || vp->_dso_xm_valid ||
+         vp->_measure_type != NO_MEASURE;
 }
 
 void MeasureOverlayPass::render(QPainter &p, const RenderContext &ctx) {
@@ -642,7 +627,7 @@ void MeasureOverlayPass::render(QPainter &p, const RenderContext &ctx) {
         uint64_t index;
         double value;
         QPointF hpoint;
-        if (((DsoSignal *)s)->get_hover(index, hpoint, value)) {
+        if (dynamic_cast<DsoSignal *>(s)->get_hover(index, hpoint, value)) {
           p.setPen(QPen(ctx.fore, 1, Qt::DashLine));
           p.setBrush(Qt::NoBrush);
           p.drawLine(hpoint.x(), s->get_view_rect().top(), hpoint.x(),
@@ -652,7 +637,7 @@ void MeasureOverlayPass::render(QPainter &p, const RenderContext &ctx) {
         uint64_t index;
         double value;
         QPointF hpoint;
-        if (((AnalogSignal *)s)->get_hover(index, hpoint, value)) {
+        if (dynamic_cast<AnalogSignal *>(s)->get_hover(index, hpoint, value)) {
           p.setPen(QPen(ctx.fore, 1, Qt::DashLine));
           p.setBrush(Qt::NoBrush);
           p.drawLine(hpoint.x(), s->get_view_rect().top(), hpoint.x(),
@@ -666,7 +651,7 @@ void MeasureOverlayPass::render(QPainter &p, const RenderContext &ctx) {
   if (vp->_dso_ym_valid) {
     for (auto s : view->get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
-        DsoSignal *dsoSig = (DsoSignal *)s;
+        auto *dsoSig = dynamic_cast<DsoSignal *>(s);
         if (dsoSig->get_index() == vp->_dso_ym_sig_index) {
           p.setPen(QPen(dsoSig->get_colour(), 1, Qt::DotLine));
           QFontMetrics fm(p.font());

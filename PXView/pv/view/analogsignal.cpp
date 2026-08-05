@@ -501,6 +501,11 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
   // Refresh colour from theme on every paint
   _colour = getSignalColor(_model ? _model->index() : 0);
 
+  pxv_info("AnalogSignal::paint_mid ch=%d _data=%p order=%d enabled_ch=%d",
+           get_index(), (void*)_data,
+           _data ? _data->get_ch_order(get_index()) : -2,
+           _data ? (int)_data->has_enabled_channel(get_index()) : -2);
+
   if (!_data)
     return;
   assert(_view);
@@ -509,6 +514,10 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
   const int height = get_totalHeight();
   const float top = get_y() - height * 0.5;
   const float bottom = get_y() + height * 0.5;
+  if (get_index() == 32)
+    pxv_info("AnalogSignal::paint_mid geom: ch=%d height=%d y=%d top=%.1f bottom=%.1f left=%d right=%d width=%d scale=%.3f offset=%lld",
+             get_index(), height, (int)get_y(), top, bottom, left, right,
+             right - left + 1, _view->scale(), (long long)_view->offset());
   // zeroY 由 get_zero_ratio() 计算；float 数据路径已在 get_zero_ratio() 中
   // 处理 _zero_offset 超界情况 (返回中心 0.5)。
   const float zeroY = ratio2pos(get_zero_ratio());
@@ -1004,7 +1013,13 @@ QString AnalogSignal::get_voltage(double v, int p, bool scaled) {
                         : QString::number(v, 'f', p) + "m" + mapUnit;
 }
 
-void AnalogSignal::set_data(data::AnalogSnapshot *data) { _data = data; }
+void AnalogSignal::set_data(data::AnalogSnapshot *data) {
+  pxv_info("AnalogSignal::set_data ch=%d data=%p (sample_count=%llu)",
+           get_index(),
+           (void*)data,
+           data ? (unsigned long long)data->get_sample_count() : 0ULL);
+  _data = data;
+}
 
 } // namespace view
 } // namespace pv

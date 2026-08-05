@@ -45,10 +45,13 @@ Enum::Enum(QString name, QString label,
 
 Enum::~Enum()
 {
-	if (_selector != nullptr){
+	// Only delete _selector if it has no Qt parent. If it was parented
+	// to a widget (e.g. a dock), Qt's parent-child mechanism will delete
+	// it automatically. Deleting it here as well would cause a double-free.
+	if (_selector != nullptr && _selector->parent() == nullptr){
 		delete _selector;
-		_selector = nullptr;
 	}
+	_selector = nullptr;
 }
 
 QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
@@ -69,7 +72,7 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
 
 	for (unsigned int i = 0; i < _values.size(); i++) {
 		const pair<GVarPtr, QString> &v = _values[i];
-        _selector->addItem(v.second, QVariant::fromValue((void*)v.first.get()));
+		_selector->addItem(v.second, QVariant::fromValue(v.first));
 		
 		if (value && g_variant_compare(v.first.get(), value) == 0)
 			_selector->setCurrentIndex(i);
@@ -98,7 +101,7 @@ void Enum::commit()
 	if (index < 0)
 		return;
 
-	_setter((GVariant*)_selector->itemData(index).value<void*>());
+	_setter(qvariant_cast<GVarPtr>(_selector->itemData(index)).get());
 	emit committed();
 }
 

@@ -25,6 +25,7 @@
 #define PXVIEW_PV_GVARPTR_H
 
 #include <glib.h>
+#include <QMetaType>
 
 namespace pv {
 
@@ -64,9 +65,12 @@ public:
     }
 
     /// Copy constructor — increments ref count.
+    /// Uses g_variant_ref (not ref_sink) because the source is already
+    /// sunk (non-floating); ref_sink would also work but is semantically
+    /// misleading for an already-sunk variant.
     GVarPtr(const GVarPtr &other) : _ptr(other._ptr) {
         if (_ptr)
-            g_variant_ref_sink(_ptr);
+            g_variant_ref(_ptr);
     }
 
     /// Move constructor — steals the pointer without ref/unref.
@@ -87,7 +91,7 @@ public:
                 g_variant_unref(_ptr);
             _ptr = other._ptr;
             if (_ptr)
-                g_variant_ref_sink(_ptr);
+                g_variant_ref(_ptr);
         }
         return *this;
     }
@@ -129,5 +133,7 @@ private:
 };
 
 } // namespace pv
+
+Q_DECLARE_METATYPE(pv::GVarPtr)
 
 #endif // PXVIEW_PV_GVARPTR_H

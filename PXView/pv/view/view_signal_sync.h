@@ -28,6 +28,8 @@
 #include <vector>
 #include <QColor>
 
+#include "iview_delegates.h"
+
 class QColor;
 class QString;
 class QRect;
@@ -53,8 +55,8 @@ struct SignalGroup;
 // _group_card_color) lives here. Signal height state (_spanY /
 // _signalHeight / _signalHeightScale) lives on ViewLayout (migrated
 // from View in Phase 1). View declares `friend class ViewSignalSync;`
-// so the delegate can read and mutate those private members directly.
-class ViewSignalSync {
+// so the delegate can access View's private widget members and layout state.
+class ViewSignalSync : public IViewSignalStore {
 public:
   explicit ViewSignalSync(View *view) : _view(view) {}
 
@@ -96,8 +98,11 @@ public:
   std::vector<SignalGroup> &signal_groups() { return _signal_groups; }
   QColor group_card_color() const { return _group_card_color; }
   void set_group_card_color(QColor c) { _group_card_color = c; }
-  bool rebuild_in_progress() const { return _rebuild_in_progress; }
+  bool rebuild_in_progress() const override { return _rebuild_in_progress; }
   void set_rebuild_in_progress(bool v) { _rebuild_in_progress = v; }
+
+  // -- IViewSignalStore overrides ----------------------------------------
+  size_t signal_count() const override { return _own_signals.size(); }
 
 private:
   View *_view;
@@ -106,8 +111,6 @@ private:
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _rebuild_in_progress = false;
-
-  friend class View;
 };
 
 } // namespace view

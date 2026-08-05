@@ -30,6 +30,7 @@
 #include <QColor>
 #include <QString>
 
+#include "iview_delegates.h"
 #include "cursor.h"
 #include "xcursor.h"
 
@@ -46,18 +47,35 @@ class View;
 // _show_search_cursor / _search_pos / _search_hit / _xcursorList /
 // _show_xcursors) lives here, not on View. View's public cursor API
 // (cursors_shown, trig_cursor_shown, etc.) forwards to this delegate.
-class ViewCursors {
+class ViewCursors : public IViewCursors {
 public:
   explicit ViewCursors(View *view) : _view(view) {}
 
-  // Destructor cleans up all owned cursor objects (trig/search cursors are
-  // deleted by View's destructor before _cursors is destroyed; the lists
-  // are cleaned here).
+  // Destructor cleans up all owned cursor objects, including trig/search
+  // cursors. This eliminates the former cross-class deletion-order
+  // dependency where View's destructor had to delete them before
+  // _cursors was destroyed.
   ~ViewCursors() {
     for (auto c : _logic_cursors) delete c;
     for (auto c : _dso_cursors) delete c;
     for (auto x : _xcursorList) delete x;
+    if (_trig_cursor) { delete _trig_cursor; _trig_cursor = nullptr; }
+    if (_search_cursor) { delete _search_cursor; _search_cursor = nullptr; }
   }
+
+  // -- visibility queries (IViewCursors overrides) ------------------
+  bool cursors_shown() const override { return _show_cursors; }
+  bool trig_cursor_shown() const override { return _show_trig_cursor; }
+  bool search_cursor_shown() const override { return _show_search_cursor; }
+  bool xcursors_shown() const override { return _show_xcursors; }
+  void set_xcursors_shown(bool show) { _show_xcursors = show; }
+
+  // -- cursor accessors (for View inline accessors) ---------------------
+  Cursor *trig_cursor() { return _trig_cursor; }
+  Cursor *search_cursor() { return _search_cursor; }
+  bool search_hit() const { return _search_hit; }
+  uint64_t search_pos() const { return _search_pos; }
+  std::list<XCursor *> &xcursor_list() { return _xcursorList; }
 
   // -- visibility toggles ------------------------------------------------
   void show_cursors(bool show = true);
@@ -71,6 +89,11 @@ public:
   // -- cursor list access ------------------------------------------------
   std::list<Cursor *> &get_cursorList();
   Cursor *get_cursor_by_index(int index);
+
+  // -- initialization (called by View constructor) ----------------------
+  // Creates the trigger and search cursors with the given foreground color.
+  // Both start hidden with index -1.
+  void init_cursors(QColor foreColor);
 
   // -- cursor CRUD -------------------------------------------------------
   void make_cursors_order();
@@ -126,8 +149,6 @@ private:
   bool _show_xcursors = false;
   std::list<XCursor *> _xcursorList;
 
-  // Allow View to construct the trig/search cursors (they need a View& ref)
-  friend class View;
 };
 
 } // namespace view

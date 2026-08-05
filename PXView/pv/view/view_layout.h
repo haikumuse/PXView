@@ -57,10 +57,16 @@ public:
   inline double dso_zoom_factor() const override { return _dso_zoom_factor; }
   inline void set_dso_zoom_factor(double f) { _dso_zoom_factor = f; }
 
+  // -- pre-scale / pre-offset (for View::set_preScale_preOffset) ----------
+  inline double preScale() const { return _preScale; }
+  inline int64_t preOffset() const { return _preOffset; }
+
   // -- signal height / vertical layout state (migrated from View) --------
   inline int spanY() const override { return _spanY; }
   inline int signalHeight() const override { return _signalHeight; }
   inline int signalHeightScale() const override { return _signalHeightScale; }
+  inline int vOffset() const { return _vOffset; }
+  inline void set_vOffset(int offset) { _vOffset = offset; }
   inline void set_signalHeight(int h) { _signalHeight = h; }
   inline void set_signalHeightScale(int h) { _signalHeightScale = h; }
   inline void set_spanY(int s) { _spanY = s; }
@@ -108,9 +114,8 @@ private:
   int _signalHeight = 0;
   int _signalHeightScale = 24;  // default = View::MaxHeightUnit
 
-  // Allow View to access state directly (for inline accessors and init)
-  friend class View;
-  // Allow other delegates to access scale/offset state
+  // Allow other delegates to access scale/offset state via public accessors.
+  // Phase 8: these will be replaced by IViewLayout* interface pointers.
   friend class ViewCursors;
   friend class ViewDataSync;
   friend class ViewSignalSync;

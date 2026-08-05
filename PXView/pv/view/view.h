@@ -200,20 +200,36 @@ public:
   inline IViewLayout *view_layout_interface() { return _layout.get(); }
 
   /**
+   * Phase 8 (Testability): Returns the IViewCursors interface for this View's
+   * cursor delegate. Rendering code that only needs cursor visibility state
+   * should accept IViewCursors* instead of View*.
+   */
+  inline IViewCursors *view_cursors_interface() { return _cursors.get(); }
+
+  /**
+   * Phase 8 (Testability): Returns the IViewSignalStore interface for this
+   * View's signal-sync delegate. Rendering code that only needs signal
+   * count/rebuild state should accept IViewSignalStore* instead of View*.
+   */
+  inline IViewSignalStore *view_signal_store_interface() {
+    return _signal_sync.get();
+  }
+
+  /**
    * Returns the view time scale in seconds per pixel.
    */
-  inline double scale() { return _layout->_scale; }
+  inline double scale() { return _layout->scale(); }
 
-  inline double get_minscale() { return _layout->_minscale; }
+  inline double get_minscale() { return _layout->minscale(); }
 
-  inline double get_maxscale() { return _layout->_maxscale; }
+  inline double get_maxscale() { return _layout->maxscale(); }
 
   void auto_set_max_scale();
 
   /**
    * Returns the pixels offset of the left edge of the view
    */
-  inline int64_t offset() { return _layout->_offset; }
+  inline int64_t offset() { return _layout->offset(); }
 
   /**
    * trigger position fix
@@ -248,11 +264,11 @@ public:
   /**
    * Returns true if cursors are displayed. false otherwise.
    */
-  inline bool cursors_shown() { return _cursors->_show_cursors; }
+  inline bool cursors_shown() { return _cursors->cursors_shown(); }
 
-  inline bool trig_cursor_shown() { return _cursors->_show_trig_cursor; }
+  inline bool trig_cursor_shown() { return _cursors->trig_cursor_shown(); }
 
-  inline bool search_cursor_shown() { return _cursors->_show_search_cursor; }
+  inline bool search_cursor_shown() { return _cursors->search_cursor_shown(); }
 
   /**
    * Shows or hides the cursors.
@@ -268,21 +284,21 @@ public:
   void show_search_cursor(bool show = true);
 
   // ---- Vertical layout ----
-  inline int get_spanY() { return _layout->_spanY; }
+  inline int get_spanY() { return _layout->spanY(); }
 
-  inline int get_signalHeight() { return _layout->_signalHeight; }
+  inline int get_signalHeight() { return _layout->signalHeight(); }
 
-  inline int get_vOffset() { return _layout->_vOffset; }
-  inline void set_vOffset(int offset) { _layout->_vOffset = offset; }
+  inline int get_vOffset() { return _layout->vOffset(); }
+  inline void set_vOffset(int offset) { _layout->set_vOffset(offset); }
   void zoom_vertical(double steps);
   void compute_signal_groups();
   inline const std::vector<SignalGroup> &get_signal_groups() {
-    return _signal_sync->_signal_groups;
+    return _signal_sync->signal_groups();
   }
   QColor get_group_card_color();
   QColor get_group_card_color(int group_index);
   QColor get_trace_card_color(Trace *trace);
-  void set_group_card_color(QColor color) { _signal_sync->_group_card_color = color; }
+  void set_group_card_color(QColor color) { _signal_sync->set_group_card_color(color); }
   bool is_colored_card_mode();
 
   int headerWidth();
@@ -304,7 +320,7 @@ public:
   void clear_cursors();
   void set_cursor_middle(int index);
 
-  inline Cursor *get_trig_cursor() { return _cursors->_trig_cursor; }
+  inline Cursor *get_trig_cursor() { return _cursors->trig_cursor(); }
 
   Cursor *get_cursor_by_index(int index);
 
@@ -318,24 +334,24 @@ public:
   // while headless appear once the View is created.
   void sync_cursors_from_core();
 
-  inline Cursor *get_search_cursor() { return _cursors->_search_cursor; }
+  inline Cursor *get_search_cursor() { return _cursors->search_cursor(); }
 
-  inline bool get_search_hit() { return _cursors->_search_hit; }
+  inline bool get_search_hit() { return _cursors->search_hit(); }
 
   void set_search_pos(uint64_t search_pos, bool hit);
 
-  inline uint64_t get_search_pos() { return _cursors->_search_pos; }
+  inline uint64_t get_search_pos() { return _cursors->search_pos(); }
 
   void scroll_to_logic_last_data_time();
 
   /*
    * horizental cursors
    */
-  inline bool xcursors_shown() { return _cursors->_show_xcursors; }
+  inline bool xcursors_shown() { return _cursors->xcursors_shown(); }
 
-  inline void show_xcursors(bool show) { _cursors->_show_xcursors = show; }
+  inline void show_xcursors(bool show) { _cursors->set_xcursors_shown(show); }
 
-  inline std::list<XCursor *> &get_xcursorList() { return _cursors->_xcursorList; }
+  inline std::list<XCursor *> &get_xcursorList() { return _cursors->xcursor_list(); }
 
   // ---- Viewport update ----
   void set_update(Viewport *viewport, bool need_update);
@@ -371,9 +387,9 @@ public:
   /*
    * back paint status
    */
-  inline bool back_ready() { return _data_sync->_back_ready; }
+  inline bool back_ready() { return _data_sync->back_ready(); }
 
-  inline void set_back(bool ready) { _data_sync->_back_ready = ready; }
+  inline void set_back(bool ready) { _data_sync->set_back_ready(ready); }
 
   /*
    * untils
@@ -460,7 +476,7 @@ public:
    */
   bool rst_decoder_by_key_handel(void *handel, QPoint anchor = QPoint());
 
-  inline std::vector<Signal *> &get_own_signals() { return _signal_sync->_own_signals; }
+  inline std::vector<Signal *> &get_own_signals() { return _signal_sync->own_signals(); }
 
   /**
    * View-owned wrapper lists for derived trace types.
@@ -472,19 +488,19 @@ public:
    */
   inline std::vector<DecodeTrace *> &get_own_decode_traces() {
     sync_derived_traces();
-    return _derived->_own_decode_traces;
+    return _derived->own_decode_traces();
   }
   inline std::vector<SpectrumTrace *> &get_own_spectrum_traces() {
     sync_derived_traces();
-    return _derived->_own_spectrum_traces;
+    return _derived->own_spectrum_traces();
   }
   inline MathTrace *get_own_math_trace() {
     sync_derived_traces();
-    return _derived->_own_math_trace;
+    return _derived->own_math_trace();
   }
   inline LissajousTrace *get_own_lissajous_trace() {
     sync_derived_traces();
-    return _derived->_own_lissajous_trace;
+    return _derived->own_lissajous_trace();
   }
   void sync_derived_traces();
   void mark_derived_traces_dirty();
@@ -525,7 +541,7 @@ public:
   using FilterSnapshot = ViewGlitchFilter::FilterSnapshot;
 
   void undo_filter();
-  bool can_undo_filter() const { return !_glitch_filter->_filter_undo_stack.empty(); }
+  bool can_undo_filter() const { return !_glitch_filter->filter_undo_empty(); }
 
   /**
    * Forwards glitch filter completion/clearing notifications (originating
@@ -677,15 +693,19 @@ private slots:
                                 uint32_t threshold, GlitchFilterMode mode);
 
 private:
-  // ---- Friends (delegates touch View's private state directly) ----
-  // Phase E delegates — friend classes so they can touch View's private
-  // state (_scale / _offset / _own_decode_traces / _trig_cursor / …)
-  // directly. Each delegate owns *behaviour*; the state still lives on View.
+  // ---- Friends (delegates access View's private widgets/state) ----
+  // Delegates own their own state (cursor state in ViewCursors, scale/offset
+  // in ViewLayout, signal list in ViewSignalSync, etc.). The friend
+  // declarations allow them to access View's private widget members
+  // (_ruler, _time_viewport, _fft_viewport, _vsplitter, _header, _viewbottom,
+  // _device_agent, _trace_view_map, _viewport_list, _hover_point, _trig_hoff)
+  // and call private helper methods (signals_changed, viewport_update,
+  // update_margins, update_scroll, etc.) that are not part of the public API.
+  // Phase 8 goal: progressively replace friend access with public accessor
+  // methods or interface pointers (IViewLayout, IViewCursors, etc.).
   friend class ViewLayout;
   friend class ViewCursors;
   friend class ViewDerivedTraces;
-  // Phase J delegates — signal-sync / glitch-filter / data-sync behaviour
-  // extracted from the View God-class during modernize-view-layer-v3.
   friend class ViewSignalSync;
   friend class ViewGlitchFilter;
   friend class ViewDataSync;

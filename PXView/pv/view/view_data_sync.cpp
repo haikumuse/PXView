@@ -23,16 +23,14 @@
 
 // Phase J (modernize-view-layer-v3): data-source / data-document / capture
 // lifecycle data-sync behaviour extracted from the View God-class.
-// ViewDataSync is declared a friend of View so it can touch the private
-// data-sync state (_data_source / _document / _own_signals /
-// _own_lissajous_trace / _time_viewport / _fft_viewport / _device_agent /
-// _viewbottom / _data_updated_timer / _search_hit / _search_pos /
-// _session) directly. Cross-method calls that remain on View (e.g.
-// mark_derived_traces_dirty, rebuild_signals, document_snapshot_source,
+// ViewDataSync owns its state (_data_source / _document / _back_ready /
+// _data_updated_timer). It is declared a friend of View so it can access
+// View's private widget members (_time_viewport, _fft_viewport, _viewcenter,
+// _ruler, _device_agent, etc.) and call private helper methods
+// (mark_derived_traces_dirty, rebuild_signals, document_snapshot_source,
 // get_work_mode, limit_scale_offset, set_trig_cursor_posistion,
 // set_search_pos, set_update, headerWidth, update_margins, update_scroll,
-// update_scale_offset, viewport_update) go through _view->… so the public
-// View API is unchanged.
+// update_scale_offset, viewport_update).
 
 #include "view_data_sync.h"
 
@@ -325,6 +323,16 @@ void ViewDataSync::receive_trigger(quint64 trig_pos1) {
 }
 
 void ViewDataSync::data_updated() {
+  {
+    auto *src = _view->document_snapshot_source();
+    if (src && src->get_analog_snapshot())
+      pxv_info("data_updated: source analog sample_count=%llu doc_has_data=%d",
+               (unsigned long long)src->get_analog_snapshot()->get_sample_count(),
+               (_document && _document->has_data()) ? 1 : 0);
+    else
+      pxv_info("data_updated: source=%p analog_snapshot=%p",
+               (void*)src, src ? (void*)src->get_analog_snapshot() : nullptr);
+  }
   // Detect DSO continuous (running) mode for the fast-path below.
   const bool is_dso_running =
       (_view->get_work_mode() == DSO && _data_source &&

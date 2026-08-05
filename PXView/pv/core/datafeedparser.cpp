@@ -365,6 +365,8 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     _state->set_device_status(ST_STOPPED);
 
     int mode = _state->device_agent().get_work_mode();
+    pxv_info("SR_DF_END work_mode=%d (LOGIC=%d MSO=%d DSO=%d ANALOG=%d)",
+             mode, LOGIC, MSO, DSO, ANALOG);
 
     // Post a message to start all decode tasks.
     if (mode == LOGIC) {
@@ -372,7 +374,23 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     } else {
       _state->frame_ended();
 
-      // 非 LOGIC 模式（DSO/ANALOG/MSO）采集正常完成时，启动解码器。
+      // MSO 模式包含 LOGIC 通道与 ANALOG 通道。LOGIC 模式通过 RevEndPacket 触发
+      // copy_data_to_document + CopyToDocDone + set_data_document 来绑定 analog
+      // 信号的 _data 指针；MSO 模式走本 else 分支，原代码遗漏了 RevEndPacket 广播，
+      // 导致 copy_data_to_document 不执行、analog 信号 _data 恒为 null，
+      // paint_mid() 直接 return，模拟通道波形空白。此处补发 RevEndPacket 复用
+      // on_event(RevEndPacket) 已有的 MSO 处理分支。
+      if (mode == MSO) {
+        pxv_info("SR_DF_END: MSO branch broadcasting RevEndPacket.");
+        _event_bus->broadcast_async<interface::RevEndPacket>({});
+      }
+
+      // 解码器启动策略：
+      //  - MSO 模式：RevEndPacket 路径会在 copy_data_to_document +
+      //    CopyToDocDone 之后由 on_event(CopyToDocDone) 启动解码器，故此处
+      //    不再重复启动，避免重复 start_all_decode_tasks。
+      //  - DSO / ANALOG 模式：无 LOGIC 通道，不触发 RevEndPacket，此处直接
+      //    启动解码器。
       // CaptureOwnerGuard 的释放 + EndCollectWork 广播由 SessionStopped 事件
       // 统一处理（在 DeviceAgent worker 线程的 sr_session_run() 返回后触发），
       // 而不再在 SR_DF_END 时提前释放。SR_DF_END 触发时 libsigrok 的 main
@@ -381,7 +399,9 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
       // repeat/loop 模式下也由 SessionStopped 处理，但 SessionStopped 只在
       // _is_working 为 true 时才释放 guard —— repeat 模式每帧的 guard 释放
       // 由 TrigNextCollect / stop_capture 路径负责。
-      _state->decode_task_manager()->start_all_decode_tasks();
+      if (mode != MSO) {
+        _state->decode_task_manager()->start_all_decode_tasks();
+      }
 
       // 架构修复：MSO 模式包含 LOGIC 通道，采集完成后若启用 auto-apply
       // 且有保存的 thresholds，则自动重新应用毛刺滤波。

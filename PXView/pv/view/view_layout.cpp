@@ -121,7 +121,7 @@ void ViewLayout::update_scale_offset() {
       _maxscale = 1e9;
       _minscale = 1e-15;
     }
-    _scale = max(_scale, _minscale);
+    _scale = max(min(_scale, _maxscale), _minscale);
   } else {
     // DSO mode: base_scale = fit one frame to viewport width. User zoom
     // is preserved across data frames via _dso_zoom_factor (zoom() only

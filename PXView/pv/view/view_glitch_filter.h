@@ -41,11 +41,10 @@ class GlitchFilterPopup;
 
 // ViewGlitchFilter — delegate for View's glitch-filter popup / preview /
 // apply / undo responsibilities. Extracted from the View God-class during
-// Phase J of the modernize-view-layer-v3 spec. All glitch-filter state
-// (_glitch_filter_popup / _preview_ranges / _filter_undo_stack) still
-// lives on View; this class only owns the *behaviour*. View declares
-// `friend class ViewGlitchFilter;` so the delegate can read and mutate
-// those private members directly.
+// Phase J of the modernize-view-layer-v3 spec. Glitch-filter state
+// (_glitch_filter_popup / _preview_ranges / _filter_undo_stack) lives in
+// this class. View declares `friend class ViewGlitchFilter;` so the delegate
+// can access View's private widget members and call private helper methods.
 class ViewGlitchFilter {
 public:
   explicit ViewGlitchFilter(View *view) : _view(view) {}
@@ -90,14 +89,17 @@ public:
   void set_glitch_filter_popup(GlitchFilterPopup *p) { _glitch_filter_popup = p; }
   bool filter_undo_empty() const { return _filter_undo_stack.empty(); }
 
+  // -- cleanup (called by View destructor) ------------------------------
+  // Clears the preview-range cache (LogicSignal pointers become dangling
+  // when signals are deleted). Also accessible for mid-lifecycle reset.
+  void clear_preview_ranges() { _preview_ranges.clear(); }
+
 private:
   View *_view;
 
   GlitchFilterPopup *_glitch_filter_popup = nullptr;
   std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>> _preview_ranges;
   std::vector<FilterSnapshot> _filter_undo_stack;
-
-  friend class View;
 };
 
 } // namespace view

@@ -62,8 +62,21 @@ public:
       _logic->set_samplerate((double)_cur_snap_samplerate);
     return _logic.get();
   }
-  data::AnalogSnapshot *get_analog() { return _analog.get(); }
-  data::DsoSnapshot *get_dso() { return _dso.get(); }
+  data::AnalogSnapshot *get_analog() {
+    // Same samplerate injection as get_logic(): clear() creates a fresh
+    // AnalogSnapshot with _samplerate=0. Without this, AnalogSignal::paint_mid
+    // reads _data->samplerate() == 0 → samples_per_pixel == 0 → flat-line
+    // waveform (all pixels show the same sample).
+    if (_analog && _cur_snap_samplerate > 0)
+      _analog->set_samplerate((double)_cur_snap_samplerate);
+    return _analog.get();
+  }
+  data::DsoSnapshot *get_dso() {
+    // Same samplerate injection as get_logic()/get_analog().
+    if (_dso && _cur_snap_samplerate > 0)
+      _dso->set_samplerate((double)_cur_snap_samplerate);
+    return _dso.get();
+  }
 
   // Shared_ptr getters — for zero-copy ownership sharing with SessionDocument.
   // The caller (copy_data_to_document) copies the shared_ptr, incrementing the

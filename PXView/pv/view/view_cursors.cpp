@@ -50,6 +50,16 @@ using namespace std;
 namespace pv {
 namespace view {
 
+void ViewCursors::init_cursors(QColor foreColor) {
+  _show_trig_cursor = false;
+  _trig_cursor = new Cursor(*_view, -1, 0);
+  _trig_cursor->set_colour(View::LightRed);
+  _show_search_cursor = false;
+  _search_pos = 0;
+  _search_cursor = new Cursor(*_view, -1, _search_pos);
+  _search_cursor->set_colour(foreColor);
+}
+
 void ViewCursors::show_cursors(bool show) {
   _show_cursors = show;
   _view->_ruler->update();

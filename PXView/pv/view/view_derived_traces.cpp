@@ -57,6 +57,26 @@ using namespace std;
 namespace pv {
 namespace view {
 
+void ViewDerivedTraces::cleanup() {
+  for (auto dt : _own_decode_traces)
+    delete dt;
+  _own_decode_traces.clear();
+
+  for (auto st : _own_spectrum_traces)
+    delete st;
+  _own_spectrum_traces.clear();
+
+  if (_own_math_trace) {
+    delete _own_math_trace;
+    _own_math_trace = nullptr;
+  }
+
+  if (_own_lissajous_trace) {
+    delete _own_lissajous_trace;
+    _own_lissajous_trace = nullptr;
+  }
+}
+
 void ViewDerivedTraces::mark_derived_traces_dirty() {
   _derived_traces_dirty = true;
 }

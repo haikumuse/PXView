@@ -53,10 +53,10 @@ class LissajousTrace;
 // lissajous derived-trace responsibilities. Extracted from the View
 // God-class during Phase E of the modernize-view-layer-v2 spec. All
 // derived-trace state (_own_decode_traces / _own_spectrum_traces /
-// _own_math_trace / _own_lissajous_trace / _derived_traces_dirty) still
-// lives on View; this class only owns the *behaviour*. View declares
-// `friend class ViewDerivedTraces;` so the delegate can read and mutate
-// those private members directly.
+// _own_math_trace / _own_lissajous_trace / _derived_traces_dirty) lives
+// in this class. View declares `friend class ViewDerivedTraces;` so the
+// delegate can access View's private widget members and call private
+// helper methods (e.g. mark_derived_traces_dirty, signals_changed).
 class ViewDerivedTraces {
 public:
   explicit ViewDerivedTraces(View *view) : _view(view) {}
@@ -85,6 +85,11 @@ public:
   void set_own_math_trace(MathTrace *t) { _own_math_trace = t; }
   void set_own_lissajous_trace(LissajousTrace *t) { _own_lissajous_trace = t; }
 
+  // -- cleanup (called by View destructor) ------------------------------
+  // Deletes all View-owned wrapper traces and clears the lists.
+  // This centralizes cleanup so View does not need friend access.
+  void cleanup();
+
 private:
   View *_view;
 
@@ -93,8 +98,6 @@ private:
   MathTrace *_own_math_trace = nullptr;
   LissajousTrace *_own_lissajous_trace = nullptr;
   bool _derived_traces_dirty = true;
-
-  friend class View;
 };
 
 } // namespace view

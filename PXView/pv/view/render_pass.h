@@ -71,9 +71,9 @@ struct RenderContext {
  * logic signals, DSO signals, decode traces, cursor overlays,
  * measurement overlays, progress indicators).
  *
- * Passes are executed in z_order() order (ascending). Lower values
- * are painted first (background), higher values painted later
- * (foreground overlays).
+ * Passes are invoked directly by ViewportPainter as stack locals in
+ * explicit paint order. The z_order() method documents the intended
+ * paint order for maintainability but is not used for runtime sorting.
  */
 class RenderPass {
 public:
@@ -82,7 +82,8 @@ public:
   /** Render this pass. Called with an active QPainter on the viewport. */
   virtual void render(QPainter &p, const RenderContext &ctx) = 0;
 
-  /** Z-order for this pass. Lower = painted first (background). */
+  /** Z-order documentation: lower = painted first (background).
+   *  Informational only; ViewportPainter calls passes in explicit order. */
   virtual int z_order() const = 0;
 
   /** Whether this pass should execute for the given context.
@@ -92,29 +93,6 @@ public:
     (void)ctx;
     return true;
   }
-};
-
-/**
- * @brief Manages an ordered pipeline of RenderPass instances.
- *
- * The pipeline sorts passes by z_order on each render call and
- * executes them in sequence. ViewportPainter can use this to
- * decompose its monolithic doPaint() into composable strategies.
- */
-class RenderPipeline {
-public:
-  /** Add a pass to the pipeline. Takes ownership. */
-  void add_pass(std::unique_ptr<RenderPass> pass);
-
-  /** Execute all passes whose should_run() returns true, in
-   *  z_order ascending sequence. */
-  void render(QPainter &p, const RenderContext &ctx);
-
-  /** Remove all passes. */
-  void clear();
-
-private:
-  std::vector<std::unique_ptr<RenderPass>> _passes;
 };
 
 // ---- Concrete passes ----

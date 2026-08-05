@@ -147,7 +147,7 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   // Find the last enabled trace (no divider below it)
   Trace *lastEnabledTrace = nullptr;
   for (auto it = traces.rbegin(); it != traces.rend(); ++it) {
-    if ((*it)->enabled() || dynamic_cast<DsoSignal *>(*it)) {
+    if ((*it)->enabled() || (*it)->signal_type() == SR_CHANNEL_DSO) {
       lastEnabledTrace = *it;
       break;
     }
@@ -155,7 +155,7 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
 
   p.setPen(QPen(dividerColor, 1));
   for (auto t : traces) {
-    if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
+    if (!t->enabled() && t->signal_type() != SR_CHANNEL_DSO)
       continue;
     if (lastInGroup.count(t))
       continue;
@@ -168,7 +168,7 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   }
 
   for (auto t : traces) {
-    if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
+    if (!t->enabled() && t->signal_type() != SR_CHANNEL_DSO)
       continue;
     t->paint_back(p, 0, _viewport->_view.get_view_width(), fore, back);
     if (_viewport->_view.back_ready())
