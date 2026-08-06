@@ -209,7 +209,7 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _title_bar = title_bar;
 
   _session = ::AppControl::Instance()->GetSession();
-  _session->add_callback(this);
+  _session->add_event_listener(this);
   _device_agent = _session->get_device();
 // Phase 2: initialise the config I/O delegate.
 _config_io = std::make_unique<MainWindowConfigIO>(this);
@@ -777,6 +777,18 @@ void MainWindow::on_event(const pv::interface::StoreConfPrev &e) { _event_dispat
 void MainWindow::on_event(const pv::interface::CurrentDeviceChangePrev &e) { _event_dispatcher->on_event(e); }
 void MainWindow::on_event(const pv::interface::StartCollectWorkPrev &e) { _event_dispatcher->on_event(e); }
 void MainWindow::on_event(const pv::interface::EndCollectWorkPrev &e) { _event_dispatcher->on_event(e); }
+// Spec v2 Task 7: Events migrated from ISessionCallback dispatch_to<>
+void MainWindow::on_event(const pv::interface::DataLenUpdated &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::HeaderReceived &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::CaptureUpdated &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::ShowRegion &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::RepeatHold &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::TriggerReceived &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::ShowWaitTrigger &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::SessionError &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::SaveRequested &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::DelayedPropMsg &e) { _event_dispatcher->on_event(e); }
+void MainWindow::on_event(const pv::interface::SampleLimitsChanged &e) { _event_dispatcher->on_event(e); }
 
 // ---------------------------------------------------------------------------
 // IServiceEventListener — forwarded to SessionEventDispatcher (Phase 2).

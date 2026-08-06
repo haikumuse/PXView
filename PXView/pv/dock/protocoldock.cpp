@@ -75,6 +75,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
                            SigSession *session)
     : pv::widgets::SmoothScrollArea(parent), _view(view), _context(nullptr) {
   _session = session;
+    _data_src = _session;
   _cur_search_index = -1;
   _search_edited = false;
   _pro_add_button = nullptr;
@@ -331,6 +332,7 @@ void ProtocolDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
+    _data_src = _session;
   // Disconnect the previous View's visible-range signal before switching
   // to the new tab's View (multi-tab scenario: the old View stays alive).
   if (_view) {
@@ -506,7 +508,7 @@ void ProtocolDock::on_add_protocol() {
 bool ProtocolDock::add_protocol_by_id(
     QString id, bool silent,
     std::list<pv::data::decode::Decoder *> &sub_decoders) {
-  int cur_mode = _session->get_device()->get_work_mode();
+  int cur_mode = _data_src->device()->get_work_mode();
   if (cur_mode != LOGIC && cur_mode != MSO) {
     pxv_info(
         "Protocol Analyzer\nProtocol Analyzer is only valid in Digital Mode!");
@@ -662,13 +664,13 @@ void ProtocolDock::on_del_all_protocol() {
 void ProtocolDock::del_all_protocol() {
   if (_protocol_lay_items.size() > 0) {
     // Call View layer to delete all DecodeTrace, then View will notify Core
-    // to clear all DecoderStacks. Directly calling _session->clear_all_decoder()
+    // to clear all DecoderStacks. Directly calling _data_src->clear_all_decoder()
     // would bypass View and leave DecodeTrace objects orphaned, causing stale UI.
     if (_view) {
       _view->clear_all_decoders();
     } else {
       // Headless fallback: directly call Core if no View exists
-      _session->clear_all_decoder();
+      _data_src->clear_all_decoder();
     }
 
     for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end();
@@ -685,7 +687,7 @@ void ProtocolDock::del_all_protocol() {
 }
 
 void ProtocolDock::decoded_progress(int progress) {
-  const auto &decode_sigs = _session->get_decoder_stacks();
+  const auto &decode_sigs = _data_src->get_decoder_stacks();
   unsigned int index = 0;
 
   for (auto d : decode_sigs) {
@@ -733,7 +735,7 @@ void ProtocolDock::set_model() {
   search_done();
 
   // clear mark_index of all DecoderStacks
-  const auto &decode_sigs = _session->get_decoder_stacks();
+  const auto &decode_sigs = _data_src->get_decoder_stacks();
 
   for (auto d : decode_sigs) {
     d->set_mark_index(-1);
@@ -742,7 +744,7 @@ void ProtocolDock::set_model() {
 
 void ProtocolDock::update_model() {
   pv::view::DecoderModel *decoder_model = _decoder_model;
-  const auto &decode_sigs = _session->get_decoder_stacks();
+  const auto &decode_sigs = _data_src->get_decoder_stacks();
 
   if (decode_sigs.size() == 0)
     decoder_model->setDecoderStack(nullptr);
@@ -822,7 +824,7 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
 
     pv::data::decode::Annotation ann;
     if (decoder_stack->list_annotation(&ann, index.column(), query_row)) {
-      const auto &decode_sigs = _session->get_decoder_stacks();
+      const auto &decode_sigs = _data_src->get_decoder_stacks();
 
       for (auto d : decode_sigs) {
         d->set_mark_index(-1);
@@ -932,7 +934,7 @@ void ProtocolDock::nav_table_view() {
         _table_view->scrollTo(index);
         _table_view->setCurrentIndex(index);
 
-        const auto &decode_sigs = _session->get_decoder_stacks();
+        const auto &decode_sigs = _data_src->get_decoder_stacks();
 
         for (auto d : decode_sigs) {
           d->set_mark_index(-1);
@@ -1145,7 +1147,7 @@ void ProtocolDock::OnProtocolSetting(void *handle) {
       // Route through the View layer so the DecoderOptionsDlg is shown
       // (View owns the DecodeTrace; Core cannot show Qt dialogs). If the
       // user cancels the dialog, no reset happens. Previously this called
-      // _session->rst_decoder_by_key_handel() directly, which never showed
+      // _data_src->rst_decoder_by_key_handel() directly, which never showed
       // the dialog after de-view-ization (create_popup was moved out of
       // Core but never re-added in the View layer).
       _view->rst_decoder_by_key_handel(key_handel);
@@ -1171,13 +1173,13 @@ void ProtocolDock::OnProtocolDelete(void *handle) {
       _protocol_lay_items.erase(it);
       DESTROY_QT_LATER(lay);
       // Call View layer to delete DecodeTrace, then View will notify Core
-      // to delete DecoderStack. Directly calling _session->remove_decoder_by_key_handel()
+      // to delete DecoderStack. Directly calling _data_src->remove_decoder_by_key_handel()
       // would bypass View and leave the DecodeTrace orphaned, causing stale UI.
       if (_view) {
         _view->remove_decoder_by_key_handel(key_handel);
       } else {
         // Headless fallback: directly call Core if no View exists
-        _session->remove_decoder_by_key_handel(key_handel);
+        _data_src->remove_decoder_by_key_handel(key_handel);
       }
       protocol_updated();
       break;
@@ -1365,7 +1367,7 @@ void ProtocolDock::reset_view() {
 }
 
 void ProtocolDock::update_view_status() {
-  bool bEnable = _session->is_working() == false;
+  bool bEnable = _data_src->is_working() == false;
   _pro_keyword_edit->setEnabled(bEnable);
   _pro_add_button->setEnabled(bEnable);
   _pro_type_combo->setEnabled(bEnable);

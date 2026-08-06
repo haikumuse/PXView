@@ -46,15 +46,14 @@ public:
     ~EventBus();
 
     // ---- Listener registration ----
-    void add_callback(ISessionCallbackBase *cb);
-    void remove_callback(ISessionCallbackBase *cb);
+    // Spec v2 Task 7: add_callback/remove_callback removed (ISessionCallback abolished)
     void add_event_listener(interface::IEventListener *l);
     void remove_event_listener(interface::IEventListener *l);
 
     // ---- Listener queries ----
-    bool has_callbacks() const {
-        std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
-        return !_callbacks.empty();
+    bool has_listeners() const {
+        std::shared_lock<std::shared_mutex> lk(_listeners_mutex);
+        return !_event_listeners.empty();
     }
 
     // ---- Sync typed event broadcast ----
@@ -127,51 +126,6 @@ public:
         });
     }
 
-    // ---- Sync dispatch to specific callback interface ----
-    // Used by helper methods (data_updated, frame_began, etc.).
-    //
-    // CRITICAL: If called from a worker thread (e.g. libsigrok data-feed
-    // thread calling set_receive_data_len → dispatch_to<IDataCallback>),
-    // the callbacks (MainWindow::receive_data_len emit signal with
-    // AutoConnection, SessionService::receive_data_len → broadcast_event →
-    // transport QMetaObject::invokeMethod) would create a QThreadData on the
-    // worker thread. When the worker thread exits, LdrShutdownThread destroys
-    // QThreadData → SIGSEGV in Qt6Core.dll. See broadcast_async comment above.
-    //
-    // Fix: on the main thread, dispatch synchronously (preserves existing
-    // semantics). On a worker thread, post to the main thread via postEvent
-    // (same technique as broadcast_async) to avoid creating QThreadData.
-    //
-    // Thread check uses std::this_thread::get_id() instead of
-    // QThread::currentThread() because QThread::currentThread() itself may
-    // create a QThreadData on the calling worker thread (defeating the purpose).
-    template <typename Iface, typename F>
-        requires std::invocable<F, Iface*>
-    void dispatch_to(F fn) {
-        if (std::this_thread::get_id() == _main_thread_id) {
-            std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
-            for (auto *cb : _callbacks) {
-                if (auto *iface = dynamic_cast<Iface *>(cb))
-                    fn(iface);
-            }
-        } else {
-            // Copy the callback pointer vector under the read lock — safe
-            // because we hold the shared lock during the copy, preventing
-            // concurrent modification by add_callback/remove_callback.
-            std::vector<ISessionCallbackBase *> callbacks;
-            {
-                std::shared_lock<std::shared_mutex> lk(_callbacks_mutex);
-                callbacks = _callbacks;
-            }
-            post_async_dispatch([fn, callbacks]() {
-                for (auto *cb : callbacks) {
-                    if (auto *iface = dynamic_cast<Iface *>(cb))
-                        fn(iface);
-                }
-            });
-        }
-    }
-
     // ---- Internal: post a functor to the main thread via QCoreApplication::postEvent ----
     // This avoids creating QThreadData on the calling thread (unlike
     // QMetaObject::invokeMethod), preventing Windows thread-exit crashes.
@@ -192,9 +146,8 @@ public:
     }
 
 private:
-    std::vector<ISessionCallbackBase *> _callbacks;
+    // Spec v2 Task 7: _callbacks and _callbacks_mutex removed (ISessionCallback abolished)
     std::vector<interface::IEventListener *> _event_listeners;
-    mutable std::shared_mutex _callbacks_mutex;
     mutable std::shared_mutex _listeners_mutex;
     static thread_local int _broadcast_depth;
     // Cached main thread ID — initialized in the EventBus constructor (NOT

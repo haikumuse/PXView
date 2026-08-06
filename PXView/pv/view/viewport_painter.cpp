@@ -53,23 +53,23 @@ ViewportPainter::ViewportPainter(Viewport *viewport) : _viewport(viewport) {}
 ViewportPainter::~ViewportPainter() {}
 
 void ViewportPainter::paintEvent(QPaintEvent *event) {
-  if (_viewport->g_drag_active && !_viewport->g_drag_snapshot.isNull()) {
+  if (_viewport->drag_active() && !_viewport->drag_snapshot().isNull()) {
     QPainter p(_viewport);
-    p.drawPixmap(0, 0, _viewport->g_drag_snapshot);
+    p.drawPixmap(0, 0, _viewport->drag_snapshot());
     return;
   }
 
   (void)event;
 
-  _viewport->_paint_in_this_second++;
-  if (_viewport->_is_idle || !_viewport->_frame_interval_timer.isValid()) {
-    _viewport->_frame_interval_timer.restart();
-    _viewport->_is_idle = false;
+  _viewport->paint_in_this_second()++;
+  if (_viewport->is_idle() || !_viewport->frame_interval_timer().isValid()) {
+    _viewport->frame_interval_timer().restart();
+    _viewport->is_idle() = false;
   } else {
     int elapsed =
-        static_cast<int>(_viewport->_frame_interval_timer.restart());
-    if (elapsed > _viewport->_max_frame_time) {
-      _viewport->_max_frame_time = elapsed;
+        static_cast<int>(_viewport->frame_interval_timer().restart());
+    if (elapsed > _viewport->max_frame_time()) {
+      _viewport->max_frame_time() = elapsed;
     }
   }
 
@@ -87,18 +87,18 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   QFont font = theme_font_cursor();
   p.setFont(font);
 
-  _viewport->_view.session().check_update();
+  _viewport->view().session().check_update();
 
   QColor fore(_viewport->palette().color(_viewport->foregroundRole()));
   QColor back(_viewport->palette().color(_viewport->backgroundRole()));
   fore.setAlpha(View::ForeAlpha);
-  _viewport->_view.set_back(false);
+  _viewport->view().set_back(false);
 
   std::vector<Trace *> traces;
-  _viewport->_view.get_traces(_viewport->_type, traces);
+  _viewport->view().get_traces(_viewport->type(), traces);
 
   p.save();
-  p.translate(0, -_viewport->_view.get_vOffset());
+  p.translate(0, -_viewport->view().get_vOffset());
 
   // Phase 5: Group card background rendering via RenderPass.
   // All six passes are now wired in: GroupCardBackgroundPass (here in
@@ -107,13 +107,13 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   {
     GroupCardBackgroundPass cardPass;
     RenderContext ctx;
-    ctx.view = &_viewport->_view;
+    ctx.view = &_viewport->view();
     ctx.viewport = _viewport;
-    ctx.type = _viewport->_type;
+    ctx.type = _viewport->type();
     ctx.viewWidth = _viewport->width();
-    ctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
+    ctx.is_logic_mode = _viewport->view().is_logic_rendering_mode();
     if (ctx.type == TIME_VIEW && ctx.is_logic_mode)
-      ctx.groups = &_viewport->_view.get_signal_groups();
+      ctx.groups = &_viewport->view().get_signal_groups();
     if (cardPass.should_run(ctx))
       cardPass.render(p, ctx);
   }
@@ -128,9 +128,9 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   }
 
   std::set<Trace *> lastInGroup;
-  if (_viewport->_type == TIME_VIEW &&
-      _viewport->_view.is_logic_rendering_mode()) {
-    const auto &groups = _viewport->_view.get_signal_groups();
+  if (_viewport->type() == TIME_VIEW &&
+      _viewport->view().is_logic_rendering_mode()) {
+    const auto &groups = _viewport->view().get_signal_groups();
     for (const auto &group : groups) {
       if (group.traces.empty())
         continue;
@@ -163,50 +163,50 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
       continue;
     int traceBottom =
         t->get_v_offset() + t->get_totalHeight() / 2 + View::SignalMargin;
-    p.drawLine(0, traceBottom, _viewport->_view.get_view_width(),
+    p.drawLine(0, traceBottom, _viewport->view().get_view_width(),
                traceBottom);
   }
 
   for (auto t : traces) {
     if (!t->enabled() && t->signal_type() != SR_CHANNEL_DSO)
       continue;
-    t->paint_back(p, 0, _viewport->_view.get_view_width(), fore, back);
-    if (_viewport->_view.back_ready())
+    t->paint_back(p, 0, _viewport->view().get_view_width(), fore, back);
+    if (_viewport->view().back_ready())
       break;
   }
 
   p.restore();
 
-  if (_viewport->_view.is_logic_rendering_mode() ||
-      _viewport->_view.session().is_instant()) {
-    if (_viewport->_view.session().is_init_status()) {
+  if (_viewport->view().is_logic_rendering_mode() ||
+      _viewport->view().session().is_instant()) {
+    if (_viewport->view().session().is_init_status()) {
       paintCursors(p);
-    } else if (_viewport->_view.session().is_stopped_status()) {
+    } else if (_viewport->view().session().is_stopped_status()) {
       paintSignals(p, fore, back);
-    } else if (_viewport->_view.session().is_realtime_refresh()) {
-      _viewport->_view.session().have_new_realtime_refresh(false);
+    } else if (_viewport->view().session().is_realtime_refresh()) {
+      _viewport->view().session().have_new_realtime_refresh(false);
 
-      if (_viewport->_view.session().have_view_data() ||
-          _viewport->_view.session().is_instant())
+      if (_viewport->view().session().have_view_data() ||
+          _viewport->view().session().is_instant())
         paintSignals(p, fore, back);
       else
         paintProgress(p, fore, back);
-    } else if (_viewport->_view.session().is_running_status()) {
-      if (_viewport->_view.session().is_repeat_mode()) {
+    } else if (_viewport->view().session().is_running_status()) {
+      if (_viewport->view().session().is_repeat_mode()) {
         paintSignals(p, fore, back);
 
-        if (!_viewport->_transfer_started) {
+        if (!_viewport->transfer_started()) {
           bool triggered;
           int captured_progress;
 
-          if (_viewport->_view.session().get_capture_status(
+          if (_viewport->view().session().get_capture_status(
                   triggered, captured_progress)) {
-            _viewport->_view.show_captured_progress(triggered,
+            _viewport->view().show_captured_progress(triggered,
                                                     captured_progress);
           }
         }
-      } else if (_viewport->_type == TIME_VIEW) {
-        _viewport->_view.repeat_unshow();
+      } else if (_viewport->type() == TIME_VIEW) {
+        _viewport->view().repeat_unshow();
         paintProgress(p, fore, back);
       }
     }
@@ -215,15 +215,15 @@ void ViewportPainter::doPaint(const QRect & /* dirtyRect */) {
   }
 
   p.save();
-  p.translate(0, -_viewport->_view.get_vOffset());
+  p.translate(0, -_viewport->view().get_vOffset());
   for (auto t : traces) {
     if (t->enabled())
-      t->paint_fore(p, 0, _viewport->_view.get_view_width(), fore, back);
+      t->paint_fore(p, 0, _viewport->view().get_view_width(), fore, back);
   }
   p.restore();
 
-  if (_viewport->_view.get_signalHeight() != _viewport->_curSignalHeight)
-    _viewport->_curSignalHeight = _viewport->_view.get_signalHeight();
+  if (_viewport->view().get_signalHeight() != _viewport->curSignalHeight())
+    _viewport->curSignalHeight() = _viewport->view().get_signalHeight();
 
   p.end();
 }
@@ -232,9 +232,9 @@ void ViewportPainter::paintCursors(QPainter &p) {
   // Phase 5: cursor overlay rendering now via CursorOverlayPass.
   // Handles regular cursors, xcursors, trigger cursor, and search cursor.
   RenderContext cctx;
-  cctx.view = &_viewport->_view;
+  cctx.view = &_viewport->view();
   cctx.viewport = _viewport;
-  cctx.type = _viewport->_type;
+  cctx.type = _viewport->type();
 
   CursorOverlayPass cursorPass;
   if (cursorPass.should_run(cctx))
@@ -243,20 +243,20 @@ void ViewportPainter::paintCursors(QPainter &p) {
 
 void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
   std::vector<Trace *> traces;
-  _viewport->_view.get_traces(_viewport->_type, traces);
+  _viewport->view().get_traces(_viewport->type(), traces);
 
   // Phase 5: Signal pixmap rebuild + blit via SignalPixmapPass.
   {
     RenderContext sctx;
-    sctx.view = &_viewport->_view;
+    sctx.view = &_viewport->view();
     sctx.viewport = _viewport;
-    sctx.type = _viewport->_type;
-    sctx.vOffset = _viewport->_view.get_vOffset();
+    sctx.type = _viewport->type();
+    sctx.vOffset = _viewport->view().get_vOffset();
     sctx.fore = fore;
     sctx.back = back;
     sctx.traces = &traces;
-    sctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
-    sctx.viewWidth = _viewport->_view.get_view_width();
+    sctx.is_logic_mode = _viewport->view().is_logic_rendering_mode();
+    sctx.viewWidth = _viewport->view().get_view_width();
 
     SignalPixmapPass pixmapPass;
     if (pixmapPass.should_run(sctx))
@@ -268,14 +268,14 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
   // ensure crisp text rendering.
   {
     RenderContext dctx;
-    dctx.view = &_viewport->_view;
+    dctx.view = &_viewport->view();
     dctx.viewport = _viewport;
-    dctx.type = _viewport->_type;
-    dctx.vOffset = _viewport->_view.get_vOffset();
+    dctx.type = _viewport->type();
+    dctx.vOffset = _viewport->view().get_vOffset();
     dctx.fore = fore;
     dctx.back = back;
     dctx.traces = &traces;
-    dctx.is_logic_mode = _viewport->_view.is_logic_rendering_mode();
+    dctx.is_logic_mode = _viewport->view().is_logic_rendering_mode();
 
     DecodeTracePass decodePass;
     if (decodePass.should_run(dctx)) {
@@ -289,21 +289,21 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
   // Phase 5: cursor overlay (regular + xcursor + trigger + search) via CursorOverlayPass.
   paintCursors(p);
 
-  if (_viewport->_type == TIME_VIEW) {
+  if (_viewport->type() == TIME_VIEW) {
     // plot zoom rect
-    if (_viewport->_action_type == LOGIC_ZOOM) {
+    if (_viewport->action_type() == LOGIC_ZOOM) {
       p.setPen(Qt::NoPen);
       p.setBrush(View::LightBlue);
       p.drawRect(
-          QRectF(_viewport->_mouse_down_point, _viewport->_mouse_point));
+          QRectF(_viewport->mouse_down_point(), _viewport->mouse_point()));
     }
 
     // Phase 5: measurement overlay via MeasureOverlayPass.
     {
       RenderContext mctx;
-      mctx.view = &_viewport->_view;
+      mctx.view = &_viewport->view();
       mctx.viewport = _viewport;
-      mctx.type = _viewport->_type;
+      mctx.type = _viewport->type();
       mctx.fore = fore;
       mctx.back = back;
 
@@ -315,9 +315,9 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
     // Phase 5: DSO trigger info via TriggerInfoPass.
     {
       RenderContext tctx;
-      tctx.view = &_viewport->_view;
+      tctx.view = &_viewport->view();
       tctx.viewport = _viewport;
-      tctx.type = _viewport->_type;
+      tctx.type = _viewport->type();
       tctx.fore = fore;
       tctx.back = back;
 
@@ -331,8 +331,8 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
 void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
   (void)back;
 
-  if (_viewport->_view.is_logic_rendering_mode() &&
-      _viewport->_view.session().is_repeat_mode()) {
+  if (_viewport->view().is_logic_rendering_mode() &&
+      _viewport->view().session().is_repeat_mode()) {
     return;
   }
 
@@ -348,16 +348,16 @@ void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
   p.setPen(Qt::gray);
   p.setBrush(Qt::NoBrush);
   const QPoint cenPos =
-      QPoint(_viewport->_view.get_view_width() / 2, _viewport->height() / 2);
+      QPoint(_viewport->view().get_view_width() / 2, _viewport->height() / 2);
   const int radius =
-      min(0.3 * _viewport->_view.get_view_width(), 0.3 * _viewport->height());
+      min(0.3 * _viewport->view().get_view_width(), 0.3 * _viewport->height());
   p.drawEllipse(cenPos, radius - 2, radius - 2);
   p.setPen(QPen(View::Green, 4, Qt::SolidLine));
   p.drawArc(cenPos.x() - radius, cenPos.y() - radius, 2 * radius, 2 * radius,
             180 * 16, progress);
 
-  if (!_viewport->_transfer_started) {
-    const int width = _viewport->_view.get_view_width();
+  if (!_viewport->transfer_started()) {
+    const int width = _viewport->view().get_view_width();
     const QPoint cenLeftPos =
         QPoint(width / 2 - 0.05 * width, _viewport->height() / 2);
     const QPoint cenRightPos =
@@ -367,16 +367,16 @@ void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
     QColor foreBack = fore;
     foreBack.setAlpha(View::BackAlpha);
     p.setPen(Qt::NoPen);
-    p.setBrush((_viewport->_timer_cnt % 3) == 0 ? fore : foreBack);
+    p.setBrush((_viewport->timer_cnt() % 3) == 0 ? fore : foreBack);
     p.drawEllipse(cenLeftPos, trigger_radius, trigger_radius);
-    p.setBrush((_viewport->_timer_cnt % 3) == 1 ? fore : foreBack);
+    p.setBrush((_viewport->timer_cnt() % 3) == 1 ? fore : foreBack);
     p.drawEllipse(cenPos, trigger_radius, trigger_radius);
-    p.setBrush((_viewport->_timer_cnt % 3) == 2 ? fore : foreBack);
+    p.setBrush((_viewport->timer_cnt() % 3) == 2 ? fore : foreBack);
     p.drawEllipse(cenRightPos, trigger_radius, trigger_radius);
 
     bool triggered;
 
-    if (_viewport->_view.session().get_capture_status(
+    if (_viewport->view().session().get_capture_status(
             triggered, captured_progress)) {
       p.setPen(View::Blue);
 
@@ -414,7 +414,7 @@ void ViewportPainter::paintProgress(QPainter &p, QColor fore, QColor back) {
     apply_global_font_strategy(font);
     p.setFont(font);
 
-    p.drawText(_viewport->_view.get_view_rect(),
+    p.drawText(_viewport->view().get_view_rect(),
                Qt::AlignCenter | Qt::AlignVCenter,
                QString::number(progress100) + "%");
     _viewport->prgRate(progress100);

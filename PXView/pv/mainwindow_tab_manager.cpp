@@ -78,8 +78,8 @@ void TabManager::create_tab_widget(QWidget *parent, QVBoxLayout *layout) {
 }
 
 void TabManager::init_initial_tab() {
-  SigSession *_session = _wnd->_session;
-  toolbars::SamplingBar *_sampling_bar = _wnd->_sampling_bar;
+  SigSession *_session = _wnd->session();
+  toolbars::SamplingBar *_sampling_bar = _wnd->sampling_bar();
 
   pv::view::View *initial_view =
       new pv::view::View(_session, _sampling_bar, _wnd);
@@ -90,7 +90,7 @@ void TabManager::init_initial_tab() {
   pv::data::SessionDocument *initial_doc =
       _session->document_registry()->get_document_by_index(initial_doc_idx);
 
-  DeviceAgent *_device_agent = _wnd->_device_agent;
+  DeviceAgent *_device_agent = _wnd->device_agent();
   if (_device_agent && _device_agent->have_instance()) {
     initial_doc->save_signal_config(_session->get_signal_models(), {});
     pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
@@ -174,34 +174,34 @@ pv::TabContext *TabManager::current_context() {
 // ---------------------------------------------------------------------------
 
 void TabManager::bind_docks(pv::TabContext *ctx) {
-  _wnd->_sampling_bar->bind_context(ctx);
-  _wnd->_dock_manager->measure_widget()->bind_context(ctx);
-  _wnd->_dock_manager->search_widget()->bind_context(ctx);
-  _wnd->_dock_manager->protocol_widget()->bind_context(ctx);
-  _wnd->_dock_manager->device_options_widget()->bind_context(ctx);
-  _wnd->_dock_manager->log_widget()->bind_context(ctx);
-  _wnd->_dock_manager->trigger_widget()->bind_context(ctx);
-  _wnd->_dock_manager->dso_trigger_widget()->bind_context(ctx);
+  _wnd->sampling_bar()->bind_context(ctx);
+  _wnd->dock_manager()->measure_widget()->bind_context(ctx);
+  _wnd->dock_manager()->search_widget()->bind_context(ctx);
+  _wnd->dock_manager()->protocol_widget()->bind_context(ctx);
+  _wnd->dock_manager()->device_options_widget()->bind_context(ctx);
+  _wnd->dock_manager()->log_widget()->bind_context(ctx);
+  _wnd->dock_manager()->trigger_widget()->bind_context(ctx);
+  _wnd->dock_manager()->dso_trigger_widget()->bind_context(ctx);
 }
 
 void TabManager::unbind_docks() {
-  _wnd->_sampling_bar->unbind_context();
-  _wnd->_dock_manager->measure_widget()->unbind_context();
-  _wnd->_dock_manager->search_widget()->unbind_context();
-  _wnd->_dock_manager->protocol_widget()->unbind_context();
-  _wnd->_dock_manager->device_options_widget()->unbind_context();
-  _wnd->_dock_manager->log_widget()->unbind_context();
-  _wnd->_dock_manager->trigger_widget()->unbind_context();
-  _wnd->_dock_manager->dso_trigger_widget()->unbind_context();
+  _wnd->sampling_bar()->unbind_context();
+  _wnd->dock_manager()->measure_widget()->unbind_context();
+  _wnd->dock_manager()->search_widget()->unbind_context();
+  _wnd->dock_manager()->protocol_widget()->unbind_context();
+  _wnd->dock_manager()->device_options_widget()->unbind_context();
+  _wnd->dock_manager()->log_widget()->unbind_context();
+  _wnd->dock_manager()->trigger_widget()->unbind_context();
+  _wnd->dock_manager()->dso_trigger_widget()->unbind_context();
 }
 
 void TabManager::set_view_on_docks(pv::view::View *view) {
-  _wnd->_sampling_bar->set_context(_wnd->_session, view);
-  _wnd->_sampling_bar->set_readonly(false);
-  _wnd->_sampling_bar->set_view(view);
-  _wnd->_dock_manager->measure_widget()->set_view(view);
-  _wnd->_dock_manager->search_widget()->set_view(view);
-  _wnd->_dock_manager->protocol_widget()->set_view(view);
+  _wnd->sampling_bar()->set_context(_wnd->session(), view);
+  _wnd->sampling_bar()->set_readonly(false);
+  _wnd->sampling_bar()->set_view(view);
+  _wnd->dock_manager()->measure_widget()->set_view(view);
+  _wnd->dock_manager()->search_widget()->set_view(view);
+  _wnd->dock_manager()->protocol_widget()->set_view(view);
   view->installEventFilter(_wnd);
 }
 
@@ -224,7 +224,7 @@ void TabManager::remove_tab(int index) {
   if (_tab_contexts.size() <= 1)
     return;
 
-  SigSession *_session = _wnd->_session;
+  SigSession *_session = _wnd->session();
 
   pv::TabContext *ctx = _tab_contexts[index];
   if (ctx->is_live() && _session->is_working()) {
@@ -396,9 +396,9 @@ void TabManager::on_tab_attached(QWidget *widget, const QString &title) {
 }
 
 void TabManager::on_new_tab_requested() {
-  SigSession *_session = _wnd->_session;
-  toolbars::SamplingBar *_sampling_bar = _wnd->_sampling_bar;
-  DeviceAgent *_device_agent = _wnd->_device_agent;
+  SigSession *_session = _wnd->session();
+  toolbars::SamplingBar *_sampling_bar = _wnd->sampling_bar();
+  DeviceAgent *_device_agent = _wnd->device_agent();
 
   pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, _wnd);
   // phase 2: document owned by DocumentRegistry.
@@ -434,7 +434,7 @@ void TabManager::on_tab_renamed(int index, const QString &title) {
 
 void TabManager::on_tab_attached_extended(QWidget *widget,
                                            const QString &title) {
-  SigSession *_session = _wnd->_session;
+  SigSession *_session = _wnd->session();
 
   pv::view::View *view = qobject_cast<pv::view::View *>(widget);
   if (view) {

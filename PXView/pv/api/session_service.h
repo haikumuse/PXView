@@ -48,10 +48,6 @@ namespace pv {
 namespace api {
 
 class SessionService : public ISessionService,
-                       public IDataCallback,
-                       public ICaptureCallback,
-                       public ITriggerCallback,
-                       public ISessionStateCallback,
                        public pv::interface::IEventListener {
 public:
     explicit SessionService(SigSession *session, DeviceAgent *device);
@@ -306,22 +302,23 @@ public:
     Result<void> clear_error_state() override;
 
     // ---- ISessionCallback ----
-    void session_error() override;
-    void session_save() override;
-    void data_updated() override;
-    void update_capture() override;
-    void cur_snap_samplerate_changed() override;
-    void signals_changed() override;
-    void receive_trigger(quint64 trigger_pos) override;
-    void frame_ended() override;
-    void frame_began() override;
-    void show_region(uint64_t start, uint64_t end, bool keep) override;
-    void show_wait_trigger() override;
-    void repeat_hold(int percent) override;
-    void decode_done() override;
-    void receive_data_len(quint64 len) override;
-    void receive_header() override;
-    void delay_prop_msg(QString strMsg) override;
+// Spec v2 Task 7: was ISessionCallback overrides — now regular methods
+void session_error();
+void session_save();
+void data_updated();
+void update_capture();
+void cur_snap_samplerate_changed();
+void signals_changed();
+void receive_trigger(quint64 trigger_pos);
+void frame_ended();
+void frame_began();
+void show_region(uint64_t start, uint64_t end, bool keep);
+void show_wait_trigger();
+void repeat_hold(int percent);
+void decode_done();
+void receive_data_len(quint64 len);
+void receive_header();
+void delay_prop_msg(QString strMsg);
 
     // ---- IEventListener ----
     // Full migration: all notification events are wired to on_event handlers

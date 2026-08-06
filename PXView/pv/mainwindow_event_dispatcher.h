@@ -87,6 +87,19 @@ public:
     void on_event(const pv::interface::StartCollectWorkPrev &) override;
     void on_event(const pv::interface::EndCollectWorkPrev &) override;
 
+    // Spec v2 Task 7: Events migrated from ISessionCallback dispatch_to<>
+    void on_event(const pv::interface::DataLenUpdated &) override;
+    void on_event(const pv::interface::HeaderReceived &) override;
+    void on_event(const pv::interface::CaptureUpdated &) override;
+    void on_event(const pv::interface::ShowRegion &) override;
+    void on_event(const pv::interface::RepeatHold &) override;
+    void on_event(const pv::interface::TriggerReceived &) override;
+    void on_event(const pv::interface::ShowWaitTrigger &) override;
+    void on_event(const pv::interface::SessionError &) override;
+    void on_event(const pv::interface::SaveRequested &) override;
+    void on_event(const pv::interface::DelayedPropMsg &) override;
+    void on_event(const pv::interface::SampleLimitsChanged &) override;
+
     // --- IServiceEventListener forwarding ---
     // Routes View operation broadcasts from SessionService (MCP/WS API)
     // to the active View. MainWindow::on_service_event forwards here.

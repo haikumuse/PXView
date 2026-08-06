@@ -170,8 +170,8 @@ public:
     bool go_vDialPre(bool manul);
     bool go_vDialNext(bool manul); 
 
-    inline dslDial *get_vDial(){
-        return _vDial;
+inline dslDial *get_vDial(){
+return _vDial.get();
     }
 
     uint64_t get_vDialValue();
@@ -327,7 +327,7 @@ private:
     bool _en_lock;
     bool _show;
 
-    dslDial *_vDial;
+    std::unique_ptr<dslDial> _vDial;
     bool _vDialActive;
     uint8_t _acCoupling;
     uint8_t _bits;

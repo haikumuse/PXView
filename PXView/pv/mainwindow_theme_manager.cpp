@@ -182,66 +182,66 @@ void MainWindowThemeManager::switchLanguage(int language) {
   }
 
   if (language == LAN_CN) {
-    (void)_wnd->_qtTrans.load(":/qt_" + QString::number(language));
-    qApp->installTranslator(&_wnd->_qtTrans);
-    (void)_wnd->_myTrans.load(":/my_" + QString::number(language));
-    qApp->installTranslator(&_wnd->_myTrans);
+    (void)_wnd->qtTrans().load(":/qt_" + QString::number(language));
+    qApp->installTranslator(&_wnd->qtTrans());
+    (void)_wnd->myTrans().load(":/my_" + QString::number(language));
+    qApp->installTranslator(&_wnd->myTrans());
   } else if (language == LAN_EN) {
-    qApp->removeTranslator(&_wnd->_qtTrans);
-    qApp->removeTranslator(&_wnd->_myTrans);
+    qApp->removeTranslator(&_wnd->qtTrans());
+    qApp->removeTranslator(&_wnd->myTrans());
   }
 
   _wnd->retranslateUi();
 
   UiManager::Instance()->Update(UI_UPDATE_ACTION_LANG);
-  _wnd->_session->update_lang_text();
+  _wnd->session()->update_lang_text();
 }
 
 void MainWindowThemeManager::setupRibbonCategories() {
   // Add Ribbon categories
-  _wnd->_category_file_index = _wnd->_title_bar->addCategory(
+  _wnd->category_file_index() = _wnd->title_bar()->addCategory(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-  _wnd->_category_display_index = _wnd->_title_bar->addCategory(
+  _wnd->category_display_index() = _wnd->title_bar()->addCategory(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-  _wnd->_category_help_index = _wnd->_title_bar->addCategory(
+  _wnd->category_help_index() = _wnd->title_bar()->addCategory(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
 
   // File category
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_load);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_store);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_default);
-  _wnd->_title_bar->addSeparator(_wnd->_category_file_index);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_open);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_save);
-  _wnd->_title_bar->addSeparator(_wnd->_category_file_index);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_export);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_import);
-  _wnd->_title_bar->addAction(_wnd->_category_file_index, _wnd->_file_bar->_action_capture);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_load);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_store);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_default);
+  _wnd->title_bar()->addSeparator(_wnd->category_file_index());
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_open);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_save);
+  _wnd->title_bar()->addSeparator(_wnd->category_file_index());
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_export);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_import);
+  _wnd->title_bar()->addAction(_wnd->category_file_index(), _wnd->file_bar()->_action_capture);
 
   // Display category
-  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_cn);
-  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_traditional);
-  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_logo_bar->_action_en);
-  _wnd->_title_bar->addSeparator(_wnd->_category_display_index);
-  _wnd->_title_bar->addAction(_wnd->_category_display_index, _wnd->_trig_bar->_action_dispalyOptions);
+  _wnd->title_bar()->addAction(_wnd->category_display_index(), _wnd->logo_bar()->_action_cn);
+  _wnd->title_bar()->addAction(_wnd->category_display_index(), _wnd->logo_bar()->_action_traditional);
+  _wnd->title_bar()->addAction(_wnd->category_display_index(), _wnd->logo_bar()->_action_en);
+  _wnd->title_bar()->addSeparator(_wnd->category_display_index());
+  _wnd->title_bar()->addAction(_wnd->category_display_index(), _wnd->trig_bar()->_action_dispalyOptions);
 
   // Help category
-  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_about);
-  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_manual);
-  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_issue);
-  _wnd->_title_bar->addAction(_wnd->_category_help_index, _wnd->_logo_bar->_update);
+  _wnd->title_bar()->addAction(_wnd->category_help_index(), _wnd->logo_bar()->_about);
+  _wnd->title_bar()->addAction(_wnd->category_help_index(), _wnd->logo_bar()->_manual);
+  _wnd->title_bar()->addAction(_wnd->category_help_index(), _wnd->logo_bar()->_issue);
+  _wnd->title_bar()->addAction(_wnd->category_help_index(), _wnd->logo_bar()->_update);
 }
 
 void MainWindowThemeManager::retranslateRibbon() {
-  if (_wnd->_title_bar) {
-    _wnd->_title_bar->retranslateUi(
-        _wnd->_category_file_index,
+  if (_wnd->title_bar()) {
+    _wnd->title_bar()->retranslateUi(
+        _wnd->category_file_index(),
         L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-    _wnd->_title_bar->retranslateUi(
-        _wnd->_category_display_index,
+    _wnd->title_bar()->retranslateUi(
+        _wnd->category_display_index(),
         L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-    _wnd->_title_bar->retranslateUi(
-        _wnd->_category_help_index,
+    _wnd->title_bar()->retranslateUi(
+        _wnd->category_help_index(),
         L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
   }
 }

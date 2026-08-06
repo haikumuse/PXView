@@ -32,6 +32,18 @@
 #include "../api/types.h"  // api::MeasurementValue (for get_measurements return type)
 #include "../core/cursorregistry.h"  // core::CursorEntry (for get_cursors return type)
 
+// Spec v2 Task 8: DataSource now inherits from 5 fine-grained interfaces
+// (IDataSource, ISignalSource, IDecoderHost, ICaptureControl, IMeasureSource).
+// This enables View-layer classes to depend on only the interface they need
+// (ISP), while SigSession (which inherits DataSource) automatically satisfies
+// all 5 interfaces.  DataSource itself remains as the composite fat-interface
+// for backward compatibility; new code should depend on the specific interface.
+#include "idata_source.h"
+#include "isignal_source.h"
+#include "idecoder_host.h"
+#include "icapture_control.h"
+#include "imeasure_source.h"
+
 struct srd_decoder;
 class DecoderStatus;
 class DeviceAgent;  // forward declaration (global namespace); defined in deviceagent.h
@@ -53,9 +65,21 @@ class SessionDocument;
 class TriggerConfig;
 namespace decode { class Decoder; }
 
+// Spec v2 Task 8: DataSource inherits all 5 fine-grained interfaces.
+// Existing methods (some pure, some with default impls) override the
+// pure virtuals from each interface.  SigSession inherits DataSource and
+// therefore satisfies all 5 interfaces — a SigSession* is implicitly
+// convertible to any of IDataSource*/ISignalSource*/IDecoderHost*/
+// ICaptureControl*/IMeasureSource*.
 class DataSource
+    : public IDataSource,
+      public ISignalSource,
+      public IDecoderHost,
+      public ICaptureControl,
+      public IMeasureSource
 {
 public:
+    // virtual ~DataSource() = default; — inherited from interfaces
     virtual ~DataSource() {}
 
     // ---- Device access (Task D4: capability queries / probe config reads

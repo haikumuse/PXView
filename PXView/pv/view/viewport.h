@@ -125,6 +125,9 @@ public:
   explicit Viewport(View &parent, View_type type);
   ~Viewport();
 
+  // Public static constant (needed by ViewportInteraction)
+  static constexpr int DragFrameInterval = 16;
+
   QColor panelBgColor() const { return _panelBgColor; }
   void setPanelBgColor(QColor c) { _panelBgColor = c; }
   QColor panelTextColor() const { return _panelTextColor; }
@@ -206,9 +209,133 @@ signals:
   void prgRate(int progress);
 
 public:
-  // Member variables — public to allow delegate classes (ViewportPainter,
-  // ViewportInteraction, ViewportDrag) and RenderPass classes to access
-  // state without friend declarations (Task 4: eliminate friend declarations).
+  // ---- Spec v2 Task 1: Public accessors for delegate classes ----
+  // Member variables are now private; delegates use these reference-returning
+  // accessors instead of direct _viewport->_xxx access.
+
+  // A. Rendering state (ViewportPainter / SignalPixmapPass)
+  View& view() { return _view; }
+  View_type& type() { return _type; }
+  bool& need_update() { return _need_update; }
+  QPixmap& pixmap() { return _pixmap; }
+  QMenu*& cmenu() { return _cmenu; }
+  double& curScale() { return _curScale; }
+  int64_t& curOffset() { return _curOffset; }
+  int& curSignalHeight() { return _curSignalHeight; }
+  int& curVOffset() { return _curVOffset; }
+
+  // B. Interaction state (ViewportInteraction)
+  QPoint& mouse_point() { return _mouse_point; }
+  QPoint& mouse_down_point() { return _mouse_down_point; }
+  int64_t& mouse_down_offset() { return _mouse_down_offset; }
+  ActionType& action_type() { return _action_type; }
+  Signal*& drag_sig() { return _drag_sig; }
+  Trace*& resize_trace_upper() { return _resize_trace_upper; }
+  Trace*& resize_trace_lower() { return _resize_trace_lower; }
+  int& resize_mouse_down_y() { return _resize_mouse_down_y; }
+  int& resize_upper_height() { return _resize_upper_height; }
+  int& resize_lower_height() { return _resize_lower_height; }
+  bool& curs_moved() { return _curs_moved; }
+  bool& xcurs_moved() { return _xcurs_moved; }
+  LogicSignal*& hover_logic_signal() { return _hover_logic_signal; }
+
+  // C. Drag state (ViewportDrag)
+  QTimer& drag_frame_timer() { return _drag_frame_timer; }
+  QPoint& drag_last_pos() { return _drag_last_pos; }
+  bool& drag_frame_pending() { return _drag_frame_pending; }
+  Qt::MouseButtons& drag_buttons() { return _drag_buttons; }
+  int& drag_strength() { return _drag_strength; }
+  QElapsedTimer& elapsed_time() { return _elapsed_time; }
+  QTimer& drag_timer() { return _drag_timer; }
+
+  // D. Measure state (MeasureOverlayPass)
+  bool& measure_en() { return _measure_en; }
+  MeasureType& measure_type() { return _measure_type; }
+  bool& dso_xm_valid() { return _dso_xm_valid; }
+  int& dso_xm_y() { return _dso_xm_y; }
+  auto& dso_xm_index() { return _dso_xm_index; }
+  bool& dso_ym_valid() { return _dso_ym_valid; }
+  uint16_t& dso_ym_sig_index() { return _dso_ym_sig_index; }
+  double& dso_ym_sig_value() { return _dso_ym_sig_value; }
+  uint64_t& dso_ym_index() { return _dso_ym_index; }
+  int& dso_ym_start() { return _dso_ym_start; }
+  int& dso_ym_end() { return _dso_ym_end; }
+  int64_t& cur_preX() { return _cur_preX; }
+  int64_t& cur_aftX() { return _cur_aftX; }
+  int64_t& cur_thdX() { return _cur_thdX; }
+  int& cur_midY() { return _cur_midY; }
+  int& cur_preY() { return _cur_preY; }
+  int& cur_preY_top() { return _cur_preY_top; }
+  int& cur_preY_bottom() { return _cur_preY_bottom; }
+  int& cur_aftY() { return _cur_aftY; }
+  bool& edge_hit() { return _edge_hit; }
+  QString& mm_width() { return _mm_width; }
+  QString& mm_period() { return _mm_period; }
+  QString& mm_freq() { return _mm_freq; }
+  QString& mm_duty() { return _mm_duty; }
+  uint64_t& edge_rising() { return _edge_rising; }
+  uint64_t& edge_falling() { return _edge_falling; }
+  uint64_t& edge_start() { return _edge_start; }
+  uint64_t& edge_end() { return _edge_end; }
+  QString& em_rising() { return _em_rising; }
+  QString& em_falling() { return _em_falling; }
+  QString& em_edges() { return _em_edges; }
+  uint64_t& cur_sample() { return _cur_sample; }
+  uint64_t& nxt_sample() { return _nxt_sample; }
+  uint64_t& thd_sample() { return _thd_sample; }
+  uint64_t& hover_index() { return _hover_index; }
+  bool& hover_hit() { return _hover_hit; }
+  uint16_t& hover_sig_index() { return _hover_sig_index; }
+  double& hover_sig_value() { return _hover_sig_value; }
+
+  // E. Trigger state (TriggerInfoPass)
+  bool& transfer_started() { return _transfer_started; }
+  int& timer_cnt() { return _timer_cnt; }
+  int& waiting_trig() { return _waiting_trig; }
+  bool& dso_trig_moved() { return _dso_trig_moved; }
+  QTimer& trigger_timer() { return _trigger_timer; }
+  bool& is_checked_trig() { return _is_checked_trig; }
+
+  // F. Progress / FPS state
+  uint64_t& sample_received() { return _sample_received; }
+  double& progress_displayed() { return _progress_displayed; }
+  QTimer& progress_timer() { return _progress_timer; }
+  int& max_frame_time() { return _max_frame_time; }
+  int& fps() { return _fps; }
+  QTimer& fps_timer() { return _fps_timer; }
+  QElapsedTimer& frame_interval_timer() { return _frame_interval_timer; }
+  bool& is_idle() { return _is_idle; }
+  int& paint_in_this_second() { return _paint_in_this_second; }
+
+  // G. Context menu / actions
+  QMenu*& logic_cmenu() { return _logic_cmenu; }
+  QAction*& copy_this_channel_action() { return _copy_this_channel_action; }
+  QAction*& copy_decoder_track_action() { return _copy_decoder_track_action; }
+  QAction*& copy_decoder_group_action() { return _copy_decoder_group_action; }
+  QAction*& copy_all_channels_action() { return _copy_all_channels_action; }
+  QPoint& logic_menu_pos() { return _logic_menu_pos; }
+  QAction*& yAction() { return _yAction; }
+  QAction*& xAction() { return _xAction; }
+
+  // H. Edge navigation
+  EdgeNavButton*& prev_edge_btn() { return _prev_edge_btn; }
+  EdgeNavButton*& next_edge_btn() { return _next_edge_btn; }
+
+  // I. Wait trigger state
+  high_resolution_clock::time_point& lst_wait_tigger_time() { return _lst_wait_tigger_time; }
+  int& tigger_wait_times() { return _tigger_wait_times; }
+
+  // J. Drag snapshot state (g_ prefixed members)
+  bool& drag_active() { return g_drag_active; }
+  QPixmap& drag_snapshot() { return g_drag_snapshot; }
+
+  // K. Delegate access (unique_ptr members)
+  ViewportPainter* painter() const { return _painter.get(); }
+  ViewportInteraction* interaction() const { return _interaction.get(); }
+  ViewportDrag* drag() const { return _drag.get(); }
+
+private:
+  // ---- Member variables (private, Spec v2 Task 1) ----
   View &_view;
   View_type _type;
   bool _need_update;
@@ -311,8 +438,6 @@ public:
   QPoint _drag_last_pos;
   bool _drag_frame_pending;
   Qt::MouseButtons _drag_buttons;
-
-  static constexpr int DragFrameInterval = 16;
 
   // Edge navigation buttons
   EdgeNavButton *_prev_edge_btn;

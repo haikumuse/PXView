@@ -78,7 +78,8 @@ private slots:
     void on_actionCapture_triggered();
 
 public:
-    SigSession* _session;
+    SigSession *_session;
+    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
 
     // XToolButton _file_button;
     QMenu   *_menu;

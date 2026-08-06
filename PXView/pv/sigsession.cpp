@@ -519,7 +519,7 @@ bool SigSession::set_default_device() {
 bool SigSession::set_device(ds_device_handle dev_handle) {
   assert(!_state->is_saving());
   assert(!_state->is_working());
-  assert(_event_bus && _event_bus->has_callbacks());
+  assert(_event_bus && _event_bus->has_listeners());
 
   // modernize-core-layer-radical Task 11: pre-broadcast synchronously so
   // MainWindow can close modal dialogs / hide calibration / delete protocols
@@ -1088,8 +1088,7 @@ void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
   // R1: symmetric to set_cur_snap_samplerate which fires
   // cur_snap_samplerate_changed(); notify capture listeners that the
   // sample limit changed.
-  dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->cur_samplelimits_changed(); });
+  broadcast_async<interface::SampleLimitsChanged>({});
 }
 
 std::vector<std::shared_ptr<data::SignalModel>> &

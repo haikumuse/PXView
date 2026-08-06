@@ -351,15 +351,14 @@ SessionService::SessionService(SigSession *session, DeviceAgent *device)
     // _api_doc_index defaults to SIZE_MAX via its in-class default initializer.
     // It is later injected via set_api_document() by AppService.
     if (_session) {
-        _session->add_callback(this);
-        // Register as IEventListener to receive all typed events.
+        // Spec v2 Task 7: add_callback removed, only IEventListener registration remains
         _session->add_event_listener(this);
     }
 }
 
 SessionService::~SessionService() {
     if (_session) {
-        _session->remove_callback(this);
+        // Spec v2 Task 7: remove_callback removed
         _session->remove_event_listener(this);
     }
     // phase 2: release the MCP-dedicated document slot. Ownership is held by
@@ -912,7 +911,7 @@ Result<int> SessionService::configure_and_start(
         std::map<int, ::GlitchFilterMode> modes;
         for (const auto &gf : glitch_filters) {
             thresholds[(int)gf.first] = static_cast<uint32_t>(gf.second);
-            modes[(int)gf.first] = GLITCH_FILTER_BOTH;
+            modes[(int)gf.first] = ::GlitchFilterMode::Both;
         }
         _session->set_glitch_filter(thresholds, modes);
     }
@@ -3170,20 +3169,21 @@ Result<void> SessionService::set_glitch_filter(const GlitchFilterConfig &config)
         int ch_idx = (int)config.channels[i];
         thresholds[ch_idx] = static_cast<uint32_t>(config.thresholds[i]);
         // 默认 BOTH 模式
-        modes[ch_idx] = GLITCH_FILTER_BOTH;
+        modes[ch_idx] = ::GlitchFilterMode::Both;
     }
     // 如果有 mode 信息，覆盖默认值
+    // config.modes 使用 pv::api::GlitchFilterMode, 需转换为全局 ::GlitchFilterMode
     for (size_t i = 0; i < config.channels.size() && i < config.modes.size(); i++) {
         int ch_idx = (int)config.channels[i];
         switch (config.modes[i]) {
-        case GlitchFilterMode::Both:
-            modes[ch_idx] = GLITCH_FILTER_BOTH;
+        case pv::api::GlitchFilterMode::Both:
+            modes[ch_idx] = ::GlitchFilterMode::Both;
             break;
-        case GlitchFilterMode::High:
-            modes[ch_idx] = GLITCH_FILTER_HIGH;
+        case pv::api::GlitchFilterMode::High:
+            modes[ch_idx] = ::GlitchFilterMode::High;
             break;
-        case GlitchFilterMode::Low:
-            modes[ch_idx] = GLITCH_FILTER_LOW;
+        case pv::api::GlitchFilterMode::Low:
+            modes[ch_idx] = ::GlitchFilterMode::Low;
             break;
         }
     }
@@ -3213,13 +3213,13 @@ GlitchFilterConfig SessionService::get_glitch_filter_config() const {
         for (const auto &kv : th) {
             config.channels.push_back(kv.first);
             config.thresholds.push_back(static_cast<int32_t>(kv.second));
-            GlitchFilterMode m = GlitchFilterMode::Both;
+            pv::api::GlitchFilterMode m = pv::api::GlitchFilterMode::Both;
             auto mit = md.find(kv.first);
             if (mit != md.end()) {
                 switch (mit->second) {
-                case GLITCH_FILTER_BOTH: m = GlitchFilterMode::Both; break;
-                case GLITCH_FILTER_HIGH: m = GlitchFilterMode::High; break;
-                case GLITCH_FILTER_LOW:  m = GlitchFilterMode::Low;  break;
+                case ::GlitchFilterMode::Both: m = pv::api::GlitchFilterMode::Both; break;
+                case ::GlitchFilterMode::High: m = pv::api::GlitchFilterMode::High; break;
+                case ::GlitchFilterMode::Low:  m = pv::api::GlitchFilterMode::Low;  break;
                 }
             }
             config.modes.push_back(m);

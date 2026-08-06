@@ -16,7 +16,7 @@
 #include "../data/triggerconfig.h"
 #include "../deviceagent.h"
 #include "../pxvdef.h"
-#include <libsigrok/libsigrok.h>
+#include "isession_coordination.h"
 
 namespace pv {
 
@@ -60,8 +60,12 @@ class FilterProcessor;
  * set by SigSession::init() after the managers are constructed, and remain
  * valid for the lifetime of the SessionStateContext (managers are destroyed
  * before _state in the SigSession destructor).
+ *
+ * Spec v2 Task 10: Implements ISessionCoordination to expose cross-manager
+ * coordination methods via an interface, breaking the circular dependency
+ * between SessionStateContext and its 5 managers.
  */
-class SessionStateContext {
+class SessionStateContext : public ISessionCoordination {
 public:
   /// Error status enum (migrated from SigSession::SESSION_ERROR_STATUS so
   /// SessionStateContext does not need to depend on SigSession). SigSession
@@ -209,20 +213,21 @@ public:
   get_decoder_trace(int index, data::SessionDocument *doc = nullptr);
   int get_trace_index_by_key_handel(void *handel,
                                     data::SessionDocument *doc = nullptr);
-  void clear_all_decode_task2();
-  void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
-  void attach_data_to_signal(SessionData *data);
+  // --- ISessionCoordination overrides (Spec v2 Task 10) ---
+  void clear_all_decode_task2() override;
+  void add_decode_task(std::shared_ptr<data::DecoderStack> stack) override;
+  void attach_data_to_signal(SessionData *data) override;
   // Core→libsigrok 触发配置唯一同步点。
   // disable_trigger=true 时（instant 模式）清除 session 上的 sr_trigger，
   // 让所有 driver（demo/pxlogic/fx2lafw）都不等待触发，立即采集数据。
   // 这是统一入口，避免在每个 driver 内部单独判断 instant 标志。
-  void sync_trigger_to_libsigrok(bool disable_trigger = false);
-  void clear_glitch_filter_state_for_capture();
-  uint16_t get_ch_num(int type);
-  uint64_t cur_samplelimits();
-  uint64_t cur_snap_samplerate();
-  void set_cur_snap_samplerate(uint64_t samplerate);
-  void set_cur_samplelimits(uint64_t samplelimits);
+  void sync_trigger_to_libsigrok(bool disable_trigger = false) override;
+  void clear_glitch_filter_state_for_capture() override;
+  uint16_t get_ch_num(int type) override;
+  uint64_t cur_samplelimits() override;
+  uint64_t cur_snap_samplerate() override;
+  void set_cur_snap_samplerate(uint64_t samplerate) override;
+  void set_cur_samplelimits(uint64_t samplelimits) override;
 
   // --- Decode-stack handle id generator (kept on state for centralized
   // access by both SigSession::add_decoder and DecodeTaskManager) ---

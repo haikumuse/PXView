@@ -56,7 +56,7 @@ void MainWindowStatusBar::init(QLabel *disk_cache_label,
 
 void MainWindowStatusBar::update_disk_cache_status() {
   update_sample_period();
-  DeviceAgent *agent = _wnd->_device_agent;
+  DeviceAgent *agent = _wnd->device_agent();
   if (!agent || !agent->have_instance()) {
     if (_disk_cache_label)
       _disk_cache_label->hide();
@@ -64,7 +64,7 @@ void MainWindowStatusBar::update_disk_cache_status() {
     return;
   }
 
-  SigSession *session = _wnd->_session;
+  SigSession *session = _wnd->session();
   QDateTime trig_time = session->get_trig_time();
   if (session->is_triged() && trig_time.isValid()) {
     _trig_time_label->setText(
@@ -171,11 +171,11 @@ void MainWindowStatusBar::update_fps() {
   }
 
   int dock_fps = 0;
-  if (_wnd->_dock_manager && _wnd->_dock_manager->sliding_drawer()) {
-    dock_fps = _wnd->_dock_manager->sliding_drawer()->get_fps();
+  if (_wnd->dock_manager() && _wnd->dock_manager()->sliding_drawer()) {
+    dock_fps = _wnd->dock_manager()->sliding_drawer()->get_fps();
   }
 
-  _wnd->_acq_count = 0;
+  _wnd->acq_count() = 0;
 
   if (_fps_label) {
     QString fps_text =

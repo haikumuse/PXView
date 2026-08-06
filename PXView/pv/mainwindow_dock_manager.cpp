@@ -79,7 +79,7 @@ DockManager::~DockManager() {
 // ---------------------------------------------------------------------------
 
 void DockManager::create_docks(pv::view::View *initial_view) {
-    SigSession *_session = _wnd->_session;
+    SigSession *_session = _wnd->session();
 
     // ---- Trigger dock (logic analyzer) ----
     _trigger_dock = new QDockWidget(
@@ -155,7 +155,7 @@ void DockManager::create_docks(pv::view::View *initial_view) {
     dock_lay->setSpacing(0);
     dock_lay->setSizeConstraint(QLayout::SetMinimumSize);
     QWidget *sampling_widget =
-        _wnd->_sampling_bar->createSamplingSettingsWidget(dock_container);
+        _wnd->sampling_bar()->createSamplingSettingsWidget(dock_container);
     dock_lay->addWidget(sampling_widget);
     _device_options_widget->set_sampling_widget(sampling_widget);
 
@@ -175,10 +175,10 @@ void DockManager::create_docks(pv::view::View *initial_view) {
 
     QObject::connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied,
             _wnd, [this]() {
-                if (_wnd->_session->have_view_data() == false)
-                    _wnd->_sampling_bar->commit_settings();
-                _wnd->_sampling_bar->update_sample_rate_list();
-                _wnd->_sampling_bar->reload();
+                if (_wnd->session()->have_view_data() == false)
+                    _wnd->sampling_bar()->commit_settings();
+                _wnd->sampling_bar()->update_sample_rate_list();
+                _wnd->sampling_bar()->reload();
             });
 
     // ---- Log dock ----
@@ -485,8 +485,8 @@ void DockManager::retranslateUi() {
 // ---------------------------------------------------------------------------
 
 void DockManager::restore_dock() {
-    if (_wnd->_device_agent->have_instance())
-        _wnd->_trig_bar->reload();
+    if (_wnd->device_agent()->have_instance())
+        _wnd->trig_bar()->reload();
 
     _side_bar->clearAllChecked();
 
@@ -498,7 +498,7 @@ void DockManager::restore_dock() {
             _drawer_current_page = _drawer_page_protocol;
         } else if (opt->triggerDock) {
             _side_bar->setItemChecked(MainWindow::SIDEBAR_TRIGGER, true);
-            int mode = _wnd->_device_agent->get_work_mode();
+            int mode = _wnd->device_agent()->get_work_mode();
             if (mode != DSO) {
                 _trigger_widget->update_view();
                 _sliding_drawer->open(_drawer_page_trigger);
@@ -558,7 +558,7 @@ void DockManager::on_side_bar_dock_clicked(int index) {
 
     switch (index) {
     case MainWindow::SIDEBAR_TRIGGER:
-        if (_wnd->_device_agent->get_work_mode() != DSO) {
+        if (_wnd->device_agent()->get_work_mode() != DSO) {
             _trigger_widget->update_view();
             drawerPage = _drawer_page_trigger;
         } else {
@@ -626,17 +626,17 @@ void DockManager::on_side_bar_dock_clicked(int index) {
 void DockManager::on_side_bar_action_clicked(int index) {
     switch (index) {
     case MainWindow::SIDEBAR_RUNSTOP:
-        if (_wnd->_session->is_working()) {
-            _wnd->_session->stop_capture();
+        if (_wnd->session()->is_working()) {
+            _wnd->session()->stop_capture();
         } else {
-            _wnd->_sampling_bar->run_or_stop();
+            _wnd->sampling_bar()->run_or_stop();
         }
         break;
     case MainWindow::SIDEBAR_INSTANT:
-        if (_wnd->_session->is_working() && _wnd->_session->is_instant()) {
-            _wnd->_session->stop_capture();
+        if (_wnd->session()->is_working() && _wnd->session()->is_instant()) {
+            _wnd->session()->stop_capture();
         } else {
-            _wnd->_sampling_bar->run_or_stop_instant();
+            _wnd->sampling_bar()->run_or_stop_instant();
         }
         break;
     }
@@ -648,7 +648,7 @@ void DockManager::on_side_bar_action_clicked(int index) {
 
 ::DockOptions *DockManager::getDockOptions() {
     AppConfig &app = AppConfig::Instance();
-    int mode = _wnd->_device_agent->get_work_mode();
+    int mode = _wnd->device_agent()->get_work_mode();
     if (mode == LOGIC)
         return &app.frameOptions._logicDock;
     else if (mode == DSO)
@@ -665,12 +665,12 @@ void DockManager::on_side_bar_action_clicked(int index) {
 // open page belongs to a sidebar item that has become invisible.
 // ---------------------------------------------------------------------------
 void DockManager::update_toolbar_view_status() {
-    _wnd->_sampling_bar->update_view_status();
-    _wnd->_file_bar->update_view_status();
-    _wnd->_trig_bar->update_view_status();
+    _wnd->sampling_bar()->update_view_status();
+    _wnd->file_bar()->update_view_status();
+    _wnd->trig_bar()->update_view_status();
 
-    bool bEnable = _wnd->_session->is_working() == false;
-    int mode = _wnd->_device_agent->get_work_mode();
+    bool bEnable = _wnd->session()->is_working() == false;
+    int mode = _wnd->device_agent()->get_work_mode();
 
     _side_bar->setItemEnabled(_wnd->SIDEBAR_TRIGGER, bEnable);
     _side_bar->setItemEnabled(_wnd->SIDEBAR_DECODE, bEnable);
@@ -683,8 +683,8 @@ void DockManager::update_toolbar_view_status() {
     _side_bar->setItemEnabled(_wnd->SIDEBAR_RUNSTOP, true);
     _side_bar->setItemEnabled(_wnd->SIDEBAR_INSTANT, true);
 
-    if (_wnd->_session->is_working() && mode == DSO) {
-        if (_wnd->_session->is_instant() == false) {
+    if (_wnd->session()->is_working() && mode == DSO) {
+        if (_wnd->session()->is_instant() == false) {
             _side_bar->setItemEnabled(_wnd->SIDEBAR_TRIGGER, true);
             _side_bar->setItemEnabled(_wnd->SIDEBAR_MEASURE, true);
             _side_bar->setItemEnabled(_wnd->SIDEBAR_FUNCTION, true);

@@ -87,7 +87,8 @@ private slots:
 public:
     bool _enable;
     bool _connected;
-    SigSession* _session;
+    SigSession *_session;
+    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
 
     XToolButton _logo_button;
 

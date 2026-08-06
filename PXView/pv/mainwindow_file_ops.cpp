@@ -62,16 +62,16 @@
 namespace pv {
 
 void MainWindowFileOps::on_load_file(QString file_name) {
-  pv::view::View *new_view = new pv::view::View(_wnd->_session, _wnd->_sampling_bar, _wnd);
+  pv::view::View *new_view = new pv::view::View(_wnd->session(), _wnd->sampling_bar(), _wnd);
   // phase 2: document owned by DocumentRegistry.
-  size_t new_doc_idx = _wnd->_session->document_registry()->take_document(
-      std::make_unique<pv::data::SessionDocument>(_wnd->_session));
+  size_t new_doc_idx = _wnd->session()->document_registry()->take_document(
+      std::make_unique<pv::data::SessionDocument>(_wnd->session()));
   pv::data::SessionDocument *new_doc =
-      _wnd->_session->document_registry()->get_document_by_index(new_doc_idx);
+      _wnd->session()->document_registry()->get_document_by_index(new_doc_idx);
   pv::TabContext *ctx =
-      SessionManager::instance()->create_context(new_view, _wnd->_session, new_doc,
+      SessionManager::instance()->create_context(new_view, _wnd->session(), new_doc,
                                                  new_doc_idx,
-                                                 _wnd->_session->document_registry());
+                                                 _wnd->session()->document_registry());
 
   QFileInfo fi(file_name);
   ctx->set_title(fi.baseName());
@@ -80,46 +80,46 @@ void MainWindowFileOps::on_load_file(QString file_name) {
   _wnd->add_tab(ctx);
 
   try {
-    if (_wnd->_device_agent->is_hardware()) {
+    if (_wnd->device_agent()->is_hardware()) {
       _wnd->save_config();
     }
 
     // 架构修复：检查 set_file 返回值，失败时不创建空白 tab
-    if (!_wnd->_session->set_file(file_name)) {
+    if (!_wnd->session()->set_file(file_name)) {
       QString strMsg(
           L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
       strMsg += file_name;
       MsgBox::Show(strMsg);
       // 回滚已创建的 tab
-      int idx = _wnd->_tab_manager->contexts().indexOf(ctx);
+      int idx = _wnd->tab_manager()->contexts().indexOf(ctx);
       if (idx >= 0)
         _wnd->remove_tab(idx);
-      _wnd->_session->set_default_device();
+      _wnd->session()->set_default_device();
       return;
     }
     ctx->make_live();
     ctx->activate();
-    _wnd->update_tab_style(_wnd->_tab_manager->contexts().indexOf(ctx));
+    _wnd->update_tab_style(_wnd->tab_manager()->contexts().indexOf(ctx));
   } catch (QString e) {
     QString strMsg(
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
     strMsg += file_name;
     MsgBox::Show(strMsg);
-    _wnd->_session->set_default_device();
+    _wnd->session()->set_default_device();
   }
 }
 
 void MainWindowFileOps::on_import_file(QString file_name) {
-  pv::view::View *new_view = new pv::view::View(_wnd->_session, _wnd->_sampling_bar, _wnd);
+  pv::view::View *new_view = new pv::view::View(_wnd->session(), _wnd->sampling_bar(), _wnd);
   // phase 2: document owned by DocumentRegistry.
-  size_t new_doc_idx = _wnd->_session->document_registry()->take_document(
-      std::make_unique<pv::data::SessionDocument>(_wnd->_session));
+  size_t new_doc_idx = _wnd->session()->document_registry()->take_document(
+      std::make_unique<pv::data::SessionDocument>(_wnd->session()));
   pv::data::SessionDocument *new_doc =
-      _wnd->_session->document_registry()->get_document_by_index(new_doc_idx);
+      _wnd->session()->document_registry()->get_document_by_index(new_doc_idx);
   pv::TabContext *ctx =
-      SessionManager::instance()->create_context(new_view, _wnd->_session, new_doc,
+      SessionManager::instance()->create_context(new_view, _wnd->session(), new_doc,
                                                  new_doc_idx,
-                                                 _wnd->_session->document_registry());
+                                                 _wnd->session()->document_registry());
 
   QFileInfo fi(file_name);
   ctx->set_title(fi.baseName());
@@ -130,46 +130,46 @@ void MainWindowFileOps::on_import_file(QString file_name) {
   try {
     // Import external data file using libsigrok input modules
     // (VCD, CSV, binary, Saleae, etc.) — aligned with PulseView.
-    if (!_wnd->_session->import_file(file_name)) {
+    if (!_wnd->session()->import_file(file_name)) {
       QString strMsg(
           L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
       strMsg += file_name;
       MsgBox::Show(strMsg);
       // 回滚已创建的 tab
-      int idx = _wnd->_tab_manager->contexts().indexOf(ctx);
+      int idx = _wnd->tab_manager()->contexts().indexOf(ctx);
       if (idx >= 0)
         _wnd->remove_tab(idx);
-      _wnd->_session->set_default_device();
+      _wnd->session()->set_default_device();
       return;
     }
     ctx->make_live();
     ctx->activate();
-    _wnd->update_tab_style(_wnd->_tab_manager->contexts().indexOf(ctx));
+    _wnd->update_tab_style(_wnd->tab_manager()->contexts().indexOf(ctx));
   } catch (QString e) {
     QString strMsg(
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FAIL_TO_LOAD), "Failed to load "));
     strMsg += file_name;
     MsgBox::Show(strMsg);
-    _wnd->_session->set_default_device();
+    _wnd->session()->set_default_device();
   }
 }
 
 void MainWindowFileOps::on_save() {
   using pv::dialogs::StoreProgress;
 
-  if (_wnd->_device_agent->have_instance() == false) {
+  if (_wnd->device_agent()->have_instance() == false) {
     pxv_info("Have no device, can't to save data.");
     return;
   }
 
-  if (_wnd->_session->is_working()) {
+  if (_wnd->session()->is_working()) {
     pxv_info("Save data: stop the current device.");
-    _wnd->_session->stop_capture();
+    _wnd->session()->stop_capture();
   }
 
-  _wnd->_session->set_saving(true);
+  _wnd->session()->set_saving(true);
 
-  StoreProgress *dlg = new StoreProgress(_wnd->_session, _wnd);
+  StoreProgress *dlg = new StoreProgress(_wnd->session(), _wnd);
   dlg->SetView(_wnd->current_view());
   dlg->save_run(_wnd);
 }
@@ -177,12 +177,12 @@ void MainWindowFileOps::on_save() {
 void MainWindowFileOps::on_export() {
   using pv::dialogs::StoreProgress;
 
-  if (_wnd->_session->is_working()) {
+  if (_wnd->session()->is_working()) {
     pxv_info("Export data: stop the current device.");
-    _wnd->_session->stop_capture();
+    _wnd->session()->stop_capture();
   }
 
-  StoreProgress *dlg = new StoreProgress(_wnd->_session, _wnd);
+  StoreProgress *dlg = new StoreProgress(_wnd->session(), _wnd);
   dlg->SetView(_wnd->current_view());
   dlg->export_run();
 }

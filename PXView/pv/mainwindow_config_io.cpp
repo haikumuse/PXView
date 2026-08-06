@@ -116,8 +116,8 @@ QString MainWindowConfigIO::gen_config_file_path(bool isNewFormat) {
     dir.mkpath(file);
   }
 
-  QString driver_name = _wnd->_device_agent->driver_name();
-  QString mode_name = QString::number(_wnd->_device_agent->get_work_mode());
+  QString driver_name = _wnd->device_agent()->driver_name();
+  QString mode_name = QString::number(_wnd->device_agent()->get_work_mode());
   QString lang_name;
   QString base_path = dir.absolutePath() + "/" + driver_name + mode_name;
 
@@ -134,9 +134,9 @@ QString MainWindowConfigIO::gen_config_file_path(bool isNewFormat) {
 
 void MainWindowConfigIO::save_config() {
   pxv_info("save_config: ENTER, have_instance=%d, is_hardware=%d",
-           _wnd->_device_agent->have_instance(),
-           _wnd->_device_agent->is_hardware());
-  if (_wnd->_device_agent->have_instance() == false) {
+           _wnd->device_agent()->have_instance(),
+           _wnd->device_agent()->is_hardware());
+  if (_wnd->device_agent()->have_instance() == false) {
     pxv_info("There is no need to save the configuration");
     return;
   }
@@ -147,13 +147,13 @@ void MainWindowConfigIO::save_config() {
   // can prefer this device. Without this, switching to demo and exiting
   // would leave lastDeviceDriver stale (still pointing to the hardware
   // device), causing the app to jump back to hardware on restart.
-  app.deviceOptions.lastDeviceDriver = _wnd->_device_agent->driver_name();
+  app.deviceOptions.lastDeviceDriver = _wnd->device_agent()->driver_name();
   app.SaveDevice();
 
-  if (_wnd->_device_agent->is_hardware() && !_wnd->_device_agent->is_demo()) {
+  if (_wnd->device_agent()->is_hardware() && !_wnd->device_agent()->is_demo()) {
     // Persist connection ID for hardware devices to distinguish multiple
     // devices of the same model.
-    struct sr_dev_inst *sdi = _wnd->_device_agent->inst();
+    struct sr_dev_inst *sdi = _wnd->device_agent()->inst();
     if (sdi) {
       const char *cid = sr_dev_inst_connid_get(sdi);
       if (cid)
@@ -162,14 +162,14 @@ void MainWindowConfigIO::save_config() {
 
     QString sessionFile = gen_config_file_path(true);
     save_config_to_file(sessionFile);
-  } else if (_wnd->_device_agent->is_demo()) {
+  } else if (_wnd->device_agent()->is_demo()) {
     // Demo device: save channel/trigger/decoder config to its own .pxc file
     // so demo setups (channel enable, trigger, decoders) persist across restarts.
     QDir dir(GetFirmwareDir());
     if (dir.exists()) {
       QString ses_name = dir.absolutePath() + "/" +
-                         _wnd->_device_agent->driver_name() +
-                         QString::number(_wnd->_device_agent->get_work_mode()) +
+                         _wnd->device_agent()->driver_name() +
+                         QString::number(_wnd->device_agent()->get_work_mode()) +
                          ".pxc";
       save_config_to_file(ses_name);
     }
@@ -186,19 +186,19 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
                   QApplication::applicationVersion();
 
   sessionVar["Version"] = QJsonValue::fromVariant(SESSION_FORMAT_VERSION);
-  sessionVar["Device"] = QJsonValue::fromVariant(_wnd->_device_agent->driver_name());
+  sessionVar["Device"] = QJsonValue::fromVariant(_wnd->device_agent()->driver_name());
   sessionVar["DeviceMode"] =
-      QJsonValue::fromVariant(_wnd->_device_agent->get_work_mode());
+      QJsonValue::fromVariant(_wnd->device_agent()->get_work_mode());
   sessionVar["Language"] = QJsonValue::fromVariant(app.frameOptions.language);
   sessionVar["Title"] = QJsonValue::fromVariant(title);
 
-  if (_wnd->_device_agent->is_hardware() && _wnd->_device_agent->get_work_mode() == LOGIC) {
-    sessionVar["CollectMode"] = _wnd->_session->get_collect_mode();
+  if (_wnd->device_agent()->is_hardware() && _wnd->device_agent()->get_work_mode() == LOGIC) {
+    sessionVar["CollectMode"] = _wnd->session()->get_collect_mode();
   }
 
   // --- Device instance session config (sample rate, limit_samples, operation_mode, etc.) ---
   GVariant *gvar_opts =
-      _wnd->_device_agent->get_config_list(nullptr, SR_CONF_DEVICE_SESSIONS);
+      _wnd->device_agent()->get_config_list(nullptr, SR_CONF_DEVICE_SESSIONS);
   GVariant *gvar;
   gsize num_opts;
 
@@ -210,10 +210,10 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
 
     for (unsigned int i = 0; i < num_opts; i++) {
       const struct sr_config_info *const info =
-          _wnd->_device_agent->get_config_info(options[i]);
+          _wnd->device_agent()->get_config_info(options[i]);
       if (!info || !info->name)
         continue;
-      gvar = _wnd->_device_agent->get_config(info->key);
+      gvar = _wnd->device_agent()->get_config(info->key);
       if (gvar != nullptr) {
         if (info->datatype == SR_T_BOOL)
           sessionVar[info->name] =
@@ -250,9 +250,9 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
       }
     }
     g_variant_unref(gvar_opts);
-  } else if (_wnd->_device_agent->is_hardware()) {
+  } else if (_wnd->device_agent()->is_hardware()) {
     pxv_info("gen_config_json: falling back to SR_CONF_DEVICE_OPTIONS");
-    gvar_opts = _wnd->_device_agent->get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
+    gvar_opts = _wnd->device_agent()->get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
 
     if (!gvar_opts) {
       pxv_warn("No SR_CONF_DEVICE_OPTIONS available, skipping per-device config section.");
@@ -264,11 +264,11 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
         const int key = (int)(options[i] & 0x1fffffff);
 
         const struct sr_config_info *const info =
-            _wnd->_device_agent->get_config_info(key);
+            _wnd->device_agent()->get_config_info(key);
         if (!info || !info->name)
           continue;
 
-        gvar = _wnd->_device_agent->get_config(info->key);
+        gvar = _wnd->device_agent()->get_config(info->key);
         if (gvar != nullptr) {
           if (info->datatype == SR_T_BOOL)
             sessionVar[info->name] =
@@ -307,7 +307,7 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
   pv::TabContext *ctx = _wnd->current_context();
   pv::data::SessionDocument *doc = ctx ? ctx->document() : nullptr;
   if (doc) {
-    doc->save_signal_config(_wnd->_session->get_signal_models(),
+    doc->save_signal_config(_wnd->session()->get_signal_models(),
                             build_channel_layout(_wnd->current_view()),
                             build_channel_colours(_wnd->current_view()));
     QJsonObject sig_cfg = doc->signal_config_to_json();
@@ -318,22 +318,22 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
     sessionVar["channel"] = QJsonArray();
   }
 
-  if (_wnd->_device_agent->get_work_mode() == LOGIC) {
-    sessionVar["trigger"] = _wnd->_session->trigger_config().to_json();
+  if (_wnd->device_agent()->get_work_mode() == LOGIC) {
+    sessionVar["trigger"] = _wnd->session()->trigger_config().to_json();
   }
 
   // Glitch filter config persistence.
-  if (_wnd->_session->is_glitch_filter_active() ||
-      _wnd->_session->glitch_filter_auto_apply() ||
-      !_wnd->_session->glitch_filter_thresholds().empty()) {
+  if (_wnd->session()->is_glitch_filter_active() ||
+      _wnd->session()->glitch_filter_auto_apply() ||
+      !_wnd->session()->glitch_filter_thresholds().empty()) {
     QJsonObject glitchObj;
-    glitchObj["auto_apply"] = _wnd->_session->glitch_filter_auto_apply();
-    glitchObj["show_overlay"] = _wnd->_session->show_glitch_filter_overlay();
-    glitchObj["active"] = _wnd->_session->is_glitch_filter_active();
+    glitchObj["auto_apply"] = _wnd->session()->glitch_filter_auto_apply();
+    glitchObj["show_overlay"] = _wnd->session()->show_glitch_filter_overlay();
+    glitchObj["active"] = _wnd->session()->is_glitch_filter_active();
     QJsonArray thrArray;
     QJsonArray modeArray;
-    const auto &thresholds = _wnd->_session->glitch_filter_thresholds();
-    const auto &modes = _wnd->_session->glitch_filter_modes();
+    const auto &thresholds = _wnd->session()->glitch_filter_thresholds();
+    const auto &modes = _wnd->session()->glitch_filter_modes();
     for (const auto &kv : thresholds) {
       QJsonObject entry;
       entry["ch"] = kv.first;
@@ -351,12 +351,12 @@ bool MainWindowConfigIO::gen_config_json(QJsonObject &sessionVar) {
     sessionVar["glitch_filter"] = glitchObj;
   }
 
-  StoreSession ss(_wnd->_session);
+  StoreSession ss(_wnd->session());
   QJsonArray decodeJson;
   ss.gen_decoders_json(decodeJson);
   sessionVar["decoder"] = decodeJson;
 
-  if (_wnd->_device_agent->get_work_mode() == DSO) {
+  if (_wnd->device_agent()->get_work_mode() == DSO) {
     sessionVar["measure"] = _wnd->current_view()->get_viewstatus()->get_session();
   }
 
@@ -414,7 +414,7 @@ bool MainWindowConfigIO::load_config_from_file(QString file) {
     assert(false);
   }
 
-  _wnd->_dock_manager->protocol_widget()->del_all_protocol();
+  _wnd->dock_manager()->protocol_widget()->del_all_protocol();
 
   std::string file_name = pv::path::ToUnicodePath(file);
   pxv_info("Load device profile: \"%s\"", file_name.c_str());
@@ -439,12 +439,12 @@ bool MainWindowConfigIO::load_config_from_file(QString file) {
   bool bDecoder = false;
   int ret = load_config_from_json(doc, bDecoder);
 
-  if (ret && _wnd->_device_agent->get_work_mode() == DSO) {
-    _wnd->_dock_manager->dso_trigger_widget()->update_view();
+  if (ret && _wnd->device_agent()->get_work_mode() == DSO) {
+    _wnd->dock_manager()->dso_trigger_widget()->update_view();
   }
 
-  if (_wnd->_device_agent->is_hardware()) {
-    _wnd->_title_ext_string = file;
+  if (_wnd->device_agent()->is_hardware()) {
+    _wnd->title_ext_string() = file;
     _wnd->update_title_bar_text();
   }
 
@@ -456,7 +456,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
 
   QJsonObject sessionObj = doc.object();
 
-  int mode = _wnd->_device_agent->get_work_mode();
+  int mode = _wnd->device_agent()->get_work_mode();
 
   // check config file version
   if (!sessionObj.contains("Version")) {
@@ -471,15 +471,15 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
     return false;
   }
 
-  if (sessionObj.contains("CollectMode") && _wnd->_device_agent->is_hardware()) {
+  if (sessionObj.contains("CollectMode") && _wnd->device_agent()->is_hardware()) {
     int collect_mode = sessionObj["CollectMode"].toInt();
-    _wnd->_session->set_collect_mode((DEVICE_COLLECT_MODE)collect_mode);
+    _wnd->session()->set_collect_mode((DEVICE_COLLECT_MODE)collect_mode);
   }
 
   int conf_dev_mode = sessionObj["DeviceMode"].toInt();
 
-  if (_wnd->_device_agent->is_hardware()) {
-    QString driverName = _wnd->_device_agent->driver_name();
+  if (_wnd->device_agent()->is_hardware()) {
+    QString driverName = _wnd->device_agent()->driver_name();
     QString sessionDevice = sessionObj["Device"].toString();
     // check device and mode
     if (driverName != sessionDevice || mode != conf_dev_mode) {
@@ -494,7 +494,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
 
   // load device settings
   GVariant *gvar_opts =
-      _wnd->_device_agent->get_config_list(nullptr, SR_CONF_DEVICE_SESSIONS);
+      _wnd->device_agent()->get_config_list(nullptr, SR_CONF_DEVICE_SESSIONS);
   gsize num_opts;
 
   if (gvar_opts != nullptr) {
@@ -504,7 +504,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
     for (unsigned int i = 0; i < num_opts; i++) {
       const int key = options[i];
       const struct sr_config_info *info =
-          _wnd->_device_agent->get_config_info(key);
+          _wnd->device_agent()->get_config_info(key);
 
       if (!info || !info->name)
         continue;
@@ -548,7 +548,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
         } else {
           const char *fd_key =
               sessionObj[info->name].toString().toLocal8Bit().data();
-          id = _wnd->_device_agent->option_value_to_code(conf_dev_mode, info->key, fd_key);
+          id = _wnd->device_agent()->option_value_to_code(conf_dev_mode, info->key, fd_key);
           if (id == -1) {
             pxv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
                     fd_key);
@@ -566,15 +566,15 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
         continue;
       }
 
-      bool bFlag = _wnd->_device_agent->set_config(info->key, gvar);
+      bool bFlag = _wnd->device_agent()->set_config(info->key, gvar);
       if (!bFlag) {
         pxv_dbg("load_config: key '%s' (id=%d) rejected SET, skipping",
                 info->name, info->key);
       }
     }
     g_variant_unref(gvar_opts);
-  } else if (_wnd->_device_agent->is_hardware()) {
-    gvar_opts = _wnd->_device_agent->get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
+  } else if (_wnd->device_agent()->is_hardware()) {
+    gvar_opts = _wnd->device_agent()->get_config_list(nullptr, SR_CONF_DEVICE_OPTIONS);
 
     if (!gvar_opts) {
       pxv_warn("No SR_CONF_DEVICE_OPTIONS available, skipping per-device config load.");
@@ -587,7 +587,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
         if (!(options[i] & SR_CONF_SET))
           continue;
         const struct sr_config_info *info =
-            _wnd->_device_agent->get_config_info(key);
+            _wnd->device_agent()->get_config_info(key);
 
         if (!info || !info->name)
           continue;
@@ -631,7 +631,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
           } else {
             const char *fd_key =
                 sessionObj[info->name].toString().toLocal8Bit().data();
-            id = _wnd->_device_agent->option_value_to_code(conf_dev_mode, info->key, fd_key);
+            id = _wnd->device_agent()->option_value_to_code(conf_dev_mode, info->key, fd_key);
             if (id == -1) {
               pxv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
                       fd_key);
@@ -649,7 +649,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
           continue;
         }
 
-        bool bFlag = _wnd->_device_agent->set_config(info->key, gvar);
+        bool bFlag = _wnd->device_agent()->set_config(info->key, gvar);
         if (!bFlag) {
           pxv_err("Set device config option failed, id:%d, code:%d", info->key,
                   id);
@@ -668,12 +668,12 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
       sig_obj["channels"] = sessionObj["channel"].toArray();
       doc->signal_config_from_json(sig_obj);
       auto &cfg = doc->signal_config_store()->get_signal_config();
-      cfg.work_mode = _wnd->_device_agent->get_work_mode();
-      if (_wnd->_device_agent->is_dsl_device()) {
-        _wnd->_device_agent->get_config_string(SR_CONF_OPERATION_MODE, cfg.operation_mode);
-        _wnd->_device_agent->get_config_string(SR_CONF_CHANNEL_MODE, cfg.channel_mode);
+      cfg.work_mode = _wnd->device_agent()->get_work_mode();
+      if (_wnd->device_agent()->is_dsl_device()) {
+        _wnd->device_agent()->get_config_string(SR_CONF_OPERATION_MODE, cfg.operation_mode);
+        _wnd->device_agent()->get_config_string(SR_CONF_CHANNEL_MODE, cfg.channel_mode);
       }
-      cfg.is_demo = _wnd->_device_agent->is_demo();
+      cfg.is_demo = _wnd->device_agent()->is_demo();
       doc->apply_signal_config();
     } else {
       pxv_warn("MainWindowConfigIO::load_config_from_json: no active document, "
@@ -681,13 +681,13 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
     }
   }
 
-  _wnd->_session->reload();
+  _wnd->session()->reload();
 
   // Glitch filter config restore
   if (sessionObj.contains("glitch_filter")) {
     QJsonObject glitchObj = sessionObj["glitch_filter"].toObject();
-    _wnd->_session->set_glitch_filter_auto_apply(glitchObj["auto_apply"].toBool(false));
-    _wnd->_session->set_show_glitch_filter_overlay(glitchObj["show_overlay"].toBool(true));
+    _wnd->session()->set_glitch_filter_auto_apply(glitchObj["auto_apply"].toBool(false));
+    _wnd->session()->set_show_glitch_filter_overlay(glitchObj["show_overlay"].toBool(true));
 
     if (glitchObj["active"].toBool(false)) {
       std::map<int, uint32_t> thresholds;
@@ -702,7 +702,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
         QJsonObject e = v.toObject();
         modes[e["ch"].toInt()] = (GlitchFilterMode)e["mode"].toInt();
       }
-      _wnd->_session->restore_glitch_filter_config(thresholds, modes);
+      _wnd->session()->restore_glitch_filter_config(thresholds, modes);
     }
   }
 
@@ -788,15 +788,15 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
   }
 
   // update UI settings
-  _wnd->_sampling_bar->update_sample_rate_list();
-  _wnd->_dock_manager->trigger_widget()->device_updated();
+  _wnd->sampling_bar()->update_sample_rate_list();
+  _wnd->dock_manager()->trigger_widget()->device_updated();
   _wnd->current_view()->header_updated();
 
   // load trigger settings
   if (sessionObj.contains("trigger")) {
-    _wnd->_session->set_trigger_config(
+    _wnd->session()->set_trigger_config(
         data::TriggerConfig::from_json(sessionObj["trigger"].toObject()));
-    _wnd->_dock_manager->trigger_widget()->refresh_ui_from_core();
+    _wnd->dock_manager()->trigger_widget()->refresh_ui_from_core();
   }
 
   // load decoders
@@ -804,8 +804,8 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
     QJsonArray deArray = sessionObj["decoder"].toArray();
     if (deArray.empty() == false) {
       haveDecoder = true;
-      StoreSession ss(_wnd->_session);
-      ss.load_decoders(_wnd->_dock_manager->protocol_widget(), deArray);
+      StoreSession ss(_wnd->session());
+      ss.load_decoders(_wnd->dock_manager()->protocol_widget(), deArray);
       _wnd->current_view()->update_all_trace_postion();
     }
   }
@@ -820,11 +820,11 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
 }
 
 void MainWindowConfigIO::load_device_config() {
-  _wnd->_title_ext_string = "";
-  int mode = _wnd->_device_agent->get_work_mode();
+  _wnd->title_ext_string() = "";
+  int mode = _wnd->device_agent()->get_work_mode();
   QString file;
 
-  if (_wnd->_device_agent->is_hardware() && !_wnd->_device_agent->is_demo()) {
+  if (_wnd->device_agent()->is_hardware() && !_wnd->device_agent()->is_demo()) {
     QString ses_name = gen_config_file_path(true);
 
     bool bExist = false;
@@ -841,16 +841,16 @@ void MainWindowConfigIO::load_device_config() {
       QFile sf2(ses_name);
       if (!sf2.exists()) {
         pxv_info("Try to load the default profile.");
-        ses_name = _wnd->_file_bar->genDefaultSessionFile();
+        ses_name = _wnd->file_bar()->genDefaultSessionFile();
       }
     }
 
     file = ses_name;
-  } else if (_wnd->_device_agent->is_demo()) {
+  } else if (_wnd->device_agent()->is_demo()) {
     QDir dir(GetFirmwareDir());
     if (dir.exists()) {
       QString ses_name = dir.absolutePath() + "/" +
-                         _wnd->_device_agent->driver_name() + QString::number(mode) +
+                         _wnd->device_agent()->driver_name() + QString::number(mode) +
                          ".pxc";
 
       QFile sf(ses_name);
@@ -862,14 +862,14 @@ void MainWindowConfigIO::load_device_config() {
 
   if (file != "") {
     bool ret = load_config_from_file(file);
-    if (ret && _wnd->_device_agent->is_hardware()) {
-      _wnd->_title_ext_string = file;
+    if (ret && _wnd->device_agent()->is_hardware()) {
+      _wnd->title_ext_string() = file;
     }
   }
 }
 
 void MainWindowConfigIO::check_config_file_version() {
-  auto device_agent = _wnd->_session->get_device();
+  auto device_agent = _wnd->session()->get_device();
   if (device_agent->is_file() && device_agent->is_new_device()) {
     if (device_agent->get_work_mode() == LOGIC) {
       int version = -1;
@@ -974,8 +974,8 @@ void MainWindowConfigIO::load_demo_decoder_config(QString optname) {
   QJsonArray deArray = get_decoder_json_from_data_file(file, bLoadSurccess);
 
   if (bLoadSurccess) {
-    StoreSession ss(_wnd->_session);
-    ss.load_decoders(_wnd->_dock_manager->protocol_widget(), deArray);
+    StoreSession ss(_wnd->session());
+    ss.load_decoders(_wnd->dock_manager()->protocol_widget(), deArray);
   }
 
   _wnd->current_view()->update_all_trace_postion();

@@ -47,7 +47,7 @@ namespace dialogs {
 DsoMeasure::DsoMeasure(SigSession *session, View &parent,
                        unsigned int position, int last_sig_index) :
     PxDialog((QWidget *)&parent),
-    _session(session),
+    _session(session), _data_src(session),
     _view(parent),
     _position(position),
     _button_box(QDialogButtonBox::Reset | QDialogButtonBox::Cancel,

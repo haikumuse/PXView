@@ -17,6 +17,7 @@
 #include "../interface/events.h"
 #include "../interface/icallbacks.h"
 #include "../log.h"
+#include <libsigrok/libsigrok.h>
 
 #include <cassert>
 #include <QJsonDocument>
@@ -62,74 +63,55 @@ void SessionStateContext::set_lissajous_model(
 // --- EventBus dispatch helpers (migrated from SigSession) -------------------
 
 void SessionStateContext::data_updated() {
-  _event_bus->dispatch_to<IDataCallback>(
-      [](IDataCallback *cb) { cb->data_updated(); });
+  _event_bus->broadcast_async<interface::DataUpdated>({});
 }
 
 void SessionStateContext::set_receive_data_len(quint64 len) {
-  _event_bus->dispatch_to<IDataCallback>(
-      [len](IDataCallback *cb) { cb->receive_data_len(len); });
+  _event_bus->broadcast_async<interface::DataLenUpdated>({len});
 }
 
 void SessionStateContext::receive_header() {
-  _event_bus->dispatch_to<IDataCallback>(
-      [](IDataCallback *cb) { cb->receive_header(); });
+  _event_bus->broadcast_async<interface::HeaderReceived>({});
 }
 
 void SessionStateContext::cur_snap_samplerate_changed() {
-  _event_bus->dispatch_to<IDataCallback>(
-      [](IDataCallback *cb) { cb->cur_snap_samplerate_changed(); });
+  _event_bus->broadcast_async<interface::SampleRateChanged>({});
 }
 
 void SessionStateContext::frame_began() {
-  _event_bus->dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->frame_began(); });
+  _event_bus->broadcast_async<interface::CollectStart>({});
 }
 
 void SessionStateContext::frame_ended() {
-  _event_bus->dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->frame_ended(); });
+  _event_bus->broadcast_async<interface::CollectEnd>({});
 }
 
 void SessionStateContext::update_capture() {
-  _event_bus->dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->update_capture(); });
+  _event_bus->broadcast_async<interface::CaptureUpdated>({});
 }
 
 void SessionStateContext::repeat_hold(int percent) {
-  _event_bus->dispatch_to<ICaptureCallback>(
-      [percent](ICaptureCallback *cb) { cb->repeat_hold(percent); });
+  _event_bus->broadcast_async<interface::RepeatHold>({percent});
 }
 
 void SessionStateContext::receive_trigger(quint64 trigger_pos) {
-  _event_bus->dispatch_to<ITriggerCallback>(
-      [trigger_pos](ITriggerCallback *cb) {
-        cb->receive_trigger(trigger_pos);
-      });
+  _event_bus->broadcast_async<interface::TriggerReceived>({trigger_pos});
 }
 
 void SessionStateContext::show_wait_trigger() {
-  _event_bus->dispatch_to<ITriggerCallback>(
-      [](ITriggerCallback *cb) { cb->show_wait_trigger(); });
+  _event_bus->broadcast_async<interface::ShowWaitTrigger>({});
 }
 
 void SessionStateContext::signals_changed() {
-  _event_bus->dispatch_to<ISessionStateCallback>(
-      [](ISessionStateCallback *cb) { cb->signals_changed(); });
-  // 异步广播:避免在 on_event handler 中(如 on_event(DeviceOptionsUpdated)
-  // → reload() → signals_changed())同步触发广播导致 _broadcast_depth>1 断言;
-  // 同时保证 task thread 调用时的线程安全(Qt::QueuedConnection marshal 到主线程)。
   _event_bus->broadcast_async<interface::SignalsChanged>({});
 }
 
 void SessionStateContext::session_error() {
-  _event_bus->dispatch_to<ISessionStateCallback>(
-      [](ISessionStateCallback *cb) { cb->session_error(); });
+  _event_bus->broadcast_async<interface::SessionError>({});
 }
 
 void SessionStateContext::delay_prop_msg(QString strMsg) {
-  _event_bus->dispatch_to<ISessionStateCallback>(
-      [strMsg](ISessionStateCallback *cb) { cb->delay_prop_msg(strMsg); });
+  _event_bus->broadcast_async<interface::DelayedPropMsg>({strMsg});
 }
 
 // --- Cross-manager helpers (migrated from SigSession) -----------------------
@@ -269,8 +251,7 @@ void SessionStateContext::set_cur_samplelimits(uint64_t samplelimits) {
     return;
   }
   _capture_data->_cur_samplelimits = samplelimits;
-  _event_bus->dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->cur_samplelimits_changed(); });
+  _event_bus->broadcast_async<interface::SampleLimitsChanged>({});
 }
 
 void SessionStateContext::sync_trigger_to_libsigrok(bool disable_trigger) {

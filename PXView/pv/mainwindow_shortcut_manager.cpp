@@ -134,20 +134,20 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
        qobject_cast<QAbstractSpinBox *>(focused) ||
        qobject_cast<QComboBox *>(focused) ||
        qobject_cast<QAbstractButton *>(focused) ||
-       (_wnd->_dock_manager->sliding_drawer() &&
-        _wnd->_dock_manager->sliding_drawer()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->device_options_widget() &&
-        _wnd->_dock_manager->device_options_widget()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->search_widget() &&
-        _wnd->_dock_manager->search_widget()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->trigger_widget() &&
-        _wnd->_dock_manager->trigger_widget()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->protocol_widget() &&
-        _wnd->_dock_manager->protocol_widget()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->dso_trigger_widget() &&
-        _wnd->_dock_manager->dso_trigger_widget()->isAncestorOf(focused)) ||
-       (_wnd->_dock_manager->measure_widget() &&
-        _wnd->_dock_manager->measure_widget()->isAncestorOf(focused)))) {
+       (_wnd->dock_manager()->sliding_drawer() &&
+        _wnd->dock_manager()->sliding_drawer()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->device_options_widget() &&
+        _wnd->dock_manager()->device_options_widget()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->search_widget() &&
+        _wnd->dock_manager()->search_widget()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->trigger_widget() &&
+        _wnd->dock_manager()->trigger_widget()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->protocol_widget() &&
+        _wnd->dock_manager()->protocol_widget()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->dso_trigger_widget() &&
+        _wnd->dock_manager()->dso_trigger_widget()->isAncestorOf(focused)) ||
+       (_wnd->dock_manager()->measure_widget() &&
+        _wnd->dock_manager()->measure_widget()->isAncestorOf(focused)))) {
     QWidget *target = focused;
     if (focused->focusProxy()) {
       target = focused->focusProxy();
@@ -251,28 +251,28 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
 
   switch (action) {
   case SHORTCUT_RUN_STOP:
-    _wnd->_sampling_bar->run_or_stop();
+    _wnd->sampling_bar()->run_or_stop();
     break;
   case SHORTCUT_INSTANT:
-    _wnd->_sampling_bar->run_or_stop_instant();
+    _wnd->sampling_bar()->run_or_stop_instant();
     break;
   case SHORTCUT_TRIGGER:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_TRIGGER)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_TRIGGER)->button->click();
     break;
   case SHORTCUT_DECODE:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_DECODE)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_DECODE)->button->click();
     break;
   case SHORTCUT_MEASURE:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_MEASURE)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_MEASURE)->button->click();
     break;
   case SHORTCUT_SEARCH:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_SEARCH)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_SEARCH)->button->click();
     break;
   case SHORTCUT_OPTIONS:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_OPTIONS)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_OPTIONS)->button->click();
     break;
   case SHORTCUT_DEVICE_SELECT:
-    _wnd->_sampling_bar->device_selected();
+    _wnd->sampling_bar()->device_selected();
     break;
   case SHORTCUT_PAGE_UP:
     _wnd->current_view()->set_scale_offset(
@@ -341,43 +341,43 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     }
     break;
   case SHORTCUT_FILE_OPEN:
-    _wnd->_file_bar->_action_open->trigger();
+    _wnd->file_bar()->_action_open->trigger();
     break;
   case SHORTCUT_FILE_SAVE:
-    _wnd->_file_bar->_action_save->trigger();
+    _wnd->file_bar()->_action_save->trigger();
     break;
   case SHORTCUT_FILE_EXPORT:
-    _wnd->_file_bar->_action_export->trigger();
+    _wnd->file_bar()->_action_export->trigger();
     break;
   case SHORTCUT_FILE_IMPORT:
-    _wnd->_file_bar->_action_import->trigger();
+    _wnd->file_bar()->_action_import->trigger();
     break;
   case SHORTCUT_FILE_LOAD:
-    _wnd->_file_bar->_action_load->trigger();
+    _wnd->file_bar()->_action_load->trigger();
     break;
   case SHORTCUT_FILE_STORE:
-    _wnd->_file_bar->_action_store->trigger();
+    _wnd->file_bar()->_action_store->trigger();
     break;
   case SHORTCUT_SCREENSHOT:
-    _wnd->_file_bar->_action_capture->trigger();
+    _wnd->file_bar()->_action_capture->trigger();
     break;
   case SHORTCUT_FFT:
-    _wnd->_trig_bar->_action_fft->trigger();
+    _wnd->trig_bar()->_action_fft->trigger();
     break;
   case SHORTCUT_MATH:
-    _wnd->_trig_bar->_action_math->trigger();
+    _wnd->trig_bar()->_action_math->trigger();
     break;
   case SHORTCUT_LISSAJOUS:
-    _wnd->_trig_bar->_action_lissajous->trigger();
+    _wnd->trig_bar()->_action_lissajous->trigger();
     break;
   case SHORTCUT_SETTINGS:
-    _wnd->_trig_bar->_action_dispalyOptions->trigger();
+    _wnd->trig_bar()->_action_dispalyOptions->trigger();
     break;
   case SHORTCUT_LOG:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_LOG)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_LOG)->button->click();
     break;
   case SHORTCUT_FUNCTION:
-    _wnd->_dock_manager->side_bar()->getItem(MainWindow::SIDEBAR_FUNCTION)->button->click();
+    _wnd->dock_manager()->side_bar()->getItem(MainWindow::SIDEBAR_FUNCTION)->button->click();
     break;
   case SHORTCUT_THEME_TOGGLE: {
     AppConfig &app = AppConfig::Instance();
@@ -391,9 +391,9 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     _wnd->on_new_tab_requested();
     break;
   case SHORTCUT_CLOSE_TAB:
-    if (_wnd->_tab_manager->tab_widget() &&
-        _wnd->_tab_manager->tab_widget()->count() > 0)
-      _wnd->remove_tab(_wnd->_tab_manager->tab_widget()->currentIndex());
+    if (_wnd->tab_manager()->tab_widget() &&
+        _wnd->tab_manager()->tab_widget()->count() > 0)
+      _wnd->remove_tab(_wnd->tab_manager()->tab_widget()->currentIndex());
     break;
   case SHORTCUT_ZOOM_FIT:
     if (_wnd->current_view()) {

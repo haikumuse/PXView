@@ -9,9 +9,10 @@
 #include <vector>
 #include <cstdint>
 
-// GlitchFilterMode is a global unscoped enum defined here; cannot be
-// forward-declared without a fixed underlying type.
-#include "../data/logicsnapshot.h"
+// Spec v2 Task 4/5: GlitchFilterMode is now an enum class with fixed
+// underlying type (int), so it can be forward-declared here without
+// including the heavy logicsnapshot.h header.
+enum class GlitchFilterMode : int;
 
 namespace pv {
 

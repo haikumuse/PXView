@@ -87,19 +87,7 @@ void EventBus::post_async_dispatch(std::function<void()> fn) {
     QCoreApplication::postEvent(qApp, new AsyncDispatchEvent(std::move(fn)));
 }
 
-void EventBus::add_callback(ISessionCallbackBase *cb) {
-    if (!cb)
-        return;
-    std::unique_lock<std::shared_mutex> lk(_callbacks_mutex);
-    _callbacks.push_back(cb);
-}
-
-void EventBus::remove_callback(ISessionCallbackBase *cb) {
-    std::unique_lock<std::shared_mutex> lk(_callbacks_mutex);
-    auto it = std::find(_callbacks.begin(), _callbacks.end(), cb);
-    if (it != _callbacks.end())
-        _callbacks.erase(it);
-}
+// Spec v2 Task 7: add_callback/remove_callback removed (ISessionCallback abolished)
 
 void EventBus::add_event_listener(interface::IEventListener *l) {
     if (!l)

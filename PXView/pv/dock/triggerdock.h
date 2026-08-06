@@ -50,6 +50,7 @@
 namespace pv {
 
 class SigSession;
+namespace data { class DataSource; }
 
 namespace dock {
 
@@ -112,6 +113,7 @@ private slots:
 
 private:
     SigSession *_session;
+    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
 
     int _cur_ch_num;
     QWidget *_widget;

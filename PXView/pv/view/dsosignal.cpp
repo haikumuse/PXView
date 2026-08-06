@@ -148,8 +148,8 @@ DsoSignal *DsoSignal::clone() const {
 }
 
 DsoSignal::~DsoSignal() {
-  // Delegate unique_ptrs auto-destroy here (complete types visible in this TU).
-  DESTROY_OBJECT(_vDial);
+// Delegate unique_ptrs auto-destroy here (complete types visible in this TU).
+// Spec v2 Task 6: _vDial now managed by unique_ptr, no manual delete.
 }
 
 void DsoSignal::set_scale(int height) {
@@ -318,7 +318,7 @@ void DsoSignal::init_vDial(DsoSignal *src) {
       vValue.push_back(v);
   }
 
-  _vDial = new dslDial(vValue.count(), DsoSignal::vDialValueStep, vValue, vUnit, false);
+_vDial.reset(new dslDial(vValue.count(), DsoSignal::vDialValueStep, vValue, vUnit, false));
 
   if (src) {
     _vDial->set_sel(src->_vDial->get_sel());

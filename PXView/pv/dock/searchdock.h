@@ -56,6 +56,7 @@
 namespace pv {
 
 class SigSession;
+namespace data { class DataSource; }
 
 namespace view {
 class View;
@@ -170,6 +171,7 @@ signals:
 
 private:
   SigSession *_session;
+  data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
   view::View *_view;
   std::map<uint16_t, QString> _pattern;
   TabContext *_context;
