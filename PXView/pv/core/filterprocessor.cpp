@@ -11,8 +11,8 @@
 namespace pv {
 namespace core {
 
-FilterProcessor::FilterProcessor(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state),
+FilterProcessor::FilterProcessor(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+    : _event_bus(bus), _state(state), _coord(coord),
       _glitch_filter_running(false),
       _signal_invert_running(false) {}
 
@@ -132,7 +132,7 @@ void FilterProcessor::glitch_filter_task(
   _glitch_filter_running = false;
 
   _event_bus->broadcast_async<interface::GlitchFilterCompleted>({});
-  _state->data_updated();
+  _coord->data_updated();
 
   // 架构修复：如果有排队的 pending 请求，立即执行
   // Track A4: read pending data under _pending_mutex
@@ -179,7 +179,7 @@ void FilterProcessor::clear_glitch_filter() {
   _state->view_data()->_glitch_filter_modes.clear();
 
   _event_bus->broadcast_async<interface::GlitchFilterCleared>({});
-  _state->data_updated();
+  _coord->data_updated();
 }
 
 bool FilterProcessor::is_glitch_filter_active() {
@@ -257,7 +257,7 @@ void FilterProcessor::signal_invert_task(const std::vector<bool> channels) {
   _signal_invert_running = false;
 
   _event_bus->broadcast_async<interface::SignalInvertCompleted>({});
-  _state->data_updated();
+  _coord->data_updated();
 }
 
 void FilterProcessor::clear_signal_invert() {
@@ -285,7 +285,7 @@ void FilterProcessor::clear_signal_invert() {
   _state->view_data()->_signal_invert_channels.clear();
 
   _event_bus->broadcast_async<interface::SignalInvertCleared>({});
-  _state->data_updated();
+  _coord->data_updated();
 }
 
 bool FilterProcessor::is_signal_invert_active() {

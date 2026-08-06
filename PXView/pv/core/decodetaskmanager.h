@@ -19,6 +19,7 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
+class ISessionCoordination;
 
 /**
  * DecodeTaskManager — owns the decode thread pool (_decode_threads) and the
@@ -32,7 +33,7 @@ class SessionStateContext;
  */
 class DecodeTaskManager {
 public:
-  DecodeTaskManager(EventBus *bus, SessionStateContext *state);
+  DecodeTaskManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
   ~DecodeTaskManager();
 
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
@@ -62,12 +63,8 @@ public:
 
 private:
   EventBus *_event_bus;
-  // Shared session state (signal_models / view_data / document_registry /
-  // bClose / decode_traces() / get_decoder_trace() /
-  // get_trace_index_by_key_handel() / data_updated() / signals_changed())
-  // accessed via SessionStateContext accessors. modernize-core-layer-radical
-  // phase 1 replaced the previous SigSession* + friend-declaration coupling.
   SessionStateContext *_state;
+  ISessionCoordination *_coord;
 
   mutable std::mutex _running_tasks_mutex;
   std::vector<std::thread> _decode_threads;

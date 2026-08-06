@@ -230,35 +230,10 @@ public:
 
 
 public:
-    // Spec v2 Task 7: was ISessionStateCallback override — kept as regular
-    // method so SessionEventDispatcher can call it.
+    // Spec v3 Task 6: delay_prop_msg has real logic (set message + start timer)
     void delay_prop_msg(QString strMsg);
-    // Spec v2 Task 7: was IDataCallback override — kept as regular method
-    // so MainWindowThemeManager can trigger UI refresh.
-    void data_updated();
 
 private:
-    //Spec v2 Task 7: was IDataCallback — now regular methods called by on_event handlers
-    void receive_data_len(quint64 len);
-    void receive_header();
-    void cur_snap_samplerate_changed();
-
-    //Spec v2 Task 7: was ICaptureCallback
-    void frame_began();
-    void frame_ended();
-    void update_capture();
-    void show_region(uint64_t start, uint64_t end, bool keep);
-    void repeat_hold(int percent);
-
-    //Spec v2 Task 7: was ITriggerCallback
-    void receive_trigger(quint64 trigger_pos);
-    void show_wait_trigger();
-
-    //Spec v2 Task 7: was ISessionStateCallback
-    void session_error();
-    void session_save();
-    void signals_changed();
-    void decode_done();
 
     //ISessionDataGetter
     bool genSessionData(std::string &str) override;

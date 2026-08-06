@@ -198,10 +198,10 @@ private:
 private:
 	pv::data::AnalogSnapshot *_data;
 
-    QRectF *_rects;
+    std::unique_ptr<QRectF[]> _rects;
     // 性能修复: paint_trace 复用成员缓冲，避免每帧 new/delete QPointF[]。
     // 与 _rects 同生命周期管理 (构造 nullptr / 析构+resize 释放 / 按需扩容)。
-    QPointF *_points;
+    std::unique_ptr<QPointF[]> _points;
     int64_t _points_cap;
 
 	float _scale;

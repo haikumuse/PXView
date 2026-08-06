@@ -387,9 +387,6 @@ void MainWindow::on_load_file(QString file_name) { _file_ops->on_load_file(file_
 
 void MainWindow::on_import_file(QString file_name) { _file_ops->on_import_file(file_name); }
 
-void MainWindow::session_error() { _event.session_error(); }
-
-void MainWindow::session_save() { save_config(); }
 
 void MainWindow::on_session_error() { _event_dispatcher->handle_session_error(); }
 
@@ -470,9 +467,6 @@ void MainWindow::switchTheme(QString style) {
   _theme_manager->switchTheme(style);
 }
 
-void MainWindow::data_updated() {
-  _event.data_updated(); // safe call
-}
 
 void MainWindow::on_data_updated() {
   _dock_manager->measure_widget()->reCalc();
@@ -489,13 +483,9 @@ void MainWindow::openDoc() {
                                  QString::number(lan) + ".pdf"));
 }
 
-void MainWindow::update_capture() { _event.update_capture_sig(); }
 
 void MainWindow::on_update_capture() { current_view()->update_hori_res(); }
 
-void MainWindow::cur_snap_samplerate_changed() {
-  _event.cur_snap_samplerate_changed(); // safe call
-}
 
 void MainWindow::on_cur_snap_samplerate_changed() {
   _dock_manager->measure_widget()->reCalc();
@@ -503,10 +493,6 @@ void MainWindow::on_cur_snap_samplerate_changed() {
 }
 
 /*------------------on event end-------*/
-
-void MainWindow::signals_changed() {
-  _event.signals_changed(); // safe call
-}
 
 void MainWindow::on_signals_changed() {
   // Rebuild View signals from current SignalModels
@@ -517,16 +503,8 @@ void MainWindow::on_signals_changed() {
   current_view()->on_signals_changed();
 }
 
-void MainWindow::receive_trigger(quint64 trigger_pos) {
-  _event.receive_trigger(trigger_pos); // save call
-}
-
 void MainWindow::on_receive_trigger(quint64 trigger_pos) {
   current_view()->receive_trigger(trigger_pos);
-}
-
-void MainWindow::frame_ended() {
-  _event.frame_ended(); // save call
 }
 
 void MainWindow::on_frame_ended() {
@@ -565,10 +543,6 @@ void MainWindow::on_frame_ended() {
   current_view()->receive_end();
 }
 
-void MainWindow::frame_began() {
-  _event.frame_began(); // save call
-}
-
 void MainWindow::on_frame_began() {
   if (_session->is_instant()) {
     _dock_manager->side_bar()->setItemRunning(SIDEBAR_INSTANT, true);
@@ -592,40 +566,22 @@ void MainWindow::on_frame_began() {
   current_view()->frame_began();
 }
 
-void MainWindow::show_region(uint64_t start, uint64_t end, bool keep) {
-  _event.show_region_sig((quint64)start, (quint64)end, keep);
-}
-
 void MainWindow::on_show_region(quint64 start, quint64 end, bool keep) {
   current_view()->show_region((uint64_t)start, (uint64_t)end, keep);
 }
 
-void MainWindow::show_wait_trigger() { _event.show_wait_trigger_sig(); }
-
 void MainWindow::on_show_wait_trigger() { current_view()->show_wait_trigger(); }
-
-void MainWindow::repeat_hold(int percent) { _event.repeat_hold_sig(percent); }
 
 void MainWindow::on_repeat_hold(int percent) {
   (void)percent;
   current_view()->repeat_show();
 }
 
-void MainWindow::decode_done() {
-  _event.decode_done(); // safe call
-}
-
 void MainWindow::on_decode_done() { _dock_manager->protocol_widget()->update_model(); }
-
-void MainWindow::receive_data_len(quint64 len) {
-  _event.receive_data_len(len); // safe call
-}
 
 void MainWindow::on_receive_data_len(quint64 len) {
   current_view()->set_receive_len(len);
 }
-
-void MainWindow::receive_header() {}
 
 void MainWindow::check_usb_device_speed() { _event_dispatcher->check_usb_device_speed(); }
 

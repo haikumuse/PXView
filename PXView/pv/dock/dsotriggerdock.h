@@ -42,7 +42,7 @@
 namespace pv {
 
 class SigSession;
-namespace data { class DataSource; }
+namespace data { class ISignalSource; }
 
 namespace dock {
 
@@ -91,7 +91,7 @@ private slots:
 
 private:
     SigSession *_session;
-    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
+    data::ISignalSource *_signals = nullptr;
 
     QWidget *_widget;
 

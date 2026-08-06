@@ -23,6 +23,7 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
+class ISessionCoordination;
 
 /**
  * CaptureManager — owns the capture lifecycle (start/stop/exec/exit),
@@ -52,7 +53,7 @@ public:
   static constexpr int FeedInterval = 50;
   static constexpr int WaitShowTime = 500;
 
-  CaptureManager(EventBus *bus, SessionStateContext *state);
+  CaptureManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
   ~CaptureManager();
 
   // --- Capture lifecycle ---
@@ -142,17 +143,10 @@ public:
 
 private:
   EventBus *_event_bus;
-  // Shared session state (device_agent / capture_data / view_data /
-  // signal_models / document_registry / is_working / device_status /
-  // is_triged / trigger_flag / bClose / data_mutex / decode_traces() /
-  // attach_data_to_signal() / sync_trigger_to_libsigrok() /
-  // clear_all_decode_task2() / add_decode_task() / set_cur_snap_samplerate() /
-  // set_cur_samplelimits() / set_session_time() / update_capture() /
-  // repeat_hold() / clear_glitch_filter_state_for_capture() / get_ch_num() /
-  // cur_samplelimits()) is accessed via SessionStateContext accessors.
-  // modernize-core-layer-radical phase 1 broke the SigSession circular
-  // dependency.
+  // Shared session state accessed via SessionStateContext accessors.
   SessionStateContext *_state;
+  // Cross-manager coordination accessed via interface (Spec v3 Task 5)
+  ISessionCoordination *_coord;
 
   data::DiskCacheConfig _disk_cache_config;
 

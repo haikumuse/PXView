@@ -19,6 +19,7 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
+class ISessionCoordination;
 
 /**
  * DocumentRegistry — owns the SessionDocument list and the capture-owner
@@ -79,7 +80,7 @@ public:
   };
 
 public:
-  DocumentRegistry(EventBus *bus, SessionStateContext *state);
+  DocumentRegistry(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
   ~DocumentRegistry();
 
   // --- Document list management (ownership) ---
@@ -146,10 +147,8 @@ private:
   size_t find_index_for_document(data::SessionDocument *doc) const;
 
   EventBus *_event_bus;
-  // Shared session state (is_working / device_status) accessed via
-  // SessionStateContext accessors. modernize-core-layer-radical phase 1
-  // replaced the previous SigSession* + friend-declaration coupling.
   SessionStateContext *_state;
+  ISessionCoordination *_coord;
 
   // Document list (owned). Released slots become nullptr but keep their index
   // (marked deletion) so all other indices remain stable.

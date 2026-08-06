@@ -49,7 +49,7 @@
 namespace pv {
 
 class SigSession;
-namespace data { class DataSource; }
+namespace data { class ISignalSource; }
 
 namespace view {
     class Cursor;
@@ -151,7 +151,7 @@ public slots:
 
 private:
     SigSession *_session;
-    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
+    data::ISignalSource *_signals = nullptr;
     view::View *_view;
     TabContext *_context;
 

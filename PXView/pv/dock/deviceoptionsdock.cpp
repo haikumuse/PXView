@@ -68,7 +68,7 @@ namespace pv {
 namespace dock {
 
 DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
-    : QWidget(parent), _session(session), _data_src(session), _context(nullptr) {
+    : QWidget(parent), _session(session), *_capture(session), _context(nullptr) {
   _scroll_panel = nullptr;
   _container_panel = nullptr;
   _container_lay = nullptr;
@@ -1456,7 +1456,7 @@ void DeviceOptionsDock::on_mode_changed() {
 }
 
 void DeviceOptionsDock::update_widgets_status() {
-  bool bEnable = !_data_src->is_working();
+  bool bEnable = !_capture->is_working();
 
   // Update all widgets in the container except the sampling widget (it handles
   // its own state)

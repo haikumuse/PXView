@@ -20,14 +20,14 @@
 namespace pv {
 namespace core {
 
-DataFeedParser::DataFeedParser(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state) {}
+DataFeedParser::DataFeedParser(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+    : _event_bus(bus), _state(state), _coord(coord) {}
 
 DataFeedParser::~DataFeedParser() {}
 
 void DataFeedParser::feed_in_header(const sr_dev_inst *sdi) {
   (void)sdi;
-  _state->receive_header();
+  _coord->receive_header();
 }
 
 void DataFeedParser::feed_in_meta(const sr_dev_inst *sdi,
@@ -60,20 +60,20 @@ void DataFeedParser::feed_in_trigger() {
   // For real DSO hardware (PXLogic), SR_DF_TRIGGER may still be emitted
   // in DSO mode, so we no longer exclude DSO here — the driver query
   // path is harmless if unsupported (returns 0).
-  _state->set_hw_replied(true);
+  _coord->set_hw_replied(true);
 
   // Set trigger flag for ALL modes (including DSO). Previously DSO was
   // excluded, which caused _trigger_flag to stay false → trigd() returns
   // false → paint_prepare() skipped trigger-search → set_trig_hoff(0),
   // and viewport "Trig'd" status display was permanently wrong.
-  _state->set_trigger_flag(true);
+  _coord->set_trigger_flag(true);
 
   // Read the trigger position reported by the driver.
   _state->capture_data()->_trig_pos = _state->device_agent().get_trigger_pos();
 
   // Update trig position for current view.
   if (_state->capture_data() == _state->view_data()) {
-    _state->receive_trigger(_state->capture_data()->_trig_pos);
+    _coord->receive_trigger(_state->capture_data()->_trig_pos);
   }
 }
 
@@ -91,15 +91,15 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
   }
 
   if (!_state->is_triged() && o.length > 0) {
-    _state->set_is_triged(true);
-    _state->set_trig_time(QDateTime::currentDateTime());
+    _coord->set_is_triged(true);
+    _coord->set_trig_time(QDateTime::currentDateTime());
   }
 
   if (_state->capture_data()->get_logic()->last_ended()) {
     _state->capture_data()->get_logic()->set_loop(
-        _state->capture_manager()->is_loop_mode());
+        _coord->capture_manager()->is_loop_mode());
 
-    bool bNotFree = _state->decode_task_manager()->has_running_tasks() &&
+    bool bNotFree = _coord->decode_task_manager()->has_running_tasks() &&
                     _state->view_data() == _state->capture_data();
 
     _state->capture_data()->get_logic()->first_payload(
@@ -110,29 +110,29 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
     // for logic will be notified. Currently the only user of
     // frame_began is DecoderStack, but in future we need to signal
     // this after both analog and logic sweeps have begun.
-    _state->frame_began();
+    _coord->frame_began();
   } else {
     // Append to the existing data snapshot
     _state->capture_data()->get_logic()->append_payload(o);
   }
 
   if (_state->capture_data()->get_logic()->memory_failed()) {
-    _state->set_error(SessionStateContext::Malloc_err);
-    _state->session_error();
+    _coord->set_error(SessionStateContext::Malloc_err);
+    _coord->session_error();
     return;
   }
 
   // DSO/ANALOG 模式下可能收到 logic packet（demo 驱动始终发送 logic 数据），
   // 但 get_ch_num(SR_CHANNEL_LOGIC) 返回 0 会导致除零异常。
-  const int logic_ch_num = _state->get_ch_num(SR_CHANNEL_LOGIC);
+  const int logic_ch_num = _coord->get_ch_num(SR_CHANNEL_LOGIC);
   if (logic_ch_num > 0) {
-    _state->set_receive_data_len(o.length * 8 / logic_ch_num);
+    _coord->set_receive_data_len(o.length * 8 / logic_ch_num);
   } else {
     // 无 logic 通道时，按字节长度记录接收数据量
-    _state->set_receive_data_len(o.length);
+    _coord->set_receive_data_len(o.length);
   }
 
-  _state->capture_manager()->set_data_updated(true);
+  _coord->capture_manager()->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated typed event.
   // feed_in_logic runs on the libsigrok data-feed thread; use broadcast_async
@@ -161,15 +161,15 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
     _state->capture_data()->get_analog()->first_payload(
         o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels());
-    _state->frame_began();
+    _coord->frame_began();
   } else {
     // Append to the existing data snapshot
     _state->capture_data()->get_analog()->append_payload(o);
   }
 
   if (_state->capture_data()->get_analog()->memory_failed()) {
-    _state->set_error(SessionStateContext::Malloc_err);
-    _state->session_error();
+    _coord->set_error(SessionStateContext::Malloc_err);
+    _coord->session_error();
     return;
   }
 
@@ -180,9 +180,9 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
   // making the progress bar reach 100% long before the capture finishes.
   const int mode = _state->device_agent().get_work_mode();
   if (mode == ANALOG) {
-    _state->set_receive_data_len(o.num_samples);
+    _coord->set_receive_data_len(o.num_samples);
   }
-  _state->capture_manager()->set_data_updated(true);
+  _coord->capture_manager()->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
   _event_bus->broadcast_async<interface::DataUpdated>({});
@@ -202,8 +202,8 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   }
 
   if (!_state->is_triged() && o.num_samples > 0) {
-    _state->set_is_triged(true);
-    _state->set_trig_time(QDateTime::currentDateTime());
+    _coord->set_is_triged(true);
+    _coord->set_trig_time(QDateTime::currentDateTime());
   }
 
   // Record the sample count BEFORE first_payload/append_payload — needed
@@ -217,17 +217,17 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     _state->capture_data()->get_dso()->first_payload(
         o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels(),
-        _state->capture_manager()->is_instant(),
+        _coord->capture_manager()->is_instant(),
         _state->device_agent().is_file());
-    _state->frame_began();
+    _coord->frame_began();
   } else {
     // Append to the existing data snapshot
     _state->capture_data()->get_dso()->append_payload(o);
   }
 
   if (_state->capture_data()->get_dso()->memory_failed()) {
-    _state->set_error(SessionStateContext::Malloc_err);
-    _state->session_error();
+    _coord->set_error(SessionStateContext::Malloc_err);
+    _coord->session_error();
     return;
   }
 
@@ -238,8 +238,8 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   // is permanently wrong. Also, downstream receive_trigger() is never
   // invoked for DSO mode → horizontal trigger cursor stays stale.
   if (o.trig_flag) {
-    _state->set_trigger_flag(true);
-    _state->set_trigger_ch(o.trig_ch);
+    _coord->set_trigger_flag(true);
+    _coord->set_trigger_ch(o.trig_ch);
 
     // o.trig_offset is the trigger sample offset WITHIN the current DSO
     // packet. Convert to absolute sample index by adding the sample count
@@ -253,7 +253,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     // Update trig position for current view (DSO mode has
     // capture_data == view_data, so the receive_trigger path is taken).
     if (_state->capture_data() == _state->view_data()) {
-      _state->receive_trigger(_state->capture_data()->_trig_pos);
+      _coord->receive_trigger(_state->capture_data()->_trig_pos);
     }
   }
 
@@ -264,7 +264,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   // is incorrect → waveform may render at the wrong scale or not at all.
   const uint64_t cur_samplerate = _state->device_agent().get_sample_rate();
   if (cur_samplerate > 0) {
-    _state->set_cur_snap_samplerate(cur_samplerate);
+    _coord->set_cur_snap_samplerate(cur_samplerate);
   }
 
   // Only track progress for DSO mode. In other modes (LOGIC/MSO/ANALOG)
@@ -273,9 +273,9 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   // inflate _sample_received and make the progress bar reach 100% early.
   const int mode = _state->device_agent().get_work_mode();
   if (mode == DSO) {
-    _state->set_receive_data_len(o.num_samples);
+    _coord->set_receive_data_len(o.num_samples);
   }
-  _state->capture_manager()->set_data_updated(true);
+  _coord->capture_manager()->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
   _event_bus->broadcast_async<interface::DataUpdated>({});
@@ -298,7 +298,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
   ds_lock_guard lock(_state->data_mutex());
 
-  if (_state->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
+  if (_coord->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
     return;
 
   // Upstream sr_datafeed_packet has no `status` field (fork-only).
@@ -395,7 +395,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
       // _is_working 为 true 时才释放 guard —— repeat 模式每帧的 guard 释放
       // 由 TrigNextCollect / stop_capture 路径负责。
       if (mode != MSO) {
-        _state->decode_task_manager()->start_all_decode_tasks();
+        _coord->decode_task_manager()->start_all_decode_tasks();
       }
 
       // 架构修复：MSO 模式包含 LOGIC 通道，采集完成后若启用 auto-apply

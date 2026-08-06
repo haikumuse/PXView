@@ -22,6 +22,10 @@ public:
     virtual bool is_running_status() = 0;
     virtual void refresh(int holdtime) = 0;
     virtual void auto_end() = 0;
+    // Spec v3 Task 3: additional capture-related methods needed by toolbars
+    virtual bool is_realtime_refresh() = 0;
+    virtual bool is_repeat_mode() = 0;
+    virtual void session_save() = 0;
 };
 
 } // namespace data

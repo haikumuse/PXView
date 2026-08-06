@@ -92,7 +92,7 @@ public:
     //      to return the real device. SessionDocument/SessionSnapshot stubs
     //      inherit the nullptr default (analog signals are only created from
     //      the live session, so this is never null in practice for View signals).
-    virtual DeviceAgent* device() { return nullptr; }
+    virtual DeviceAgent* device() override { return nullptr; }
 
     // ---- New v2 pure-data interface (no view::* types) ----
     virtual std::vector<std::shared_ptr<SignalModel>>& get_signal_models() = 0;
@@ -100,7 +100,7 @@ public:
         SessionDocument *doc = nullptr) = 0;
     virtual std::vector<std::shared_ptr<SpectrumStack>>& get_spectrum_stacks() = 0;
     virtual std::shared_ptr<MathStack> get_math_stack() = 0;
-    virtual LissajousModel* get_lissajous_model() = 0;
+    virtual LissajousModel* get_lissajous_model() override = 0;
 
     // ---- Data access ----
     // cur_snap_samplerate/cur_samplelimits/cur_sampletime/get_trigger_pos
@@ -134,8 +134,8 @@ public:
     virtual bool is_working() = 0;
     // Capture mode and refresh flags. Default: false (SessionDocument stubs).
     // SigSession overrides to forward to CaptureManager.
-    virtual bool is_repeat_mode() { return false; }
-    virtual bool is_realtime_refresh() { return false; }
+    virtual bool is_repeat_mode() override { return false; }
+    virtual bool is_realtime_refresh() override { return false; }
     // Repeat-mode hold percentage (0..100). Default 0; SigSession overrides
     // to forward to CaptureManager. Used by ViewStatus to draw the repeat
     // progress bar.
@@ -159,7 +159,7 @@ public:
     // raw `unsigned long long` handle (libsigrok's `ds_device_handle` is a
     // typedef of this) so datasource.h does not need to include libsigrok.h.
     virtual bool switch_work_mode(int mode);
-    virtual void session_save();
+    virtual void session_save() override;
     virtual void close_file(unsigned long long dev_handle);
     virtual bool trigd();
     virtual uint8_t trigd_ch();

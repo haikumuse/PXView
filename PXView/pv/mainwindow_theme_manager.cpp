@@ -165,7 +165,7 @@ void MainWindowThemeManager::switchTheme(QString style) {
   UiManager::Instance()->Update(UI_UPDATE_ACTION_THEME);
   UiManager::Instance()->Update(UI_UPDATE_ACTION_FONT);
 
-  _wnd->data_updated();
+  _wnd->on_data_updated();
   retranslateRibbon();
 }
 

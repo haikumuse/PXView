@@ -21,7 +21,7 @@ DocumentRegistry::CaptureOwnerGuard::CaptureOwnerGuard(DocumentRegistry *reg,
     : _registry(reg), _doc_index(doc_index) {
   std::lock_guard<std::mutex> lock(_registry->_capture_state_mutex);
   _registry->_capture_owner_index = _doc_index;
-  _registry->_state->set_is_working(true);
+  _registry->_coord->set_is_working(true);
   _registry->_event_bus->broadcast_async<interface::CaptureOwnerChanged>(
       {nullptr, _registry->get_capture_owner_document()});
 }
@@ -60,7 +60,7 @@ void DocumentRegistry::CaptureOwnerGuard::release() {
   {
     std::lock_guard<std::mutex> lock(_registry->_capture_state_mutex);
     _registry->_capture_owner_index = SIZE_MAX;
-    _registry->_state->set_is_working(false);
+    _registry->_coord->set_is_working(false);
   }
   // Broadcast outside the lock to minimize critical section and avoid
   // listener callbacks re-entering the mutex.
@@ -72,8 +72,8 @@ void DocumentRegistry::CaptureOwnerGuard::release() {
 // DocumentRegistry
 // ---------------------------------------------------------------------------
 
-DocumentRegistry::DocumentRegistry(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state),
+DocumentRegistry::DocumentRegistry(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+    : _event_bus(bus), _state(state), _coord(coord),
       _active_document_index(SIZE_MAX), _capture_owner_index(SIZE_MAX),
       _copy_in_progress(false) {}
 

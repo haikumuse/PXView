@@ -79,7 +79,8 @@ private slots:
 
 public:
     SigSession *_session;
-    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
+    data::ISignalSource *_signals = nullptr;
+  data::ICaptureControl *_capture = nullptr;
 
     // XToolButton _file_button;
     QMenu   *_menu;

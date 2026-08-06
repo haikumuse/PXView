@@ -20,6 +20,7 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
+class ISessionCoordination;
 
 /**
  * FilterProcessor — owns the glitch filter and signal invert background
@@ -34,7 +35,7 @@ class SessionStateContext;
  */
 class FilterProcessor {
 public:
-  FilterProcessor(EventBus *bus, SessionStateContext *state);
+  FilterProcessor(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
   ~FilterProcessor();
 
   // 架构修复：thresholds/modes 用 channel_index 作 key，消除 View/Core 位置序号错位
@@ -56,10 +57,8 @@ private:
   void signal_invert_task(const std::vector<bool> channels);
 
   EventBus *_event_bus;
-  // Shared session state (view_data / device_agent / data_updated())
-  // accessed via SessionStateContext accessors. modernize-core-layer-radical
-  // phase 1 replaced the previous SigSession* + friend-declaration coupling.
   SessionStateContext *_state;
+  ISessionCoordination *_coord;
 
   // modernize-core-layer-final Task 5: RAII-managed background threads.
   // unique_ptr replaces raw std::thread* + manual new/delete. The destructor

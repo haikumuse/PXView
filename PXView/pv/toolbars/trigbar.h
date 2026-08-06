@@ -33,7 +33,7 @@
 namespace pv {
 
 class SigSession;
-namespace data { class DataSource; }
+namespace data { class ISignalSource; }
 
 namespace toolbars {
 
@@ -69,7 +69,7 @@ private slots:
 // private:
 public:
     SigSession *_session;
-    data::DataSource *_data_src = nullptr;  // Spec v2 Task 9: route DataSource methods through interface
+    data::ISignalSource *_signals = nullptr;
     bool        _enable;
 
     QMenu       *_function_menu;

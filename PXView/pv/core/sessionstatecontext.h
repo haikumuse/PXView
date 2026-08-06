@@ -90,6 +90,7 @@ public:
   EventBus *event_bus() { return _event_bus; }
 
   // --- Manager back-pointers (injected by SigSession after construction) ---
+  // Manager setters (inject by SigSession after construction)
   void set_capture_manager(CaptureManager *m) { _capture_manager = m; }
   void set_decode_task_manager(DecodeTaskManager *m) {
     _decode_task_manager = m;
@@ -98,8 +99,8 @@ public:
   void set_document_registry(DocumentRegistry *m) { _document_registry = m; }
   void set_filter_processor(FilterProcessor *m) { _filter_processor = m; }
 
-  CaptureManager *capture_manager() { return _capture_manager; }
-  DecodeTaskManager *decode_task_manager() { return _decode_task_manager; }
+  // capture_manager() / decode_task_manager() are ISessionCoordination overrides
+  // (see Spec v3 Task 5 section below)
   DataFeedParser *data_feed_parser() { return _data_feed_parser; }
   DocumentRegistry *document_registry() { return _document_registry; }
   FilterProcessor *filter_processor() { return _filter_processor; }
@@ -125,30 +126,24 @@ public:
     _math_stack = std::move(m);
   }
 
-  // --- Time ---
+  // --- Time (getters only; setters are ISessionCoordination overrides) ---
   QDateTime session_time() const { return _session_time; }
-  void set_session_time(QDateTime t) { _session_time = t; }
   QDateTime trig_time() const { return _trig_time; }
-  void set_trig_time(QDateTime t) { _trig_time = t; }
 
-  // --- Bool state ---
+  // --- Bool state (getters only; setters are ISessionCoordination overrides) ---
   // Track A5: cross-thread bool flags use std::atomic<bool>
   bool is_triged() const { return _is_triged.load(); }
-  void set_is_triged(bool v) { _is_triged.store(v); }
   bool trigger_flag() const { return _trigger_flag.load(); }
-  void set_trigger_flag(bool v) { _trigger_flag.store(v); }
   bool hw_replied() const { return _hw_replied.load(); }
-  void set_hw_replied(bool v) { _hw_replied.store(v); }
-  bool bClose() const { return _bClose.load(); }
   void set_bClose(bool v) { _bClose.store(v); }
   bool is_saving() const { return _is_saving.load(); }
   void set_saving(bool v) { _is_saving.store(v); }
 
   // --- Numeric state ---
-  uint8_t trigger_ch() const { return _trigger_ch; }
-  void set_trigger_ch(uint8_t v) { _trigger_ch = v; }
+  int trigger_ch() const { return _trigger_ch; }
+  void set_trigger_ch(int v) override { _trigger_ch = static_cast<uint8_t>(v); }
   SESSION_ERROR_STATUS error() const { return _error; }
-  void set_error(SESSION_ERROR_STATUS e) { _error = e; }
+  void set_error(int e) override { _error = static_cast<SESSION_ERROR_STATUS>(e); }
   uint64_t error_pattern() const { return _error_pattern; }
   void set_error_pattern(uint64_t v) { _error_pattern = v; }
   uint64_t save_start() const { return _save_start; }
@@ -158,20 +153,18 @@ public:
   int map_zoom() const { return _map_zoom; }
   void set_map_zoom(int v) { _map_zoom = v; }
 
-  // --- Atomic state ---
+  // --- Atomic state (is_working getter only; setter is ISessionCoordination override) ---
   bool is_working() const { return _is_working.load(); }
-  void set_is_working(bool v) { _is_working.store(v); }
   int device_status() const { return _device_status.load(); }
   void set_device_status(int v) { _device_status.store(v); }
 
   // --- Device ---
   DeviceAgent &device_agent() { return _device_agent; }
 
-  // --- Data buffers ---
+  // --- Data buffers (view_data getter/setter; capture_data getter only, setter is ISessionCoordination override) ---
   SessionData *view_data() { return _view_data; }
   void set_view_data(SessionData *d) { _view_data = d; }
   SessionData *capture_data() { return _capture_data; }
-  void set_capture_data(SessionData *d) { _capture_data = d; }
   // Track B1: _data_list owns SessionData via unique_ptr
   std::vector<std::unique_ptr<SessionData>> &data_list() { return _data_list; }
   bool is_single_buffer() const { return _view_data == _capture_data; }
@@ -190,18 +183,19 @@ public:
   const CursorRegistry &cursor_registry() const { return _cursor_registry; }
 
   // --- EventBus dispatch helpers (migrated from SigSession private methods)---
-  void data_updated();
-  void set_receive_data_len(quint64 len);
-  void receive_header();
+  // Spec v3 Task 5: notification methods are now ISessionCoordination overrides
+  void data_updated() override;
+  void set_receive_data_len(uint64_t len) override;
+  void receive_header() override;
   void cur_snap_samplerate_changed();
-  void frame_began();
+  void frame_began() override;
   void frame_ended();
-  void update_capture();
+  void update_capture() override;
   void repeat_hold(int percent);
-  void receive_trigger(quint64 trigger_pos);
+  void receive_trigger(uint64_t trigger_pos) override;
   void show_wait_trigger();
-  void signals_changed();
-  void session_error();
+  void signals_changed() override;
+  void session_error() override;
   void delay_prop_msg(QString strMsg);
 
   // --- Cross-manager helpers (migrated from SigSession) ---
@@ -213,6 +207,20 @@ public:
   get_decoder_trace(int index, data::SessionDocument *doc = nullptr);
   int get_trace_index_by_key_handel(void *handel,
                                     data::SessionDocument *doc = nullptr);
+  // --- State mutation overrides (Spec v3 Task 5) ---
+  void set_trigger_flag(bool v) override { _trigger_flag.store(v); }
+  void set_hw_replied(bool v) override { _hw_replied.store(v); }
+  void set_capture_data(SessionData *d) override { _capture_data = d; }
+  void set_session_time(QDateTime t) override { _session_time = t; }
+  void set_is_working(bool v) override { _is_working.store(v); }
+  void set_is_triged(bool v) override { _is_triged.store(v); }
+  void set_trig_time(QDateTime t) override { _trig_time = t; }
+  bool bClose() const override { return _bClose.load(); }
+
+  // --- Cross-manager access overrides (Spec v3 Task 5) ---
+  CaptureManager *capture_manager() override { return _capture_manager; }
+  DecodeTaskManager *decode_task_manager() override { return _decode_task_manager; }
+
   // --- ISessionCoordination overrides (Spec v2 Task 10) ---
   void clear_all_decode_task2() override;
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack) override;

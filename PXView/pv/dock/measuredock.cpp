@@ -65,7 +65,7 @@ public:
 };
 
 MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), _data_src(session), _view(view),
+    : pv::widgets::SmoothScrollArea(parent), _session(session), *_signals(session), _view(view),
       _context(nullptr) {
   _widget = new QWidget(this);
 
@@ -273,7 +273,7 @@ void MeasureDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-    _data_src = _session;
+      *_signals = _session;
   set_view(ctx->view());
   reload();
   if (ctx && ctx->view()) {
@@ -284,7 +284,7 @@ void MeasureDock::bind_context(TabContext *ctx) {
     auto &edge_rows = ctx->view()->dock_ui_state().dock_measure_edge_rows;
 
     if ((dist_rows.size() > 0 || edge_rows.size() > 0) &&
-        _data_src->device() && _data_src->device()->have_instance()) {
+        _signals->device() && _signals->device()->have_instance()) {
       auto mode_rows = get_mode_rows();
 
       if (mode_rows) {
@@ -326,8 +326,8 @@ void MeasureDock::bind_context(TabContext *ctx) {
 }
 
 void MeasureDock::unbind_context() {
-  if (_context && _context->view() && _session && _data_src->device() &&
-      _data_src->device()->have_instance()) {
+  if (_context && _context->view() && _session && _signals->device() &&
+      _signals->device()->have_instance()) {
     _context->view()->dock_ui_state().dock_measure_fen_enabled =
         _fen_checkBox->isChecked();
 
@@ -437,7 +437,7 @@ void MeasureDock::reStyle() {
 }
 
 void MeasureDock::reload() {
-  bool isLogic = _data_src->device()->get_work_mode() == LOGIC;
+  bool isLogic = _signals->device()->get_work_mode() == LOGIC;
   _edge_section->setVisible(isLogic);
   _edge_sep->setVisible(isLogic);
 
@@ -1251,7 +1251,7 @@ void MeasureDock::adjust_form_size(QWidget *wid) {
 }
 
 row_list_item *MeasureDock::get_mode_rows() {
-  int mode = _data_src->device()->get_work_mode();
+  int mode = _signals->device()->get_work_mode();
   int dex = 0;
 
   if (mode == LOGIC) {

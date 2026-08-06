@@ -66,7 +66,7 @@ void SessionStateContext::data_updated() {
   _event_bus->broadcast_async<interface::DataUpdated>({});
 }
 
-void SessionStateContext::set_receive_data_len(quint64 len) {
+void SessionStateContext::set_receive_data_len(uint64_t len) {
   _event_bus->broadcast_async<interface::DataLenUpdated>({len});
 }
 
@@ -94,7 +94,7 @@ void SessionStateContext::repeat_hold(int percent) {
   _event_bus->broadcast_async<interface::RepeatHold>({percent});
 }
 
-void SessionStateContext::receive_trigger(quint64 trigger_pos) {
+void SessionStateContext::receive_trigger(uint64_t trigger_pos) {
   _event_bus->broadcast_async<interface::TriggerReceived>({trigger_pos});
 }
 

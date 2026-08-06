@@ -45,7 +45,7 @@ namespace toolbars {
 
 FileBar::FileBar(SigSession *session, QWidget *parent) :
     QToolBar("File Bar", parent),
-    _session(session), _data_src(session)
+    _session(session), *_signals(session), *_capture(session)
     // _file_button(this)
 {
     setMovable(false);
@@ -293,8 +293,8 @@ QString FileBar::genDefaultSessionFile()
 {   
     QDir dir(GetFirmwareDir());
 
-    QString driver_name = _data_src->device()->driver_name();
-    QString mode_name = QString::number(_data_src->device()->get_work_mode());
+    QString driver_name = _signals->device()->driver_name();
+    QString mode_name = QString::number(_signals->device()->get_work_mode());
     QString file_name = dir.absolutePath() + "/" + driver_name + mode_name +".def.pxc";
 
     return file_name;
@@ -343,8 +343,8 @@ void FileBar::on_actionCapture_triggered()
 
 void FileBar::update_view_status()
 {
-    bool bEnable = _data_src->is_working() == false;
-    bool is_hardware = _data_src->device()->is_hardware();
+    bool bEnable = _capture->is_working() == false;
+    bool is_hardware = _signals->device()->is_hardware();
     // _file_button.setEnabled(bEnable);
     _menu_session->setEnabled(bEnable && is_hardware); 
 }

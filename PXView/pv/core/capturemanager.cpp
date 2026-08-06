@@ -38,8 +38,8 @@ static QString get_default_disk_cache_path() {
   return QDir::tempPath() + "/PXView_cache";
 }
 
-CaptureManager::CaptureManager(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state),
+CaptureManager::CaptureManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+    : _event_bus(bus), _state(state), _coord(coord),
       _clt_mode(COLLECT_SINGLE) {
   _feed_timer.SetCallback(std::bind(&CaptureManager::feed_timeout, this));
   _repeat_timer.SetCallback(
@@ -59,7 +59,7 @@ void CaptureManager::capture_init() {
   // reads instant mode. The application-layer _is_instant flag (accessed via
   // is_instant()/set_is_instant()) is the sole source of truth and is used
   // directly by capture logic (e.g. is_repeat_action()).
-  _state->update_capture();
+  _coord->update_capture();
 
   // Store samplerate/limits before clear() (these are device properties,
   // not snapshot state). set_cur_snap_samplerate() will be called again
@@ -68,9 +68,9 @@ void CaptureManager::capture_init() {
   const uint64_t dev_samplelimits = _state->device_agent().get_sample_limit();
 
   _data_updated.store(false);
-  _state->set_trigger_flag(false);
-  _state->set_trigger_ch(0);
-  _state->set_hw_replied(false);
+  _coord->set_trigger_flag(false);
+  _coord->set_trigger_ch(0);
+  _coord->set_hw_replied(false);
   _rt_refresh_time_id.store(0);
 
   // CRITICAL FIX (fork 迁移遗漏): 旧版 fork libsigrok 在 DS_EV_DEVICE_RUNNING
@@ -79,7 +79,7 @@ void CaptureManager::capture_init() {
   // 无此事件，capture_init() 是 exec_capture() 启动设备前最后的状态重置点，
   // 必须在此重置进度，否则用户在等待触发时会看到残留的 100% 进度。
   // set_receive_len(0) 内部会 start_trigger_timer(333) 并将 _transfer_started=false。
-  _state->set_receive_data_len(0);
+  _coord->set_receive_data_len(0);
   _rt_ck_refresh_time_id.store(0);
   _noData_cnt.store(0);
 
@@ -96,8 +96,8 @@ void CaptureManager::capture_init() {
   // get_logic() has a fallback injection, but get_analog()/get_dso() did not
   // (fixed in sessiondata.h). This explicit call after clear() is the
   // authoritative path; the get_*() injection is a safety net.
-  _state->set_cur_snap_samplerate(dev_samplerate);
-  _state->set_cur_samplelimits(dev_samplelimits);
+  _coord->set_cur_snap_samplerate(dev_samplerate);
+  _coord->set_cur_samplelimits(dev_samplelimits);
 
   _state->capture_data()->get_logic()->set_disk_cache_config(_disk_cache_config);
 
@@ -159,23 +159,23 @@ bool CaptureManager::action_start_capture(bool instant,
     return false;
   }
 
-  _state->clear_all_decode_task2();
+  _coord->clear_all_decode_task2();
   clear_decode_result();
 
   _state->capture_data()->clear();
   _state->view_data()->clear();
   // 清除毛刺滤波状态(backup 悬垂、active 标志过期),保留 thresholds/modes
   // 供 auto-apply 使用
-  _state->clear_glitch_filter_state_for_capture();
+  _coord->clear_glitch_filter_state_for_capture();
   _is_stream_mode.store(false);
   _capture_times.store(0);
   _dso_packet_count.store(0);
 
-  _state->set_capture_data(_state->view_data());
-  _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
-  _state->set_cur_samplelimits(_state->device_agent().get_sample_limit());
+  _coord->set_capture_data(_state->view_data());
+  _coord->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+  _coord->set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
-  _state->set_session_time(QDateTime::currentDateTime());
+  _coord->set_session_time(QDateTime::currentDateTime());
 
   int mode = _state->device_agent().get_work_mode();
   if (mode == LOGIC) {
@@ -328,7 +328,7 @@ bool CaptureManager::exec_capture() {
   }
 
   _capture_times.fetch_add(1);
-  _state->set_is_triged(false);
+  _coord->set_is_triged(false);
 
   int mode = _state->device_agent().get_work_mode();
   bool bAddDecoder = false;
@@ -357,7 +357,7 @@ bool CaptureManager::exec_capture() {
       // false, is_realtime_refresh() returns false, and get_logic_snapshot()
       // falls back to view_data -> empty snapshot -> blank screen.
       // Pin capture_data to view_data so both phases read the same data.
-      _state->set_capture_data(_state->view_data());
+      _coord->set_capture_data(_state->view_data());
     } else if (is_repeat_mode()) {
       if (_is_stream_mode) {
         if (_capture_times == 1)
@@ -378,7 +378,7 @@ bool CaptureManager::exec_capture() {
         // Pin capture_data to view_data explicitly, otherwise a back buffer
         // left over from an earlier double-buffered run would still be the
         // capture target and view_data would never receive data.
-        _state->set_capture_data(_state->view_data());
+        _coord->set_capture_data(_state->view_data());
       }
     } else if (is_loop_mode()) {
     }
@@ -390,7 +390,7 @@ bool CaptureManager::exec_capture() {
   }
 
   if (bAddDecoder) {
-    _state->clear_all_decode_task2();
+    _coord->clear_all_decode_task2();
     clear_decode_result();
 
     // CRITICAL: Release the active document's shared_ptr references to the old
@@ -423,10 +423,10 @@ bool CaptureManager::exec_capture() {
       buf_index = (int)_state->data_list().size() - 1;
     }
 
-    _state->set_capture_data(_state->data_list()[buf_index].get());
+    _coord->set_capture_data(_state->data_list()[buf_index].get());
     _state->capture_data()->clear();
-    _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
-    _state->set_cur_samplelimits(_state->device_agent().get_sample_limit());
+    _coord->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+    _coord->set_cur_samplelimits(_state->device_agent().get_sample_limit());
   }
 
   capture_init();
@@ -449,7 +449,7 @@ bool CaptureManager::exec_capture() {
   // instant 模式下禁用所有触发（硬件+软件），让 driver 立即采集数据，
   // 恢复旧版 fork 的 instant 语义（"立即采集不等待触发"）。统一在
   // sync_trigger_to_libsigrok 入口处理，避免每个 driver 单独判断 instant。
-  _state->sync_trigger_to_libsigrok(_is_instant.load());
+  _coord->sync_trigger_to_libsigrok(_is_instant.load());
 
   if (_state->device_agent().start() == false) {
     pxv_err("Start collect error!");
@@ -494,8 +494,8 @@ bool CaptureManager::action_stop_capture() {
 
   pxv_info("Stop collect.");
 
-  if (_state->bClose()) {
-    _state->set_is_working(false);
+  if (_coord->bClose()) {
+    _coord->set_is_working(false);
     _repeat_timer.Stop();
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
@@ -512,7 +512,7 @@ bool CaptureManager::action_stop_capture() {
   }
 
   if (!wait_upload) {
-    _state->set_is_working(false);
+    _coord->set_is_working(false);
     _repeat_timer.Stop();
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
@@ -602,7 +602,7 @@ bool CaptureManager::get_capture_status(bool &triggered, int &progress) {
   // always return true and let the out-params convey the state.
   triggered = _state->is_triged();
 
-  const uint64_t sample_limits = _state->cur_samplelimits();
+  const uint64_t sample_limits = _coord->cur_samplelimits();
   if (sample_limits == 0) {
     progress = 0;
     return true;
@@ -653,7 +653,7 @@ void CaptureManager::check_update() {
     // update → paint, causing excessive repaints at 40+ FPS.
     if (_state->device_agent().get_work_mode() != LOGIC &&
         _state->device_agent().get_work_mode() != DSO)
-      _state->data_updated();
+      _coord->data_updated();
 
     _data_updated.store(false);
     _noData_cnt.store(0);
@@ -776,8 +776,8 @@ void CaptureManager::trig_check_timeout() {
   }
 
   if (get_capture_status(triged, pro) && triged) {
-    _state->set_trig_time(QDateTime::currentDateTime());
-    _state->set_is_triged(true);
+    _coord->set_trig_time(QDateTime::currentDateTime());
+    _coord->set_is_triged(true);
     _trig_check_timer.Stop();
   }
 }
@@ -788,7 +788,7 @@ void CaptureManager::refresh(int holdtime) {
   data_lock();
   _state->view_data()->get_logic()->init();
 
-  _state->clear_all_decode_task2();
+  _coord->clear_all_decode_task2();
   clear_decode_result();
 
   _state->view_data()->get_dso()->init();

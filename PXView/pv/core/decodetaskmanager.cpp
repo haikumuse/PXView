@@ -18,8 +18,8 @@
 namespace pv {
 namespace core {
 
-DecodeTaskManager::DecodeTaskManager(EventBus *bus, SessionStateContext *state)
-    : _event_bus(bus), _state(state) {}
+DecodeTaskManager::DecodeTaskManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+    : _event_bus(bus), _state(state), _coord(coord) {}
 
 DecodeTaskManager::~DecodeTaskManager() { stop(); }
 
@@ -61,8 +61,8 @@ void DecodeTaskManager::attach_data_to_signal(SessionData *data) {
   // R1: snapshot pointers changed, so notify listeners that the data view
   // and the signal list need refreshing. Centralizing the notification here
   // removes the need for callers to manually re-fire these callbacks.
-  _state->data_updated();
-  _state->signals_changed();
+  _coord->data_updated();
+  _coord->signals_changed();
 
   // [PWMDBG] debug logs removed (Track C2)
   // SignalModels may have been recreated with nullptr snapshots — attach_data_to_signal
@@ -171,8 +171,8 @@ void DecodeTaskManager::decode_single_task(
     // model (join-based) makes this sleep a pragmatic workaround that has
     // not caused issues in practice.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (!_state->bClose()) {
-      _state->signals_changed();
+    if (!_coord->bClose()) {
+      _coord->signals_changed();
     }
   }
 

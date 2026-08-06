@@ -128,19 +128,22 @@ SigSession::SigSession() {
   // _state->view_data(), which is already initialized by SessionStateContext's
   // constructor.
   _filter_processor = std::make_unique<core::FilterProcessor>(_event_bus.get(),
+                                                              _state.get(),
                                                               _state.get());
   _decode_task_manager = std::make_unique<core::DecodeTaskManager>(
-      _event_bus.get(), _state.get());
+      _event_bus.get(), _state.get(), _state.get());
   _data_feed_parser = std::make_unique<core::DataFeedParser>(_event_bus.get(),
-                                                             _state.get());
+                                                              _state.get(),
+                                                              _state.get());
   _document_registry = std::make_unique<core::DocumentRegistry>(
-      _event_bus.get(), _state.get());
+      _event_bus.get(), _state.get(), _state.get());
   // CaptureManager owns the capture lifecycle + DsTimer instances + the
   // _is_instant / _clt_mode / _data_lock / _repeat_intvl / _dso_packet_count
   // / _disk_cache_config state. Constructed after _document_registry because
   // action_start_capture calls _document_registry->acquire_capture_owner().
   _capture_manager = std::make_unique<core::CaptureManager>(_event_bus.get(),
-                                                            _state.get());
+                                                             _state.get(),
+                                                             _state.get());
 
   // Inject manager back-pointers into _state so cross-manager helpers
   // (decode_traces / attach_data_to_signal / sync_trigger_to_libsigrok /

@@ -9,6 +9,7 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
+class ISessionCoordination;
 
 /**
  * DataFeedParser — owns the data feed callback trampoline and the feed_in_*
@@ -23,7 +24,7 @@ class SessionStateContext;
  */
 class DataFeedParser {
 public:
-  DataFeedParser(EventBus *bus, SessionStateContext *state);
+  DataFeedParser(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
   ~DataFeedParser();
 
   // Static trampoline registered with libsigrok. user_data is a DataFeedParser*.
@@ -43,16 +44,8 @@ private:
   void feed_in_dso(const sr_datafeed_dso &o);
 
   EventBus *_event_bus;
-  // Shared session state (capture_data / view_data / device_agent /
-  // is_triged / trig_time / trigger_flag / trigger_ch / hw_replied /
-  // error / data_mutex / decode_task_manager /
-  // capture_manager / spectrum_stacks / math_stack / receive_header() /
-  // receive_trigger() / frame_began() / frame_ended() / session_error() /
-  // set_receive_data_len() / set_cur_snap_samplerate() / set_session_time() /
-  // data_lock() / get_ch_num()) accessed via SessionStateContext accessors.
-  // modernize-core-layer-radical phase 1 replaced the previous SigSession* +
-  // friend-declaration coupling.
   SessionStateContext *_state;
+  ISessionCoordination *_coord;
 };
 
 } // namespace core
