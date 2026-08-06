@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Branch/tag/SHA to build (e.g. main, v1.5.4, abc123)'
-        required: true
-        default: 'main'
+        description: 'Branch/tag/SHA to build (e.g. view_and_data, v1.5.4, abc123). Leave empty to use the repository default branch.'
+        required: false
+        default: ''
       version:
         description: 'Version number for package naming (e.g. 1.5.4)'
         required: true
@@ -63,12 +63,20 @@ jobs:
     steps:
       - name: Resolve ref
         id: ref
+        env:
+          INPUT_REF: ${{ github.event.inputs.ref }}
+          EVENT_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [ -n "${{ github.event.inputs.ref }}" ]; then
-            echo "value=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          if [ -n "${INPUT_REF}" ]; then
+            REF="${INPUT_REF}"
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            REF="refs/heads/${DEFAULT_BRANCH}"
           else
-            echo "value=${{ github.ref }}" >> $GITHUB_OUTPUT
+            REF="${EVENT_REF}"
           fi
+          echo "value=${REF}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ref: ${REF}"
 
       - name: Resolve version
         id: version
@@ -320,12 +328,20 @@ jobs:
     steps:
       - name: Resolve ref
         id: ref
+        env:
+          INPUT_REF: ${{ github.event.inputs.ref }}
+          EVENT_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [ -n "${{ github.event.inputs.ref }}" ]; then
-            echo "value=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          if [ -n "${INPUT_REF}" ]; then
+            REF="${INPUT_REF}"
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            REF="refs/heads/${DEFAULT_BRANCH}"
           else
-            echo "value=${{ github.ref }}" >> $GITHUB_OUTPUT
+            REF="${EVENT_REF}"
           fi
+          echo "value=${REF}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ref: ${REF}"
 
       - name: Resolve version
         id: version
@@ -728,12 +744,20 @@ jobs:
 
       - name: Resolve ref
         id: ref
+        env:
+          INPUT_REF: ${{ github.event.inputs.ref }}
+          EVENT_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [ -n "${{ github.event.inputs.ref }}" ]; then
-            echo "value=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          if [ -n "${INPUT_REF}" ]; then
+            REF="${INPUT_REF}"
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            REF="refs/heads/${DEFAULT_BRANCH}"
           else
-            echo "value=${{ github.ref }}" >> $GITHUB_OUTPUT
+            REF="${EVENT_REF}"
           fi
+          echo "value=${REF}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ref: ${REF}"
 
       - name: Resolve version
         id: version
