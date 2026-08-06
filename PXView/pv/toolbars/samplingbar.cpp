@@ -128,9 +128,9 @@ SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
   _radio_loop = nullptr;
 
   _session = session;
-      *_signals = _session;
-  *_data = _session;
-  *_capture = _session;
+      _signals = _session;
+  _data = _session;
+  _capture = _session;
   _device_agent = _signals->device();
 
   setMovable(false);
@@ -346,9 +346,9 @@ void SamplingBar::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_signals = _session;
-  *_data = _session;
-  *_capture = _session;
+      _signals = _session;
+  _data = _session;
+  _capture = _session;
   _view = ctx->view();
   _device_agent = _signals->device();
   set_readonly(!ctx->is_live());
@@ -1514,9 +1514,9 @@ void SamplingBar::device_selected() { _mode_button->click(); }
 
 void SamplingBar::set_context(SigSession *session, pv::view::View *view) {
   _session = session;
-      *_signals = _session;
-  *_data = _session;
-  *_capture = _session;
+      _signals = _session;
+  _data = _session;
+  _capture = _session;
   _device_agent = _signals->device();
   _view = view;
   update_device_list();

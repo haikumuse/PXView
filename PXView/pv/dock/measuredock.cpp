@@ -65,7 +65,7 @@ public:
 };
 
 MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), *_signals(session), _view(view),
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _signals(session), _view(view),
       _context(nullptr) {
   _widget = new QWidget(this);
 
@@ -273,7 +273,7 @@ void MeasureDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_signals = _session;
+      _signals = _session;
   set_view(ctx->view());
   reload();
   if (ctx && ctx->view()) {

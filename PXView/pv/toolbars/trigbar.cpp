@@ -45,7 +45,7 @@ namespace toolbars {
 
 TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     QToolBar("Trig Bar", parent),
-    _session(session), *_signals(session)
+    _session(session), _signals(session)
 {
     _enable = true;
 

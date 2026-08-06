@@ -162,7 +162,7 @@ QString SearchResultModel::format_time(int64_t sample) const {
 // ============================================================================
 
 SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), *_data(session), *_signals(session), _view(view),
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _data(session), _signals(session), _view(view),
       _context(nullptr), _widget(nullptr), _pattern_input(nullptr),
       _result_view(nullptr), _result_model(nullptr), _legend_x(nullptr),
       _legend_r(nullptr), _legend_0(nullptr), _legend_f(nullptr),
@@ -350,8 +350,8 @@ void SearchDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_data = _session;
-  *_signals = _session;
+      _data = _session;
+  _signals = _session;
   _view = ctx->view();
   stop_search();
   _results_mutex.lock();

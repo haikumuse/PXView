@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../data/sessiondocument.h"
+#include "isession_coordination.h"
 
 namespace pv {
 
@@ -19,7 +20,6 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
-class ISessionCoordination;
 
 /**
  * DocumentRegistry — owns the SessionDocument list and the capture-owner

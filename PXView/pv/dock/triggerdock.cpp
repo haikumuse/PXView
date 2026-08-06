@@ -78,7 +78,7 @@ namespace dock {
 const int TriggerDock::MinTrigPosition = 1;
 
 TriggerDock::TriggerDock(QWidget *parent, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), *_signals(session), *_capture(session),
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _signals(session), _capture(session),
       _context(nullptr) {
   _cur_ch_num = 16;
   if (_signals->device()->have_instance()) {
@@ -1464,8 +1464,8 @@ void TriggerDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_signals = _session;
-  *_capture = _session;
+      _signals = _session;
+  _capture = _session;
   if (ctx && ctx->view()) {
     auto &saved = ctx->view()->dock_ui_state().dock_trigger_session;
     if (!saved.isEmpty()) {

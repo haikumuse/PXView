@@ -68,7 +68,7 @@ namespace pv {
 namespace dock {
 
 DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
-    : QWidget(parent), _session(session), *_capture(session), _context(nullptr) {
+    : QWidget(parent), _session(session), _capture(session), _context(nullptr) {
   _scroll_panel = nullptr;
   _container_panel = nullptr;
   _container_lay = nullptr;

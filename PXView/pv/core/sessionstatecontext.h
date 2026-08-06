@@ -217,10 +217,6 @@ public:
   void set_trig_time(QDateTime t) override { _trig_time = t; }
   bool bClose() const override { return _bClose.load(); }
 
-  // --- Cross-manager access overrides (Spec v3 Task 5) ---
-  CaptureManager *capture_manager() override { return _capture_manager; }
-  DecodeTaskManager *decode_task_manager() override { return _decode_task_manager; }
-
   // --- ISessionCoordination overrides (Spec v2 Task 10) ---
   void clear_all_decode_task2() override;
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack) override;

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../data/sessiondata.h"
+#include "isession_coordination.h"
 
 namespace pv {
 
@@ -19,7 +20,6 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
-class ISessionCoordination;
 
 /**
  * DecodeTaskManager — owns the decode thread pool (_decode_threads) and the

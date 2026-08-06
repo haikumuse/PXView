@@ -97,9 +97,9 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
 
   if (_state->capture_data()->get_logic()->last_ended()) {
     _state->capture_data()->get_logic()->set_loop(
-        _coord->capture_manager()->is_loop_mode());
+        _capture_mgr->is_loop_mode());
 
-    bool bNotFree = _coord->decode_task_manager()->has_running_tasks() &&
+    bool bNotFree = _decode_mgr->has_running_tasks() &&
                     _state->view_data() == _state->capture_data();
 
     _state->capture_data()->get_logic()->first_payload(
@@ -132,7 +132,7 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
     _coord->set_receive_data_len(o.length);
   }
 
-  _coord->capture_manager()->set_data_updated(true);
+  _capture_mgr->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated typed event.
   // feed_in_logic runs on the libsigrok data-feed thread; use broadcast_async
@@ -182,7 +182,7 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
   if (mode == ANALOG) {
     _coord->set_receive_data_len(o.num_samples);
   }
-  _coord->capture_manager()->set_data_updated(true);
+  _capture_mgr->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
   _event_bus->broadcast_async<interface::DataUpdated>({});
@@ -217,7 +217,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     _state->capture_data()->get_dso()->first_payload(
         o, _state->device_agent().get_ring_sample_count(),
         _state->device_agent().get_channels(),
-        _coord->capture_manager()->is_instant(),
+        _capture_mgr->is_instant(),
         _state->device_agent().is_file());
     _coord->frame_began();
   } else {
@@ -275,7 +275,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   if (mode == DSO) {
     _coord->set_receive_data_len(o.num_samples);
   }
-  _coord->capture_manager()->set_data_updated(true);
+  _capture_mgr->set_data_updated(true);
 
   // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
   _event_bus->broadcast_async<interface::DataUpdated>({});
@@ -298,7 +298,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
   ds_lock_guard lock(_state->data_mutex());
 
-  if (_coord->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
+  if (_capture_mgr->is_data_lock() && packet->type != SR_DF_END)
     return;
 
   // Upstream sr_datafeed_packet has no `status` field (fork-only).
@@ -395,7 +395,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
       // _is_working 为 true 时才释放 guard —— repeat 模式每帧的 guard 释放
       // 由 TrigNextCollect / stop_capture 路径负责。
       if (mode != MSO) {
-        _coord->decode_task_manager()->start_all_decode_tasks();
+        _decode_mgr->start_all_decode_tasks();
       }
 
       // 架构修复：MSO 模式包含 LOGIC 通道，采集完成后若启用 auto-apply

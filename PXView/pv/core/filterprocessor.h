@@ -14,13 +14,14 @@
 // including the heavy logicsnapshot.h header.
 enum class GlitchFilterMode : int;
 
+#include "isession_coordination.h"
+
 namespace pv {
 
 namespace core {
 
 class EventBus;
 class SessionStateContext;
-class ISessionCoordination;
 
 /**
  * FilterProcessor — owns the glitch filter and signal invert background

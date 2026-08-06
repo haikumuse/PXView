@@ -45,7 +45,7 @@ namespace toolbars {
 
 FileBar::FileBar(SigSession *session, QWidget *parent) :
     QToolBar("File Bar", parent),
-    _session(session), *_signals(session), *_capture(session)
+    _session(session), _signals(session), _capture(session)
     // _file_button(this)
 {
     setMovable(false);

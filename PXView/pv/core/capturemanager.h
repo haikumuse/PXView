@@ -12,6 +12,7 @@
 #include "../data/sessiondata.h"
 #include "../dstimer.h"
 #include "../pxvdef.h" // DEVICE_COLLECT_MODE / DEVICE_STATUS_TYPE
+#include "isession_coordination.h"
 
 namespace pv {
 
@@ -23,7 +24,6 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
-class ISessionCoordination;
 
 /**
  * CaptureManager — owns the capture lifecycle (start/stop/exec/exit),

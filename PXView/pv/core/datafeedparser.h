@@ -2,6 +2,7 @@
 #define PXVIEW_CORE_DATAFEEDPARSER_H
 
 #include <libsigrok/libsigrok.h>
+#include "isession_coordination.h"
 
 namespace pv {
 
@@ -9,7 +10,8 @@ namespace core {
 
 class EventBus;
 class SessionStateContext;
-class ISessionCoordination;
+class CaptureManager;
+class DecodeTaskManager;
 
 /**
  * DataFeedParser — owns the data feed callback trampoline and the feed_in_*
@@ -21,6 +23,13 @@ class ISessionCoordination;
  * accessing capture_data / view_data / device_agent / is_triged / data_lock
  * / etc.). modernize-core-layer-radical phase 1 replaced the previous
  * SigSession* + friend-declaration coupling.
+ *
+ * Cross-manager coordination (EventBus dispatch + state mutation) goes
+ * through ISessionCoordination* — which is a pure abstraction with no
+ * dependency on concrete manager types. Typed access to CaptureManager /
+ * DecodeTaskManager state is injected directly via set_managers() by
+ * SigSession (CaptureManager is constructed after DataFeedParser), keeping
+ * ISessionCoordination free of any concrete-manager coupling.
  */
 class DataFeedParser {
 public:
@@ -33,7 +42,17 @@ public:
                                     void *user_data);
 
   void data_feed_in(const struct sr_dev_inst *sdi,
-                    const struct sr_datafeed_packet *packet);
+                    const sr_datafeed_packet *packet);
+
+  // SigSession injects the concrete manager pointers after construction
+  // (CaptureManager is built after DataFeedParser). DataFeedParser needs
+  // typed access to these for capture/decode state queries, but this is
+  // NOT routed through ISessionCoordination (which stays concrete-free).
+  void set_managers(CaptureManager *capture_mgr,
+                    DecodeTaskManager *decode_mgr) {
+    _capture_mgr = capture_mgr;
+    _decode_mgr = decode_mgr;
+  }
 
 private:
   void feed_in_header(const sr_dev_inst *sdi);
@@ -46,6 +65,8 @@ private:
   EventBus *_event_bus;
   SessionStateContext *_state;
   ISessionCoordination *_coord;
+  CaptureManager *_capture_mgr = nullptr;
+  DecodeTaskManager *_decode_mgr = nullptr;
 };
 
 } // namespace core

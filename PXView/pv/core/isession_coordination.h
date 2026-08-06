@@ -18,10 +18,7 @@ class DecoderStack;
 namespace decode { class Decoder; }
 } // namespace data
 
-namespace core {
-class CaptureManager;
-class DecodeTaskManager;
-} // namespace core
+
 
 /**
  * ISessionCoordination — cross-manager coordination interface.
@@ -42,10 +39,16 @@ class DecodeTaskManager;
  *   set_receive_data_len, set_capture_data, set_session_time
  * - DecodeTaskManager: data_updated, signals_changed, bClose
  * - DataFeedParser: receive_header, receive_trigger, frame_began,
- *   session_error, set_is_triged, set_trig_time, set_error,
- *   capture_manager, decode_task_manager
+ *   session_error, set_is_triged, set_trig_time, set_error
  * - FilterProcessor: (reuses data_updated)
  * - DocumentRegistry: set_is_working
+ *
+ * DataFeedParser also needs direct (typed) access to CaptureManager /
+ * DecodeTaskManager state. Rather than exposing those concrete types
+ * through this interface (which would couple the abstraction back to the
+ * concrete managers), SigSession injects the manager pointers directly
+ * into DataFeedParser via set_managers() — keeping ISessionCoordination
+ * free of any concrete-manager dependency.
  */
 class ISessionCoordination {
 public:
@@ -105,11 +108,6 @@ public:
 
     // --- Query (Spec v3 Task 5) ---
     virtual bool bClose() const = 0;
-
-    // --- Cross-manager access (Spec v3 Task 5) ---
-    // DataFeedParser needs to query capture/decode state
-    virtual CaptureManager *capture_manager() = 0;
-    virtual DecodeTaskManager *decode_task_manager() = 0;
 };
 
 } // namespace pv

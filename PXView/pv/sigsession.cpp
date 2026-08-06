@@ -154,6 +154,12 @@ SigSession::SigSession() {
   _state->set_document_registry(_document_registry.get());
   _state->set_filter_processor(_filter_processor.get());
 
+  // DataFeedParser needs typed access to CaptureManager / DecodeTaskManager
+  // for state queries. These are injected directly (not via ISessionCoordination,
+  // which stays concrete-free) so the parser no longer pulls concrete manager
+  // types through the coordination interface.
+  _data_feed_parser->set_managers(_capture_manager.get(), _decode_task_manager.get());
+
   _state->device_agent().set_callback(this);
   // Wire the datafeed callback so DeviceAgent registers it with sr_session
   // when open_by_handle creates the session. The callback trampoline lives

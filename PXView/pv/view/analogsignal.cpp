@@ -898,7 +898,7 @@ void AnalogSignal::paint_envelope(
     x += scale_pixels_per_samples;
   }
 
-  p.drawRects(_rects, pcnt);
+  p.drawRects(_rects.get(), pcnt);
 }
 
 void AnalogSignal::paint_hover_measure(QPainter &p, QColor fore, QColor back) {

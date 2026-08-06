@@ -50,7 +50,7 @@ namespace pv {
 namespace dock {
 
 DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), *_signals(session), _context(nullptr) {
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _signals(session), _context(nullptr) {
   this->setWidgetResizable(true);
   _widget = new QWidget(this);
 
@@ -566,7 +566,7 @@ void DsoTriggerDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_signals = _session;
+      _signals = _session;
   if (ctx && ctx->view()) {
     auto &saved = ctx->view()->dock_ui_state().dock_dso_trigger_session;
     if (!saved.isEmpty()) {

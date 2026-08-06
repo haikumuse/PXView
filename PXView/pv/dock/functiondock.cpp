@@ -43,7 +43,7 @@ namespace dock {
 static const int WellLen = SR_Kn(16);
 
 FunctionDock::FunctionDock(QWidget *parent, SigSession *session)
-    : SmoothScrollArea(parent), _session(session), *_signals(session), *_data(session)
+    : SmoothScrollArea(parent), _session(session), _signals(session), _data(session)
 {
     setWidgetResizable(true);
     setFrameShape(QFrame::NoFrame);

@@ -75,9 +75,9 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
                            SigSession *session)
     : pv::widgets::SmoothScrollArea(parent), _view(view), _context(nullptr) {
   _session = session;
-      *_signals = _session;
-  *_decoder_host = _session;
-  *_capture = _session;
+      _signals = _session;
+  _decoder_host = _session;
+  _capture = _session;
   _cur_search_index = -1;
   _search_edited = false;
   _pro_add_button = nullptr;
@@ -334,9 +334,9 @@ void ProtocolDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-      *_signals = _session;
-  *_decoder_host = _session;
-  *_capture = _session;
+      _signals = _session;
+  _decoder_host = _session;
+  _capture = _session;
   // Disconnect the previous View's visible-range signal before switching
   // to the new tab's View (multi-tab scenario: the old View stays alive).
   if (_view) {
