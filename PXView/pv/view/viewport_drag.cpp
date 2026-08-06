@@ -82,7 +82,7 @@ void ViewportDrag::applyDragFrame() {
     }
   } else if (_viewport->_type == FFT_VIEW) {
     if (_viewport->_drag_buttons & Qt::LeftButton) {
-      for (auto t : _viewport->_view.get_own_spectrum_traces()) {
+      for (auto &t : _viewport->_view.get_own_spectrum_traces()) {
         if (t->enabled()) {
           double delta = (_viewport->_mouse_point - _viewport->_drag_last_pos).x();
           t->set_offset(delta);
@@ -110,9 +110,9 @@ void ViewportDrag::applyDragFrame() {
         uint64_t index0 = 0, index1 = 0, index2 = 0;
         bool logic = false;
 
-        for (auto s : _viewport->_view.get_own_signals()) {
+        for (auto &s : _viewport->_view.get_own_signals()) {
           if (_viewport->_view.is_logic_rendering_mode() && s->signal_type() == SR_CHANNEL_LOGIC) {
-            view::LogicSignal *logicSig = (view::LogicSignal *)s;
+            view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
             if (logicSig->measure(_viewport->_drag_last_pos, index0, index1,
                                   index2)) {
               logic = true;
@@ -120,7 +120,7 @@ void ViewportDrag::applyDragFrame() {
             }
           }
           if (mode == DSO && s->signal_type() == SR_CHANNEL_DSO) {
-            view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+            view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
             curX = min(dsoSig->get_view_rect().right(), curX);
             if (curX < dsoSig->get_view_rect().left()) {
               curX = dsoSig->get_view_rect().left();
@@ -132,7 +132,7 @@ void ViewportDrag::applyDragFrame() {
            * DSView had no branch for ANALOG here, leaving curX
            * unclamped — a known bug. */
           if (mode == ANALOG && s->signal_type() == SR_CHANNEL_ANALOG) {
-            view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
+            view::AnalogSignal *analogSig = (view::AnalogSignal *)s.get();
             QRect vr = analogSig->get_view_rect();
             curX = min(vr.right(), curX);
             if (curX < vr.left()) {
@@ -171,7 +171,7 @@ void ViewportDrag::applyDragFrame() {
           auto &xcursor_list = _viewport->_view.get_xcursorList();
           const QRect xrect = _viewport->_view.get_view_rect();
 
-          for (auto xc : xcursor_list) {
+          for (auto &xc : xcursor_list) {
             if (xc->grabbed() != XCursor::XCur_None) {
               if (xc->grabbed() == XCursor::XCur_Y) {
                 int hover_x = _viewport->_drag_last_pos.x();

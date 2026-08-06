@@ -472,7 +472,7 @@ void CursorOverlayPass::render(QPainter &p, const RenderContext &ctx) {
   // 1. Regular cursors
   if (view->cursors_shown()) {
     auto &cursor_list = view->get_cursorList();
-    for (auto cursor : cursor_list) {
+    for (auto &cursor : cursor_list) {
       const int64_t cursorX = view->index2pixel(cursor->index());
       if (xrect.contains(hover.x(), hover.y()) &&
           qAbs(cursorX - hover.x()) <= Viewport::HitCursorMargin)
@@ -618,7 +618,7 @@ void MeasureOverlayPass::draw_dso_hover_lines(QPainter &p,
   if (!(vp->_action_type == NO_ACTION && vp->_measure_type == DSO_VALUE))
     return;
 
-  for (auto s : m.view->get_own_signals()) {
+  for (auto &s : m.view->get_own_signals()) {
     if (auto *dsoSig = s->as_dso()) {
       uint64_t index;
       double value;
@@ -651,7 +651,7 @@ void MeasureOverlayPass::draw_dso_y_measure(QPainter &p,
   if (!vp->_dso_ym_valid)
     return;
 
-  for (auto s : m.view->get_own_signals()) {
+  for (auto &s : m.view->get_own_signals()) {
     if (auto *dsoSig = s->as_dso()) {
       if (dsoSig->get_index() == vp->_dso_ym_sig_index) {
         p.setPen(QPen(dsoSig->get_colour(), 1, Qt::DotLine));

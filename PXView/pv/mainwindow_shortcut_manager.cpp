@@ -291,9 +291,9 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     _wnd->current_view()->zoom(-1);
     break;
   case SHORTCUT_DSO_CH0:
-    for (auto s : sigs) {
+    for (auto &s : sigs) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+        view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
         if (dsoSig->get_index() == 0)
           dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
         else
@@ -304,9 +304,9 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     _wnd->update();
     break;
   case SHORTCUT_DSO_CH1:
-    for (auto s : sigs) {
+    for (auto &s : sigs) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+        view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
         if (dsoSig->get_index() == 1)
           dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
         else
@@ -317,9 +317,9 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     _wnd->update();
     break;
   case SHORTCUT_DSO_VUP:
-    for (auto s : sigs) {
+    for (auto &s : sigs) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+        view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
         if (dsoSig->get_vDialActive()) {
           dsoSig->go_vDialNext(true);
           _wnd->update();
@@ -329,9 +329,9 @@ bool MainWindowShortcutManager::handleKeyPress(QObject *object,
     }
     break;
   case SHORTCUT_DSO_VDOWN:
-    for (auto s : sigs) {
+    for (auto &s : sigs) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+        view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
         if (dsoSig->get_vDialActive()) {
           dsoSig->go_vDialPre(true);
           _wnd->update();

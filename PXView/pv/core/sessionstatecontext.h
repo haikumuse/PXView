@@ -11,8 +11,6 @@
 
 #include "cursorregistry.h"
 #include "../data/datasource.h"
-#include "../data/lissajousmodel.h"
-#include "../data/mathstack.h"
 #include "../data/sessiondata.h"
 #include "../data/signalmodel.h"
 #include "../data/triggerconfig.h"
@@ -24,6 +22,7 @@ namespace pv {
 
 namespace data {
 class LissajousModel;
+class MathStack;
 class SessionDocument;
 class SpectrumStack;
 class DecoderStack;
@@ -114,7 +113,7 @@ public:
   }
   // Track B2: LissajousModel owned via unique_ptr
   data::LissajousModel *lissajous_model() const { return _lissajous_model.get(); }
-  void set_lissajous_model(std::unique_ptr<data::LissajousModel> m) { _lissajous_model = std::move(m); }
+  void set_lissajous_model(std::unique_ptr<data::LissajousModel> m);
   const std::shared_ptr<data::MathStack> &math_stack() const {
     return _math_stack;
   }

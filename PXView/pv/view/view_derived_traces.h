@@ -84,8 +84,8 @@ public:
   void sync_derived_traces();
   void mark_derived_traces_dirty();
 
-  std::vector<DecodeTrace *> &own_decode_traces() { return _own_decode_traces; }
-  std::vector<SpectrumTrace *> &own_spectrum_traces() { return _own_spectrum_traces; }
+  std::vector<std::unique_ptr<DecodeTrace>> &own_decode_traces() { return _own_decode_traces; }
+  std::vector<std::unique_ptr<SpectrumTrace>> &own_spectrum_traces() { return _own_spectrum_traces; }
   MathTrace *own_math_trace() { return _own_math_trace.get(); }
   LissajousTrace *own_lissajous_trace() { return _own_lissajous_trace.get(); }
   bool derived_traces_dirty() const { return _derived_traces_dirty; }
@@ -102,8 +102,8 @@ public:
 private:
   View *_view;
 
-  std::vector<DecodeTrace *> _own_decode_traces;
-  std::vector<SpectrumTrace *> _own_spectrum_traces;
+  std::vector<std::unique_ptr<DecodeTrace>> _own_decode_traces;
+  std::vector<std::unique_ptr<SpectrumTrace>> _own_spectrum_traces;
   std::unique_ptr<MathTrace> _own_math_trace;
   std::unique_ptr<LissajousTrace> _own_lissajous_trace;
   bool _derived_traces_dirty = true;

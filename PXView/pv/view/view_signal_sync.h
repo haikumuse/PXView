@@ -25,6 +25,7 @@
 #define PXVIEW_PV_VIEW_VIEW_SIGNAL_SYNC_H
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <QColor>
 
@@ -58,7 +59,8 @@ struct SignalGroup;
 // so the delegate can access View's private widget members and layout state.
 class ViewSignalSync : public IViewSignalStore {
 public:
-  explicit ViewSignalSync(View *view) : _view(view) {}
+  explicit ViewSignalSync(View *view);
+  ~ViewSignalSync();
 
   // -- signal grouping ---------------------------------------------------
   void compute_signal_groups();
@@ -94,7 +96,7 @@ public:
   QColor get_trace_card_color(Trace *trace);
   bool is_colored_card_mode();
 
-  std::vector<Signal *> &own_signals() { return _own_signals; }
+  std::vector<std::unique_ptr<Signal>> &own_signals() { return _own_signals; }
   std::vector<SignalGroup> &signal_groups() { return _signal_groups; }
   QColor group_card_color() const { return _group_card_color; }
   void set_group_card_color(QColor c) { _group_card_color = c; }
@@ -107,7 +109,7 @@ public:
 private:
   View *_view;
 
-  std::vector<Signal *> _own_signals;
+  std::vector<std::unique_ptr<Signal>> _own_signals;
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _rebuild_in_progress = false;

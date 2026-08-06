@@ -316,9 +316,9 @@ void SpectrumTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QCo
         double vfactor = 0;
         
         if (_view) {
-            for(auto s : _view->get_own_signals()) {
+            for(auto &s : _view->get_own_signals()) {
                 if (s->signal_type() == SR_CHANNEL_DSO) {
-                    view::DsoSignal *dsoSig = (view::DsoSignal*)s;
+                    view::DsoSignal *dsoSig = (view::DsoSignal*)s.get();
                     if(dsoSig->get_index() == _spectrum_stack->get_index()) {
                         vdiv = dsoSig->get_vDialValue();
                         vfactor = dsoSig->get_factor();

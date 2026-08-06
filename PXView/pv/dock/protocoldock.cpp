@@ -598,7 +598,7 @@ void ProtocolDock::rebuild_protocol_layers() {
   // instead of querying Core's DecoderStack list directly. Each DecodeTrace
   // wraps a Core-owned DecoderStack accessed via trace->decoder().
   const auto &decode_traces = _view->get_own_decode_traces();
-  for (auto trace : decode_traces) {
+  for (auto &trace : decode_traces) {
     auto stack = trace ? trace->decoder() : nullptr;
     if (!stack)
       continue;
@@ -1207,7 +1207,7 @@ void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
           // Trace::visible(), so the header and track space remain.
           if (_view) {
             auto &traces = _view->get_own_decode_traces();
-            for (auto *dt : traces) {
+            for (auto &dt : traces) {
               if (dt && dt->decoder().get() == stack) {
                 dt->set_visible(new_shown);
                 break;

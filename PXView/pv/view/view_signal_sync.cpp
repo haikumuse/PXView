@@ -79,6 +79,12 @@ using namespace std;
 namespace pv {
 namespace view {
 
+ViewSignalSync::ViewSignalSync(View *view) : _view(view) {}
+
+ViewSignalSync::~ViewSignalSync() {
+  // unique_ptr containers auto-delete all Signal elements.
+}
+
 void ViewSignalSync::compute_signal_groups() {
   _signal_groups.clear();
 
@@ -579,8 +585,8 @@ void ViewSignalSync::rebuild_signals_from_config(
     ~RebuildGuard() { flag = false; }
   } _rebuild_guard(_rebuild_in_progress);
 
-  std::vector<Signal *> old_signals = _own_signals;
-  _own_signals.clear();
+std::vector<std::unique_ptr<Signal>> old_signals = std::move(_own_signals);
+_own_signals.clear();
 
   // CRITICAL FIX: 不再用 config.work_mode 一刀切决定 channel_type/Signal 类型。
   // 上游 libsigrok 0.6 demo 设备在 work_mode=LOGIC 下同时存在 LOGIC + DSO
@@ -632,9 +638,9 @@ void ViewSignalSync::rebuild_signals_from_config(
     model->set_session(_view->session_ptr());
 
     Signal *old_signal = nullptr;
-    for (auto os : old_signals) {
+    for (auto &os : old_signals) {
       if (os->get_index() == ch.index && os->signal_type() == ch_type) {
-        old_signal = os;
+        old_signal = os.get();
         break;
       }
     }
@@ -701,16 +707,15 @@ void ViewSignalSync::rebuild_signals_from_config(
       } else {
         signal->set_view_index(-1);
       }
-      _own_signals.push_back(signal);
+      _own_signals.push_back(std::unique_ptr<Signal>(signal));
     }
   }
 
-  for (auto sig : old_signals)
-    delete sig;
+// old_signals is a unique_ptr vector — it auto-deletes on scope exit.
 
   if (_view->data_sync_delegate()->document_ptr() && _view->data_sync_delegate()->document_ptr()->has_data()) {
-    for (auto sig : _own_signals) {
-      if (auto *s = sig->as_logic()) {
+for (auto &sig : _own_signals) {
+if (auto *s = sig->as_logic()) {
         s->set_data(_view->data_sync_delegate()->document_ptr()->get_active_logic());
       } else if (auto *s = sig->as_analog()) {
         s->set_data(_view->data_sync_delegate()->document_ptr()->get_active_analog());
@@ -736,9 +741,11 @@ void ViewSignalSync::rebuild_signals() {
     }
     if (config.channels.size() == (size_t)device_ch_count) {
       rebuild_signals_from_config(config);
-      SignalFactory::update_signals(_own_signals, _view->data_source(),
-                                    _view->data_source(),
-                                    SignalFactory::Modified);
+// update_signals with Modified event only updates properties in-place,
+// so it is safe to pass the unique_ptr container directly.
+SignalFactory::update_signals(_own_signals, _view->data_source(),
+_view->data_source(),
+SignalFactory::Modified);
       // Only property changes, no layout needed - use incremental refresh
       signals_modified_refresh();
       return;
@@ -753,18 +760,16 @@ void ViewSignalSync::rebuild_signals() {
   if (created_sigs.empty())
     return;
 
-  for (auto sig : _own_signals)
-    delete sig;
-  _own_signals.clear();
+// unique_ptr auto-deletes when cleared
+_own_signals.clear();
 
-  for (auto sig : created_sigs) {
-    // create_signals 新建的信号已使用 Trace 构造函数的默认高度，
-    // 无需在此二次重置。DSO/Analog 的自动高度由 set_data_document 路径处理。
-    _own_signals.push_back(sig);
-  }
+// Move all created signals into _own_signals.
+// create_signals 新建的信号已使用 Trace 构造函数的默认高度，
+// 无需在此二次重置。DSO/Analog 的自动高度由 set_data_document 路径处理。
+_own_signals = std::move(created_sigs);
 
-  for (auto sig : _own_signals) {
-    if (sig && sig->model()) {
+for (auto &sig : _own_signals) {
+if (sig && sig->model()) {
       sig->set_enabled(sig->model()->enabled());
       sig->set_visible(sig->model()->enabled());
     }
@@ -786,7 +791,7 @@ void ViewSignalSync::rebuild_signals() {
   if (restore_doc && restore_doc->has_signal_config()) {
     const auto &cfg = restore_doc->get_signal_config();
     int view_index_seq = 0;
-    for (auto *sig : _own_signals) {
+    for (auto &sig : _own_signals) {
       auto it = std::find_if(cfg.channels.begin(), cfg.channels.end(),
                              [&](const data::ChannelConfig &ch) {
                                return ch.index == sig->get_index();
@@ -977,18 +982,18 @@ void ViewSignalSync::get_traces(int type, std::vector<Trace *> &traces) {
   auto &decode_sigs = _view->get_own_decode_traces();
   auto &spectrums = _view->get_own_spectrum_traces();
 
-  for (auto t : sigs) {
+  for (auto &t : sigs) {
     if (type == ALL_VIEW || _view->trace_view_map()[t->get_type()] == type)
-      traces.push_back(t);
+      traces.push_back(t.get());
   }
-  for (auto t : decode_sigs) {
-    if (type == ALL_VIEW || _view->trace_view_map()[t->get_type()] == type)
-      traces.push_back(t);
-  }
-  for (auto t : spectrums) {
-    if (type == ALL_VIEW || _view->trace_view_map()[t->get_type()] == type)
-      traces.push_back(t);
-  }
+for (auto &t : decode_sigs) {
+if (type == ALL_VIEW || _view->trace_view_map()[t->get_type()] == type)
+traces.push_back(t.get());
+}
+for (auto &t : spectrums) {
+if (type == ALL_VIEW || _view->trace_view_map()[t->get_type()] == type)
+traces.push_back(t.get());
+}
 
   auto lissajous = _view->get_own_lissajous_trace();
   if (lissajous && lissajous->enabled() &&

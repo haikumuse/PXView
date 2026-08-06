@@ -937,10 +937,10 @@ void MeasureDock::update_edge() {
       uint64_t rising_edges;
       uint64_t falling_edges;
 
-      for (auto s : _view->get_own_signals()) {
+      for (auto &s : _view->get_own_signals()) {
         if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled() &&
             s->get_index() == inf.box->currentText().toInt()) {
-          view::LogicSignal *logicSig = (view::LogicSignal *)s;
+          view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
 
           if (logicSig->edges(_view->get_cursor_samples(inf.cursor2 - 1),
                               _view->get_cursor_samples(inf.cursor1 - 1),
@@ -1015,7 +1015,7 @@ QComboBox *MeasureDock::create_probe_selector(QWidget *parent) {
 void MeasureDock::update_probe_selector(QComboBox *selector) {
   selector->clear();
 
-  for (auto s : _view->get_own_signals()) {
+  for (auto &s : _view->get_own_signals()) {
     if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()) {
       selector->addItem(QString::number(s->get_index()));
     }
@@ -1095,7 +1095,7 @@ void MeasureDock::build_cursor_pannel() {
       QString cur_pos = _view->get_cm_time(cursor_dex) + "/" +
                         QString::number(_view->get_cursor_samples(cursor_dex));
       row.info_label->setText(cur_pos);
-      row.cursor = (*it);
+      row.cursor = it->get();
       index++;
       cursor_dex++;
     }
@@ -1122,7 +1122,7 @@ void MeasureDock::build_cursor_pannel() {
       QString cur_pos = _view->get_cm_time(cursor_dex) + "/" +
                         QString::number(_view->get_cursor_samples(cursor_dex));
       row.info_label->setText(cur_pos);
-      row.cursor = (*it);
+      row.cursor = it->get();
       index++;
       cursor_dex++;
     }
@@ -1169,7 +1169,7 @@ void MeasureDock::build_cursor_pannel() {
     connect(cursor_pushButton, &QPushButton::clicked, this,
             &MeasureDock::goto_cursor);
 
-    cursor_opt_info inf = {del_btn, cursor_pushButton, curpos_label, (*it)};
+    cursor_opt_info inf = {del_btn, cursor_pushButton, curpos_label, it->get()};
     mode_rows->_opt_row_list.push_back(inf);
 
     index++;

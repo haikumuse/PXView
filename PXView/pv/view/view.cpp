@@ -280,9 +280,8 @@ View::~View() {
   _time_viewport->removeEventFilter(this);
   _fft_viewport->removeEventFilter(this);
 
-  for (auto sig : _signal_sync->own_signals())
-    delete sig;
-  _signal_sync->own_signals().clear();
+// unique_ptr in _own_signals auto-deletes all Signal elements.
+_signal_sync->own_signals().clear();
   // Drop preview-range cache keys (LogicSignal pointers now dangling).
   _glitch_filter->clear_preview_ranges();
 
@@ -290,14 +289,11 @@ View::~View() {
   // objects and are owned by the View, not by the data source).
   _derived->cleanup();
 
-  // Destroy the glitch filter popup (View-owned QWidget). Qt would also
-  // delete it as a child widget, but explicit deletion here guarantees the
-  // closed() signal cannot fire mid-destruction.
-  auto *gfp2 = _glitch_filter->glitch_filter_popup();
-  if (gfp2) {
-    delete gfp2;
-    _glitch_filter->set_glitch_filter_popup(nullptr);
-  }
+// Destroy the glitch filter popup (View-owned QWidget). Qt would also
+// delete it as a child widget, but explicit reset here guarantees the
+// closed() signal cannot fire mid-destruction. unique_ptr in ViewGlitchFilter
+// handles deletion via set_glitch_filter_popup(nullptr).
+_glitch_filter->set_glitch_filter_popup(nullptr);
 
   // Cursor state (trig/search cursors included) is now fully owned and
   // cleaned up by ViewCursors' destructor. No cross-class deletion needed.
@@ -787,7 +783,7 @@ void View::h_scroll_value_changed(int value) { _layout->h_scroll_value_changed(v
 void View::show_cursors(bool show) { _cursors->show_cursors(show); }
 void View::show_trig_cursor(bool show) { _cursors->show_trig_cursor(show); }
 void View::show_search_cursor(bool show) { _cursors->show_search_cursor(show); }
-std::list<Cursor *> &View::get_cursorList() { return _cursors->get_cursorList(); }
+std::list<std::unique_ptr<Cursor>> &View::get_cursorList() { return _cursors->get_cursorList(); }
 void View::add_cursor(QColor color, uint64_t sampleIndex) { _cursors->add_cursor(color, sampleIndex); }
 void View::add_cursor(uint64_t sampleIndex) { _cursors->add_cursor(sampleIndex); }
 void View::del_cursor(Cursor *cursor) { _cursors->del_cursor(cursor); }

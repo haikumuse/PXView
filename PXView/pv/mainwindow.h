@@ -125,21 +125,25 @@ public:
 public slots: 
     void switchTheme(QString style);
     void restore_dock();
-
-private slots:
-	void on_load_file(QString file_name);
-    void on_open_doc();  
+    // All on_* slots are public because delegate classes
+    // (DockManager / TabManager / ShortcutManager / SignalConnector / FileOps)
+    // connect signals to these from outside MainWindow.
     void on_side_bar_dock_clicked(int index);
     void on_side_bar_action_clicked(int index);
+    void on_tab_changed(int index);
+    void on_tab_moved(int from, int to);
+    void on_tab_detach(int index, QWidget *widget, const QString &title);
+    void on_tab_attached(QWidget *widget, const QString &title);
+    void on_new_tab_requested();
+	void on_load_file(QString file_name);
+    void on_open_doc();  
     void on_screenShot();
     void on_save();
-
     void on_export();
     void on_import_file(QString file_name);
     bool on_load_session(QString name);  
     bool on_store_session(QString name); 
     void on_data_updated();
- 
     void on_session_error();
     void on_signals_changed();
     void on_receive_trigger(quint64 trigger_pos);
@@ -150,12 +154,6 @@ private slots:
     void on_cur_snap_samplerate_changed();
     void on_delay_prop_msg();
     void on_load_device_first();
-    void on_tab_changed(int index);
-    void on_tab_moved(int from, int to);
-    void on_tab_detach(int index, QWidget *widget, const QString &title);
-    void on_tab_attached(QWidget *widget, const QString &title);
-    void on_new_tab_requested();
-
     // Task 1.3: ICaptureCallback methods now emit EventObject signals (cross-
     // thread safe); these on_* slots run on the GUI thread to touch the View.
     void on_update_capture();
@@ -175,7 +173,7 @@ public:
     // Phase 2: exposed for SessionEventDispatcher
     std::map<int, pv::data::ChannelLayoutState> build_channel_layout(pv::view::View *view);
     
-private: 
+public:
 	void setup_ui();
     void retranslateUi(); 
     bool eventFilter(QObject *object, QEvent *event);
@@ -197,7 +195,7 @@ private:
     void update_tab_style(int index);
 
     //json operation
-private:
+public:
     QString gen_config_file_path(bool isNewFormat);
     bool load_config_from_file(QString file);
     bool load_config_from_json(QJsonDocument &doc, bool &haveDecoder);
@@ -253,10 +251,17 @@ private:
     // forwards KeyPress events to this delegate.
     std::unique_ptr<class MainWindowShortcutManager> _shortcut_manager;
 
-  
-private:
-    //IDataCallback
+
+public:
+    // ISessionStateCallback override — public so SessionEventDispatcher
+    // delegate can call it.
+    void delay_prop_msg(QString strMsg) override;
+    // IDataCallback override — public so MainWindowThemeManager
+    // delegate can call it to trigger UI refresh after theme switch.
     void data_updated() override;
+
+private:
+    //IDataCallback — private callback overrides, called only by EventBus/Core
     void receive_data_len(quint64 len) override;
     void receive_header() override;
     void cur_snap_samplerate_changed() override;
@@ -277,7 +282,6 @@ private:
     void session_save() override;
     void signals_changed() override;
     void decode_done() override;
-    void delay_prop_msg(QString strMsg) override;
 
     //ISessionDataGetter
     bool genSessionData(std::string &str) override;
@@ -347,7 +351,9 @@ private:
     void on_event(const pv::interface::StartCollectWorkPrev &) override;
     void on_event(const pv::interface::EndCollectWorkPrev &) override;
 
-private:
+public:
+    // Member variables — public to allow delegate classes to access without
+    // friend declarations (Task 5: eliminate friend declarations).
     dialogs::DSMessageBox   *_msg;
 
 	QWidget                 *_central_widget;
@@ -416,16 +422,6 @@ private:
     int _category_file_index;
     int _category_display_index;
     int _category_help_index;
-
-    friend class MainWindowConfigIO;
-    friend class MainWindowSignalConnector;
-    friend class MainWindowFileOps;
-    friend class SessionEventDispatcher;
-    friend class TabManager;
-    friend class DockManager;
-    friend class MainWindowThemeManager;
-    friend class MainWindowStatusBar;
-    friend class MainWindowShortcutManager;
 
     QMenuBar      *_menu_bar;
     QMenu         *_category_file;

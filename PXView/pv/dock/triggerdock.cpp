@@ -1287,9 +1287,9 @@ void TriggerDock::try_commit_trigger() {
 
     if (has_view) {
       auto &sigs = _context->view()->get_own_signals();
-      for (auto s : sigs) {
+      for (auto &s : sigs) {
         if (s->signal_type() == SR_CHANNEL_LOGIC) {
-          view::LogicSignal *logicSig = (view::LogicSignal *)s;
+          view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
           if (logicSig->commit_trig())
             num++;
         }
@@ -1328,9 +1328,9 @@ void TriggerDock::try_commit_trigger() {
       if (msg.mBox()->clickedButton() == cancelButton) {
         if (has_view) {
           auto &sigs = _context->view()->get_own_signals();
-          for (auto s : sigs) {
+          for (auto &s : sigs) {
             if (s->signal_type() == SR_CHANNEL_LOGIC) {
-              view::LogicSignal *logicSig = (view::LogicSignal *)s;
+              view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
               logicSig->set_trig(view::LogicSignal::NONTRIG);
               logicSig->commit_trig();
             }

@@ -109,17 +109,6 @@ class Viewport : public QWidget, public IUiWindow {
   Q_PROPERTY(QColor panelBgColor READ panelBgColor WRITE setPanelBgColor)
   Q_PROPERTY(QColor panelTextColor READ panelTextColor WRITE setPanelTextColor)
 
-  // Delegates (Phase F1/F2/F3) access private state through friend access.
-  friend class ViewportPainter;
-  friend class ViewportInteraction;
-  friend class ViewportDrag;
-
-  // Render passes (Phase 5) access pixmap and cached geometry state.
-  friend class SignalPixmapPass;
-  friend class CursorOverlayPass;
-  friend class MeasureOverlayPass;
-  friend class TriggerInfoPass;
-
 public:
   static const int HitCursorMargin = 10;
   static const double HitCursorTimeMargin;
@@ -161,6 +150,22 @@ public:
   void measure();
   void update(int event);
 
+  // State helpers retained on Viewport (called by delegates via back-pointer).
+  // Public so ViewportPainter / ViewportInteraction / ViewportDrag
+  // can call them without friend declarations.
+  void start_trigger_timer(int msec);
+  void get_captured_progress(double &progress, int &progress100);
+  void set_action(ActionType action);
+  // Forwarding method so ViewportInteraction can call the base-class
+  // QWidget::keyPressEvent (which is protected in QWidget).
+  void forward_keyPressEvent(QKeyEvent *event);
+  // Forwarding method so ViewportInteraction can call the base-class
+  // QWidget::event (which is protected in QWidget).
+  bool forward_event(QEvent *event);
+  // Delegate-accessed slots (moved from private to public).
+  void applyDragFrame();
+  void show_logic_contextmenu(const QPoint &pos);
+
 protected:
   bool event(QEvent *event) override;
   void paintEvent(QPaintEvent *event) override;
@@ -182,21 +187,15 @@ private:
   void keyPressEvent(QKeyEvent *event) override;
   bool gestureEvent(QNativeGestureEvent *event);
 
-  // State helpers retained on Viewport (called by delegates via back-pointer).
-  void start_trigger_timer(int msec);
-  void get_captured_progress(double &progress, int &progress100);
-  void set_action(ActionType action);
 
 private slots:
   void on_trigger_timer();
   void on_drag_timer();
-  void applyDragFrame();
   void on_progress_timer();
 
   void show_contextmenu(const QPoint &pos);
   void add_cursor_x();
   void add_cursor_y();
-  void show_logic_contextmenu(const QPoint &pos);
   void copy_waveform_this_channel();
   void copy_waveform_decoder_track();
   void copy_waveform_decoder_group();
@@ -206,7 +205,10 @@ signals:
   void measure_updated();
   void prgRate(int progress);
 
-private:
+public:
+  // Member variables — public to allow delegate classes (ViewportPainter,
+  // ViewportInteraction, ViewportDrag) and RenderPass classes to access
+  // state without friend declarations (Task 4: eliminate friend declarations).
   View &_view;
   View_type _type;
   bool _need_update;
@@ -322,7 +324,6 @@ private:
   std::unique_ptr<ViewportInteraction> _interaction;
   std::unique_ptr<ViewportDrag> _drag;
 
-public:
   bool g_drag_active;
   int _paint_in_this_second;
   QPixmap g_drag_snapshot;

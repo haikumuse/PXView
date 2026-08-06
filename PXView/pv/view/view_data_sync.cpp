@@ -77,12 +77,12 @@ namespace view {
 // =============================================================================
 
 void ViewDataSync::apply_source_to_signals(pv::data::DataSource *source) {
-  for (auto sig : _view->get_own_signals())
+  for (auto &sig : _view->get_own_signals())
     sig->set_data_from_source(source);
 }
 
 void ViewDataSync::clear_all_signal_data() {
-  for (auto sig : _view->get_own_signals())
+  for (auto &sig : _view->get_own_signals())
     sig->clear_data();
 }
 
@@ -90,7 +90,7 @@ void ViewDataSync::refresh_dso_signal_paint(pv::data::DataSource *source,
                                              bool set_scale) {
   if (!source)
     return;
-  for (auto sig : _view->get_own_signals()) {
+  for (auto &sig : _view->get_own_signals()) {
     auto *s = sig->as_dso();
     if (!s)
       continue;
@@ -168,8 +168,8 @@ void ViewDataSync::set_data_document(pv::data::SessionDocument *doc) {
   if (_view->get_own_signals().empty()) {
     auto created_sigs =
         SignalFactory::create_signals(_data_source, _data_source);
-    for (auto sig : created_sigs) {
-      _view->get_own_signals().push_back(sig);
+    for (auto &sig : created_sigs) {
+      _view->get_own_signals().push_back(std::move(sig));
     }
   }
 
@@ -201,8 +201,8 @@ void ViewDataSync::clone_signals_for_document(
 
   auto created_sigs =
       SignalFactory::create_signals(_data_source, _data_source);
-  for (auto sig : created_sigs) {
-    _view->get_own_signals().push_back(sig);
+  for (auto &sig : created_sigs) {
+    _view->get_own_signals().push_back(std::move(sig));
   }
 
   set_data_document(doc);
@@ -306,9 +306,9 @@ void ViewDataSync::data_updated() {
 
     auto *source = _view->document_snapshot_source();
     if (source) {
-      for (auto sig : _view->get_own_signals())
-        sig->set_data_from_source(source);
-      refresh_dso_signal_paint(source, false);
+    for (auto &sig : _view->get_own_signals())
+      sig->set_data_from_source(source);
+    refresh_dso_signal_paint(source, false);
       if (_view->get_own_lissajous_trace())
         _view->get_own_lissajous_trace()->set_data(source->get_dso_snapshot());
     }
@@ -526,7 +526,7 @@ void ViewDataSync::auto_set_max_scale() {
 int ViewDataSync::get_view_width() {
   int view_width = 0;
   if (_view->get_work_mode() == DSO) {
-    for (auto s : _view->get_own_signals()) {
+    for (auto &s : _view->get_own_signals()) {
       view_width = max(view_width, s->get_view_rect().width());
     }
   } else {
@@ -543,7 +543,7 @@ int ViewDataSync::get_view_width() {
 int ViewDataSync::get_view_height() {
   int view_height = 0;
   if (_view->get_work_mode() == DSO) {
-    for (auto s : _view->get_own_signals()) {
+    for (auto &s : _view->get_own_signals()) {
       view_height = max(view_height, s->get_view_rect().height());
     }
   } else {

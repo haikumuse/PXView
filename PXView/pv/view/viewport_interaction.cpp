@@ -149,12 +149,12 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
     // any vertical scroll makes the T cursor impossible to grab.
     const QPoint clickPos = event->position().toPoint();
 
-    for (auto s : _viewport->_view.get_own_signals()) {
+    for (auto &s : _viewport->_view.get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
-        DsoSignal *dsoSig = (DsoSignal *)s;
+        DsoSignal *dsoSig = (DsoSignal *)s.get();
         QRectF trigRect = dsoSig->get_trig_rect(0, _viewport->_view.get_view_width());
         if (trigRect.contains(clickPos)) {
-          _viewport->_drag_sig = s;
+          _viewport->_drag_sig = s.get();
           _viewport->set_action(DSO_TRIG_MOVE);
           dsoSig->select(true);
           break;
@@ -191,7 +191,7 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
           _viewport->_view.get_ruler()->rel_grabbed_cursor();
         } else if (qAbs(cursorX - event->position().toPoint().x()) <=
                    Viewport::HitCursorMargin) {
-          _viewport->_view.get_ruler()->set_grabbed_cursor(*i);
+          _viewport->_view.get_ruler()->set_grabbed_cursor(i->get());
           _viewport->set_action(CURS_MOVE);
           break;
         }
@@ -215,7 +215,7 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
 
         if ((*i)->get_close_rect(xrect).contains(
                 _viewport->_view.hover_point())) {
-          _viewport->_view.del_xcursor(*i);
+          _viewport->_view.del_xcursor(i->get());
           if (xcursor_list.empty())
             _viewport->_view.show_xcursors(false);
           break;
@@ -228,7 +228,7 @@ void ViewportInteraction::mousePressEvent(QMouseEvent *event) {
 
           while (true) {
             if ((*s)->signal_type() == SR_CHANNEL_DSO && (*s)->enabled()) {
-              view::DsoSignal *dsoSig = (view::DsoSignal *)(*s);
+              view::DsoSignal *dsoSig = (view::DsoSignal *)s->get();
               no_dsoSig = false;
               if (sig_looped) {
                 (*i)->set_channel(dsoSig);
@@ -343,7 +343,7 @@ void ViewportInteraction::mouseMoveEvent(QMouseEvent *event) {
   if (!(event->buttons() | Qt::NoButton)) {
     if (_viewport->_action_type == DSO_XM_STEP1 ||
         _viewport->_action_type == DSO_XM_STEP2) {
-      for (auto s : _viewport->_view.get_own_signals()) {
+      for (auto &s : _viewport->_view.get_own_signals()) {
         if (!s->get_view_rect().contains(event->position().toPoint())) {
           _viewport->clear_dso_xm();
         }
@@ -414,9 +414,9 @@ void ViewportInteraction::onLogicMouseRelease(QMouseEvent *event) {
             event->position().toPoint().x()) {
           const auto &sigs = _viewport->_view.get_own_signals();
 
-          for (auto s : sigs) {
+          for (auto &s : sigs) {
             if (s->signal_type() == SR_CHANNEL_LOGIC) {
-              view::LogicSignal *logicSig = (view::LogicSignal *)s;
+              view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
               if (logicSig->is_by_edge(event->position().toPoint(),
                                        _viewport->_edge_start, 10)) {
                 _viewport->set_action(LOGIC_JUMP);
@@ -446,7 +446,7 @@ void ViewportInteraction::onLogicMouseRelease(QMouseEvent *event) {
             event->position().toPoint().x()) {
           const auto &sigs = _viewport->_view.get_own_signals();
 
-          for (auto s : sigs) {
+          for (auto &s : sigs) {
             if (abs(event->position().toPoint().y() - s->get_y()) <
                 _viewport->_view.get_signalHeight()) {
               _viewport->set_action(LOGIC_EDGE);
@@ -756,9 +756,9 @@ void ViewportInteraction::mouseDoubleClickEvent(QMouseEvent *event) {
       uint64_t index0 = 0, index1 = 0, index2 = 0;
 
       if (_viewport->_view.is_logic_rendering_mode()) {
-        for (auto s : _viewport->_view.get_own_signals()) {
+        for (auto &s : _viewport->_view.get_own_signals()) {
           if (s->signal_type() == SR_CHANNEL_LOGIC) {
-            view::LogicSignal *logicSig = (view::LogicSignal *)s;
+            view::LogicSignal *logicSig = (view::LogicSignal *)s.get();
             if (logicSig->measure(event->position().toPoint(), index0, index1,
                                   index2)) {
               logic = true;
@@ -794,7 +794,7 @@ void ViewportInteraction::mouseDoubleClickEvent(QMouseEvent *event) {
       _viewport->clear_dso_xm();
       _viewport->measure_updated();
     } else if (_viewport->_action_type == NO_ACTION) {
-      for (auto s : _viewport->_view.get_own_signals()) {
+      for (auto &s : _viewport->_view.get_own_signals()) {
         if (s->get_view_rect().contains(event->position().toPoint())) {
           _viewport->_dso_xm_index[0] = _viewport->_view.pixel2index(
               event->position().toPoint().x());
@@ -844,7 +844,7 @@ void ViewportInteraction::wheelEvent(QWheelEvent *event) {
   }
 
   if (_viewport->_type == FFT_VIEW) {
-    for (auto t : _viewport->_view.get_own_spectrum_traces()) {
+    for (auto &t : _viewport->_view.get_own_spectrum_traces()) {
       if (t->enabled()) {
         t->zoom(zoom_scale, x);
         break;
@@ -919,9 +919,9 @@ void ViewportInteraction::wheelEvent(QWheelEvent *event) {
   }
 
   const auto &sigs = _viewport->_view.get_own_signals();
-  for (auto s : sigs) {
+  for (auto &s : sigs) {
     if (s->signal_type() == SR_CHANNEL_DSO) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+      view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
       dsoSig->auto_end();
     }
   }
@@ -946,7 +946,7 @@ bool ViewportInteraction::gestureEvent(QNativeGestureEvent *event) {
     _viewport->_view.zoom(-1, _viewport->_view.hover_point().x());
     break;
   default:
-    return _viewport->QWidget::event(event);
+    return _viewport->forward_event(event);
   }
 
   _viewport->measure();
@@ -999,7 +999,7 @@ void ViewportInteraction::keyPressEvent(QKeyEvent *event) {
       }
     }
   }
-  _viewport->QWidget::keyPressEvent(event);
+  _viewport->forward_keyPressEvent(event);
 }
 
 LogicSignal *ViewportInteraction::get_hovered_logic_signal(const QPoint &pos) {
@@ -1011,12 +1011,12 @@ LogicSignal *ViewportInteraction::get_hovered_logic_signal(const QPoint &pos) {
     return nullptr;
 
   int mouseY = pos.y() + _viewport->_view.get_vOffset();
-  for (auto s : _viewport->_view.get_own_signals()) {
+  for (auto &s : _viewport->_view.get_own_signals()) {
     if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()) {
       int sigY = s->get_v_offset();
       int halfH = s->get_totalHeight() / 2 + View::SignalMargin;
       if (abs(mouseY - sigY) < halfH) {
-        return (LogicSignal *)s;
+        return (LogicSignal *)s.get();
       }
     }
   }

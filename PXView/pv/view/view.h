@@ -320,7 +320,7 @@ public:
   /*
    * cursorList
    */
-  std::list<Cursor *> &get_cursorList();
+  std::list<std::unique_ptr<Cursor>> &get_cursorList();
 
   void add_cursor(QColor color, uint64_t sampleIndex);
   void add_cursor(uint64_t sampleIndex);
@@ -362,7 +362,7 @@ public:
 
   inline void show_xcursors(bool show) { _cursors->set_xcursors_shown(show); }
 
-  inline std::list<XCursor *> &get_xcursorList() { return _cursors->xcursor_list(); }
+  inline std::list<std::unique_ptr<XCursor>> &get_xcursorList() { return _cursors->xcursor_list(); }
 
   // ---- Viewport update ----
   void set_update(Viewport *viewport, bool need_update);
@@ -487,7 +487,7 @@ public:
    */
   bool rst_decoder_by_key_handel(void *handel, QPoint anchor = QPoint());
 
-  inline std::vector<Signal *> &get_own_signals() { return _signal_sync->own_signals(); }
+  inline std::vector<std::unique_ptr<Signal>> &get_own_signals() { return _signal_sync->own_signals(); }
 
   /**
    * View-owned wrapper lists for derived trace types.
@@ -497,11 +497,11 @@ public:
    * Synced lazily via sync_derived_traces() when the underlying data
    * source changes.
    */
-  inline std::vector<DecodeTrace *> &get_own_decode_traces() {
+  inline std::vector<std::unique_ptr<DecodeTrace>> &get_own_decode_traces() {
     sync_derived_traces();
     return _derived->own_decode_traces();
   }
-  inline std::vector<SpectrumTrace *> &get_own_spectrum_traces() {
+  inline std::vector<std::unique_ptr<SpectrumTrace>> &get_own_spectrum_traces() {
     sync_derived_traces();
     return _derived->own_spectrum_traces();
   }

@@ -523,7 +523,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     auto *doc = session.get_active_document();
     if (doc && dev && dev->have_instance()) {
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
-      for (auto *sig : _view.get_own_signals()) {
+      for (auto &sig : _view.get_own_signals()) {
         pv::data::ChannelLayoutState layout;
         layout.view_index = sig->get_view_index();
         layout.v_offset = sig->get_v_offset();
@@ -569,11 +569,11 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
 
     if (groups.size() <= 1) {
       std::vector<Trace *> traces;
-      for (auto s : _view.get_own_decode_traces()) {
-        traces.push_back(s);
+      for (auto &s : _view.get_own_decode_traces()) {
+        traces.push_back(s.get());
       }
-      for (auto s : _view.get_own_signals()) {
-        traces.push_back(s);
+      for (auto &s : _view.get_own_signals()) {
+        traces.push_back(s.get());
       }
       sort(traces.begin(), traces.end(), View::compare_trace_y);
       int index = 0;
@@ -645,7 +645,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     auto *doc = session.get_active_document();
     if (doc && dev && dev->have_instance()) {
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
-      for (auto *sig : _view.get_own_signals()) {
+      for (auto &sig : _view.get_own_signals()) {
         pv::data::ChannelLayoutState layout;
         layout.view_index = sig->get_view_index();
         layout.v_offset = sig->get_v_offset();

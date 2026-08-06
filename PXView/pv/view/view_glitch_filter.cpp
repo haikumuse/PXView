@@ -62,6 +62,14 @@ using namespace std;
 namespace pv {
 namespace view {
 
+ViewGlitchFilter::ViewGlitchFilter(View *view) : _view(view) {}
+
+ViewGlitchFilter::~ViewGlitchFilter() = default;
+
+void ViewGlitchFilter::set_glitch_filter_popup(GlitchFilterPopup *p) {
+  _glitch_filter_popup.reset(p);
+}
+
 void ViewGlitchFilter::on_show_glitch_filter_popup(
     pv::view::LogicSignal *sig) {
   if (!sig)
@@ -132,7 +140,7 @@ void ViewGlitchFilter::on_toggle_invert_requested(
 
   // Build the channels vector indexed by enabled-logic-channel ordinal.
   std::vector<LogicSignal *> logic_sigs;
-  for (auto s : _view->get_own_signals()) {
+  for (auto &s : _view->get_own_signals()) {
     if (auto *logic = s->as_logic())
       logic_sigs.push_back(logic);
   }
@@ -193,7 +201,7 @@ void ViewGlitchFilter::on_glitch_apply_requested(
 
   if (all_channels) {
     // "应用到所有通道"：用新阈值替换全部，不合并已有状态
-    for (auto s : _view->get_own_signals()) {
+    for (auto &s : _view->get_own_signals()) {
       if (s && s->signal_type() == SR_CHANNEL_LOGIC) {
         int ch_idx = s->model() ? s->model()->index() : -1;
         if (ch_idx >= 0) {

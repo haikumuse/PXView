@@ -174,7 +174,7 @@ std::map<int, pv::data::ChannelLayoutState>
 make_channel_layout(pv::view::View *view) {
   std::map<int, pv::data::ChannelLayoutState> layout;
   if (view) {
-    for (auto *sig : view->get_own_signals()) {
+    for (auto &sig : view->get_own_signals()) {
       pv::data::ChannelLayoutState s;
       s.view_index = sig->get_view_index();
       s.v_offset = sig->get_v_offset();

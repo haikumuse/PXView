@@ -70,7 +70,7 @@ public:
   Cursor *search_cursor() { return _search_cursor.get(); }
   bool search_hit() const { return _search_hit; }
   uint64_t search_pos() const { return _search_pos; }
-  std::list<XCursor *> &xcursor_list() { return _xcursorList; }
+  std::list<std::unique_ptr<XCursor>> &xcursor_list() { return _xcursorList; }
 
   // -- visibility toggles ------------------------------------------------
   void show_cursors(bool show = true);
@@ -82,7 +82,7 @@ public:
   void set_search_pos(uint64_t search_pos, bool hit);
 
   // -- cursor list access ------------------------------------------------
-  std::list<Cursor *> &get_cursorList();
+  std::list<std::unique_ptr<Cursor>> &get_cursorList();
   Cursor *get_cursor_by_index(int index);
 
   // -- initialization (called by View constructor) ----------------------
@@ -133,8 +133,8 @@ private:
 
   // ---- Cursor state (migrated from View) ----
   bool _show_cursors = false;
-  std::list<Cursor *> _logic_cursors;
-  std::list<Cursor *> _dso_cursors;
+  std::list<std::unique_ptr<Cursor>> _logic_cursors;
+  std::list<std::unique_ptr<Cursor>> _dso_cursors;
   std::unique_ptr<Cursor> _trig_cursor;
   bool _show_trig_cursor = false;
   std::unique_ptr<Cursor> _search_cursor;
@@ -142,7 +142,7 @@ private:
   uint64_t _search_pos = 0;
   bool _search_hit = false;
   bool _show_xcursors = false;
-  std::list<XCursor *> _xcursorList;
+  std::list<std::unique_ptr<XCursor>> _xcursorList;
 
 };
 

@@ -438,7 +438,7 @@ void MathTrace::paint_hover_measure(QPainter &p, QColor fore, QColor back)
 
     auto &cursor_list = _view->get_cursorList();
 
-    for (auto cursor : cursor_list) {
+    for (auto &cursor : cursor_list) {
         float pt_value;
         bool bError = false;
 

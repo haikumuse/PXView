@@ -53,10 +53,8 @@ namespace view {
 ViewCursors::ViewCursors(View *view) : _view(view) {}
 
 ViewCursors::~ViewCursors() {
-  for (auto c : _logic_cursors) delete c;
-  for (auto c : _dso_cursors) delete c;
-  for (auto x : _xcursorList) delete x;
-  // _trig_cursor and _search_cursor auto-deleted by unique_ptr
+  // unique_ptr containers auto-delete all elements.
+  // _trig_cursor and _search_cursor also auto-deleted by unique_ptr.
 }
 
 void ViewCursors::init_cursors(QColor foreColor) {
@@ -157,7 +155,7 @@ void ViewCursors::set_search_pos(uint64_t search_pos, bool hit) {
   }
 }
 
-std::list<Cursor *> &ViewCursors::get_cursorList() {
+std::list<std::unique_ptr<Cursor>> &ViewCursors::get_cursorList() {
   if (_view->is_logic_rendering_mode()) {
     return _logic_cursors;
   } else {
@@ -169,9 +167,9 @@ Cursor *ViewCursors::get_cursor_by_index(int index) {
   int dex = 0;
   auto &cursors = get_cursorList();
 
-  for (auto c : cursors) {
+  for (auto &c : cursors) {
     if (dex == index) {
-      return c;
+      return c.get();
     }
     dex++;
   }
@@ -181,28 +179,28 @@ Cursor *ViewCursors::get_cursor_by_index(int index) {
 void ViewCursors::make_cursors_order() {
   int dex = 1;
 
-  for (auto cursor : get_cursorList()) {
+  for (auto &cursor : get_cursorList()) {
     cursor->set_order(dex++);
   }
 
   dex = 1;
-  for (auto cursor : _view->get_xcursorList()) {
+  for (auto &cursor : _view->get_xcursorList()) {
     cursor->set_order(dex++);
   }
 }
 
 void ViewCursors::add_cursor(QColor color, uint64_t sampleIndex) {
   (void)color;
-  Cursor *newCursor = new Cursor(*_view, -1, sampleIndex);
-  get_cursorList().push_back(newCursor);
+  auto newCursor = std::make_unique<Cursor>(*_view, -1, sampleIndex);
+  get_cursorList().push_back(std::move(newCursor));
   make_cursors_order();
   _view->cursor_update();
 }
 
 void ViewCursors::add_cursor(uint64_t sampleIndex) {
   static int lastOrder = 1;
-  Cursor *newCursor = new Cursor(*_view, lastOrder++, sampleIndex);
-  get_cursorList().push_back(newCursor);
+  auto newCursor = std::make_unique<Cursor>(*_view, lastOrder++, sampleIndex);
+  get_cursorList().push_back(std::move(newCursor));
   make_cursors_order();
   _view->cursor_update();
 }
@@ -210,8 +208,13 @@ void ViewCursors::add_cursor(uint64_t sampleIndex) {
 void ViewCursors::del_cursor(Cursor *cursor) {
   assert(cursor);
 
-  get_cursorList().remove(cursor);
-  delete cursor;
+  auto &lst = get_cursorList();
+  for (auto it = lst.begin(); it != lst.end(); ++it) {
+    if (it->get() == cursor) {
+      lst.erase(it);
+      break;
+    }
+  }
   make_cursors_order();
 
   _view->cursor_update();
@@ -219,10 +222,7 @@ void ViewCursors::del_cursor(Cursor *cursor) {
 
 void ViewCursors::clear_cursors() {
   auto &lst = get_cursorList();
-  for (auto c : lst) {
-    delete c;
-  }
-
+  // unique_ptr elements are auto-deleted when the list is cleared.
   lst.clear();
 }
 
@@ -250,8 +250,8 @@ void ViewCursors::set_cursor_middle(int index) {
 
 void ViewCursors::add_xcursor(double value0, double value1) {
   static int lastXCursorOrder = 1;
-  XCursor *newXCursor = new XCursor(*_view, lastXCursorOrder++, value0, value1);
-  _xcursorList.push_back(newXCursor);
+  auto newXCursor = std::make_unique<XCursor>(*_view, lastXCursorOrder++, value0, value1);
+  _xcursorList.push_back(std::move(newXCursor));
   make_cursors_order();
   _view->xcursor_update();
 }
@@ -259,8 +259,12 @@ void ViewCursors::add_xcursor(double value0, double value1) {
 void ViewCursors::del_xcursor(XCursor *xcursor) {
   assert(xcursor);
 
-  _xcursorList.remove(xcursor);
-  delete xcursor;
+  for (auto it = _xcursorList.begin(); it != _xcursorList.end(); ++it) {
+    if (it->get() == xcursor) {
+      _xcursorList.erase(it);
+      break;
+    }
+  }
   make_cursors_order();
   _view->xcursor_update();
 }
@@ -271,7 +275,7 @@ uint64_t ViewCursors::get_cursor_samples(int index) {
 
   uint64_t ret = 0;
   int curIndex = 0;
-  for (list<Cursor *>::iterator i = lst.begin(); i != lst.end(); i++) {
+  for (auto i = lst.begin(); i != lst.end(); i++) {
     if (index == curIndex) {
       ret = (*i)->index();
     }
@@ -302,7 +306,7 @@ int ViewCursors::get_cursor_index_by_key(uint64_t key) {
   auto &lst = get_cursorList();
 
   int dex = 0;
-  for (auto c : lst) {
+  for (auto &c : lst) {
     if (c->get_key() == key) {
       return dex;
     }
@@ -330,8 +334,8 @@ void ViewCursors::sync_cursor_position_to_core(TimeMarker *marker) {
   auto &lst = get_cursorList();
   int idx = 0;
   bool found = false;
-  for (auto c : lst) {
-    if (c == marker) { found = true; break; }
+  for (auto &c : lst) {
+    if (c.get() == marker) { found = true; break; }
     ++idx;
   }
   if (!found)

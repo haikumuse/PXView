@@ -8,7 +8,9 @@
 #include "../data/analogsnapshot.h"
 #include "../data/decoderstack.h"
 #include "../data/dsosnapshot.h"
+#include "../data/lissajousmodel.h"
 #include "../data/logicsnapshot.h"
+#include "../data/mathstack.h"
 #include "../data/sessiondocument.h"
 #include "../data/signalmodel.h"
 #include "../data/spectrumstack.h"
@@ -47,6 +49,14 @@ SessionStateContext::~SessionStateContext() {
       p->clear();
   }
   _data_list.clear();
+}
+
+void SessionStateContext::set_lissajous_model(
+    std::unique_ptr<data::LissajousModel> m) {
+  // Defined in .cpp so that LissajousModel's complete type is available
+  // (header only forward-declares it; unique_ptr move-assignment needs
+  // sizeof(T) > 0 for the deleter).
+  _lissajous_model = std::move(m);
 }
 
 // --- EventBus dispatch helpers (migrated from SigSession) -------------------

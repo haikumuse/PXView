@@ -75,7 +75,7 @@ std::map<int, pv::data::ChannelLayoutState>
 build_channel_layout(pv::view::View *view) {
   std::map<int, pv::data::ChannelLayoutState> layout;
   if (view) {
-    for (auto *sig : view->get_own_signals()) {
+    for (auto &sig : view->get_own_signals()) {
       pv::data::ChannelLayoutState s;
       s.view_index = sig->get_view_index();
       s.v_offset = sig->get_v_offset();
@@ -91,7 +91,7 @@ std::map<int, std::string>
 build_channel_colours(pv::view::View *view) {
   std::map<int, std::string> colours;
   if (view) {
-    for (auto *sig : view->get_own_signals()) {
+    for (auto &sig : view->get_own_signals()) {
       QColor c = sig->get_colour();
       colours[sig->get_index()] = c.isValid() ? c.name().toStdString() : "default";
     }
@@ -708,7 +708,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
 
   // load signal setting (view-layer colour/trigger/ratio)
   if (mode == DSO) {
-    for (auto s : _wnd->current_view()->get_own_signals()) {
+    for (auto &s : _wnd->current_view()->get_own_signals()) {
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
         QJsonObject obj = value.toObject();
 
@@ -719,7 +719,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
             s->set_colour(QColor(colourStr));
 
           if (s->signal_type() == SR_CHANNEL_DSO) {
-            view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+            view::DsoSignal *dsoSig = (view::DsoSignal *)s.get();
             dsoSig->load_settings();
             double zr = obj["zero_offset"].toDouble();
             if (zr > 0.0 && zr < 1.0)
@@ -734,7 +734,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
       }
     }
   } else {
-    for (auto s : _wnd->current_view()->get_own_signals()) {
+    for (auto &s : _wnd->current_view()->get_own_signals()) {
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
         QJsonObject obj = value.toObject();
         if ((s->get_index() == obj["index"].toInt()) &&
@@ -750,12 +750,12 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
           s->set_name(chan_name);
 
           view::LogicSignal *logicSig = nullptr;
-          if ((logicSig = dynamic_cast<view::LogicSignal *>(s))) {
+          if ((logicSig = dynamic_cast<view::LogicSignal *>(s.get()))) {
             logicSig->set_trig(obj["trig_type"].toInt());
           }
 
           if (s->signal_type() == SR_CHANNEL_DSO) {
-            view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+            view::DsoSignal *dsoSig = dynamic_cast<view::DsoSignal *>(s.get());
             dsoSig->load_settings();
             double zr = obj["zero_offset"].toDouble();
             if (zr > 0.0 && zr < 1.0)
@@ -767,7 +767,7 @@ bool MainWindowConfigIO::load_config_from_json(QJsonDocument &doc, bool &haveDec
           }
 
           if (s->signal_type() == SR_CHANNEL_ANALOG) {
-            view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
+            view::AnalogSignal *analogSig = dynamic_cast<view::AnalogSignal *>(s.get());
             double zv = obj["zero_offset"].toDouble();
             double ratio_z;
             if (zv > 0.0 && zv < 1.0) {

@@ -26,7 +26,6 @@
 #include <libsigrok/libsigrok.h>
 #include <glib.h>
 
-#include "mainwindow.h"
 #include "sigsession.h"
 
 #include "core/filterprocessor.h"

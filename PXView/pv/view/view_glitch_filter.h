@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "../data/logicsnapshot.h"  // GlitchFilterMode
@@ -47,7 +48,8 @@ class GlitchFilterPopup;
 // can access View's private widget members and call private helper methods.
 class ViewGlitchFilter {
 public:
-  explicit ViewGlitchFilter(View *view) : _view(view) {}
+  explicit ViewGlitchFilter(View *view);
+  ~ViewGlitchFilter();
 
   // -- popup lifecycle ---------------------------------------------------
   void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
@@ -85,8 +87,8 @@ public:
     bool was_active;
   };
 
-  GlitchFilterPopup *glitch_filter_popup() const { return _glitch_filter_popup; }
-  void set_glitch_filter_popup(GlitchFilterPopup *p) { _glitch_filter_popup = p; }
+  GlitchFilterPopup *glitch_filter_popup() const { return _glitch_filter_popup.get(); }
+  void set_glitch_filter_popup(GlitchFilterPopup *p);
   bool filter_undo_empty() const { return _filter_undo_stack.empty(); }
 
   // -- cleanup (called by View destructor) ------------------------------
@@ -97,7 +99,7 @@ public:
 private:
   View *_view;
 
-  GlitchFilterPopup *_glitch_filter_popup = nullptr;
+  std::unique_ptr<GlitchFilterPopup> _glitch_filter_popup;
   std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>> _preview_ranges;
   std::vector<FilterSnapshot> _filter_undo_stack;
 };

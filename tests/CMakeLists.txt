@@ -75,3 +75,12 @@ foreach(level p0 p1 p2)
         ENVIRONMENT "PXVIEW_MCP_URL=http://127.0.0.1:10110/mcp"
     )
 endforeach()
+
+#===============================================================================
+#= C++ unit tests (Google Test)
+#-------------------------------------------------------------------------------
+# Header-only tests that verify Core/View layer logic without requiring a full
+# Qt widget stack. Uses MockViewLayout (from iview_delegates.h), CursorRegistry
+# (from core/cursorregistry.h), and TraceVisitor (from view/trace_visitor.h).
+#===============================================================================
+add_subdirectory(cpp)
