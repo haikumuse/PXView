@@ -11,7 +11,7 @@
 namespace pv {
 namespace core {
 
-FilterProcessor::FilterProcessor(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+FilterProcessor::FilterProcessor(EventBus *bus, ISessionState *state, ISessionCoordination *coord)
     : _event_bus(bus), _state(state), _coord(coord),
       _glitch_filter_running(false),
       _signal_invert_running(false) {}

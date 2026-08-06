@@ -20,7 +20,7 @@
 namespace pv {
 namespace core {
 
-DataFeedParser::DataFeedParser(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+DataFeedParser::DataFeedParser(EventBus *bus, ISessionState *state, ISessionCoordination *coord)
     : _event_bus(bus), _state(state), _coord(coord) {}
 
 DataFeedParser::~DataFeedParser() {}

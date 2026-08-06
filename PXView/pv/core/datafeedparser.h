@@ -3,6 +3,8 @@
 
 #include <libsigrok/libsigrok.h>
 #include "isession_coordination.h"
+#include "isession_state.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -33,7 +35,7 @@ class DecodeTaskManager;
  */
 class DataFeedParser {
 public:
-  DataFeedParser(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
+  DataFeedParser(EventBus *bus, ISessionState *state, ISessionCoordination *coord);
   ~DataFeedParser();
 
   // Static trampoline registered with libsigrok. user_data is a DataFeedParser*.
@@ -63,7 +65,7 @@ private:
   void feed_in_dso(const sr_datafeed_dso &o);
 
   EventBus *_event_bus;
-  SessionStateContext *_state;
+  ISessionState *_state;
   ISessionCoordination *_coord;
   CaptureManager *_capture_mgr = nullptr;
   DecodeTaskManager *_decode_mgr = nullptr;

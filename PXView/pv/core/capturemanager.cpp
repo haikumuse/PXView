@@ -38,7 +38,7 @@ static QString get_default_disk_cache_path() {
   return QDir::tempPath() + "/PXView_cache";
 }
 
-CaptureManager::CaptureManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+CaptureManager::CaptureManager(EventBus *bus, ISessionState *state, ISessionCoordination *coord)
     : _event_bus(bus), _state(state), _coord(coord),
       _clt_mode(COLLECT_SINGLE) {
   _feed_timer.SetCallback(std::bind(&CaptureManager::feed_timeout, this));

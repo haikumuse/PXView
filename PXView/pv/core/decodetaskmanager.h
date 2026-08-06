@@ -8,6 +8,8 @@
 
 #include "../data/sessiondata.h"
 #include "isession_coordination.h"
+#include "isession_state.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -33,7 +35,7 @@ class SessionStateContext;
  */
 class DecodeTaskManager {
 public:
-  DecodeTaskManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
+  DecodeTaskManager(EventBus *bus, ISessionState *state, ISessionCoordination *coord);
   ~DecodeTaskManager();
 
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
@@ -63,7 +65,7 @@ public:
 
 private:
   EventBus *_event_bus;
-  SessionStateContext *_state;
+  ISessionState *_state;
   ISessionCoordination *_coord;
 
   mutable std::mutex _running_tasks_mutex;

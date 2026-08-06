@@ -72,7 +72,7 @@ void DocumentRegistry::CaptureOwnerGuard::release() {
 // DocumentRegistry
 // ---------------------------------------------------------------------------
 
-DocumentRegistry::DocumentRegistry(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+DocumentRegistry::DocumentRegistry(EventBus *bus, ISessionState *state, ISessionCoordination *coord)
     : _event_bus(bus), _state(state), _coord(coord),
       _active_document_index(SIZE_MAX), _capture_owner_index(SIZE_MAX),
       _copy_in_progress(false) {}

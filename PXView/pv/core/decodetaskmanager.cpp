@@ -18,7 +18,7 @@
 namespace pv {
 namespace core {
 
-DecodeTaskManager::DecodeTaskManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord)
+DecodeTaskManager::DecodeTaskManager(EventBus *bus, ISessionState *state, ISessionCoordination *coord)
     : _event_bus(bus), _state(state), _coord(coord) {}
 
 DecodeTaskManager::~DecodeTaskManager() { stop(); }

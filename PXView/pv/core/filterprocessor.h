@@ -15,6 +15,8 @@
 enum class GlitchFilterMode : int;
 
 #include "isession_coordination.h"
+#include "isession_state.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -36,7 +38,7 @@ class SessionStateContext;
  */
 class FilterProcessor {
 public:
-  FilterProcessor(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
+  FilterProcessor(EventBus *bus, ISessionState *state, ISessionCoordination *coord);
   ~FilterProcessor();
 
   // 架构修复：thresholds/modes 用 channel_index 作 key，消除 View/Core 位置序号错位
@@ -58,7 +60,7 @@ private:
   void signal_invert_task(const std::vector<bool> channels);
 
   EventBus *_event_bus;
-  SessionStateContext *_state;
+  ISessionState *_state;
   ISessionCoordination *_coord;
 
   // modernize-core-layer-final Task 5: RAII-managed background threads.

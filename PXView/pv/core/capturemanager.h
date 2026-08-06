@@ -13,6 +13,8 @@
 #include "../dstimer.h"
 #include "../pxvdef.h" // DEVICE_COLLECT_MODE / DEVICE_STATUS_TYPE
 #include "isession_coordination.h"
+#include "isession_state.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -53,7 +55,7 @@ public:
   static constexpr int FeedInterval = 50;
   static constexpr int WaitShowTime = 500;
 
-  CaptureManager(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
+  CaptureManager(EventBus *bus, ISessionState *state, ISessionCoordination *coord);
   ~CaptureManager();
 
   // --- Capture lifecycle ---
@@ -144,7 +146,7 @@ public:
 private:
   EventBus *_event_bus;
   // Shared session state accessed via SessionStateContext accessors.
-  SessionStateContext *_state;
+  ISessionState *_state;
   // Cross-manager coordination accessed via interface (Spec v3 Task 5)
   ISessionCoordination *_coord;
 

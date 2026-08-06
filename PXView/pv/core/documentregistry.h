@@ -11,6 +11,8 @@
 
 #include "../data/sessiondocument.h"
 #include "isession_coordination.h"
+#include "isession_state.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -80,7 +82,7 @@ public:
   };
 
 public:
-  DocumentRegistry(EventBus *bus, SessionStateContext *state, ISessionCoordination *coord);
+  DocumentRegistry(EventBus *bus, ISessionState *state, ISessionCoordination *coord);
   ~DocumentRegistry();
 
   // --- Document list management (ownership) ---
@@ -147,7 +149,7 @@ private:
   size_t find_index_for_document(data::SessionDocument *doc) const;
 
   EventBus *_event_bus;
-  SessionStateContext *_state;
+  ISessionState *_state;
   ISessionCoordination *_coord;
 
   // Document list (owned). Released slots become nullptr but keep their index

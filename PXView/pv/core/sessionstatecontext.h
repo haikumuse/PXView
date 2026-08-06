@@ -17,6 +17,7 @@
 #include "../deviceagent.h"
 #include "../pxvdef.h"
 #include "isession_coordination.h"
+#include "isession_state.h"
 
 namespace pv {
 
@@ -65,7 +66,7 @@ class FilterProcessor;
  * coordination methods via an interface, breaking the circular dependency
  * between SessionStateContext and its 5 managers.
  */
-class SessionStateContext : public ISessionCoordination {
+class SessionStateContext : public ISessionState {
 public:
   /// Error status enum (migrated from SigSession::SESSION_ERROR_STATUS so
   /// SessionStateContext does not need to depend on SigSession). SigSession
