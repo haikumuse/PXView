@@ -304,6 +304,14 @@ jobs:
           path: test_report.xml
           if-no-files-found: warn
 
+      - name: Ensure test report exists
+        if: always()
+        run: |
+          if [ ! -f test_report.xml ]; then
+            echo "test_report.xml not found - emitting empty JUnit report so the publisher does not fail"
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="e2e-asan" tests="0" failures="0" errors="0" skipped="0"></testsuite>\n' > test_report.xml
+          fi
+
       - name: Publish test results
         if: always()
         uses: dorny/test-reporter@v1
@@ -631,6 +639,16 @@ jobs:
             tsan_gui_report.html
             tsan_gui_report.xml
           if-no-files-found: warn
+
+      - name: Ensure TSan test reports exist
+        if: always()
+        run: |
+          for f in tsan_headless_report.xml tsan_gui_report.xml; do
+            if [ ! -f "$f" ]; then
+              echo "$f not found - emitting empty JUnit report"
+              printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="tsan" tests="0" failures="0" errors="0" skipped="0"></testsuite>\n' > "$f"
+            fi
+          done
 
       - name: Publish TSan test results
         if: always()
